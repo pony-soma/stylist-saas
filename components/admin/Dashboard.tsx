@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, User, ChevronRight, ChevronLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import MedicalRecordView from '@/components/admin/MedicalRecord';
 
 type Booking = {
   id: string;
@@ -10,6 +11,7 @@ type Booking = {
   end_time: string;
   menu_note: string;
   status: string;
+  customer_id: string; // customer_id を追加
   customers: { display_name: string } | null;
 };
 
@@ -21,6 +23,7 @@ export default function AdminDashboard() {
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   // データ取得ロジック
   const fetchData = async (targetMonth: Date) => {
@@ -35,7 +38,7 @@ export default function AdminDashboard() {
     // 1. 未承認の予約を取得
     const { data: pendingData } = await supabase
       .from('bookings')
-      .select('id, start_time, end_time, menu_note, status, customers(display_name)')
+      .select('id, start_time, end_time, menu_note, status, customer_id, customers(display_name)')
       .eq('stylist_id', user.id)
       .eq('status', 'pending')
       .order('start_time', { ascending: true });
@@ -48,7 +51,7 @@ export default function AdminDashboard() {
     
     const { data: monthData } = await supabase
       .from('bookings')
-      .select('id, start_time, end_time, menu_note, status, customers(display_name)')
+      .select('id, start_time, end_time, menu_note, status, customer_id, customers(display_name)')
       .eq('stylist_id', user.id)
       .gte('start_time', firstDay.toISOString())
       .lte('start_time', lastDay.toISOString())
@@ -138,7 +141,7 @@ export default function AdminDashboard() {
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {pending.map((booking) => (
-              <div key={booking.id} className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div key={booking.id} onClick={() => setSelectedCustomerId(booking.customer_id)} className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:shadow-md transition">
                 <div>
                   <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                     <User className="w-4 h-4 text-gray-400" />
@@ -220,7 +223,7 @@ export default function AdminDashboard() {
                   <p>この日の予約はありません。</p>
                 </div>
               ) : selectedTimeline.map((item) => (
-                <div key={item.id} className="flex gap-6 group cursor-pointer">
+                <div key={item.id} onClick={() => setSelectedCustomerId(item.customer_id)} className="flex gap-6 group cursor-pointer">
                   <div className="w-16 text-right pt-2">
                     <span className="text-sm font-medium text-gray-500">{formatTime(item.start_time)}</span>
                   </div>
@@ -253,6 +256,10 @@ export default function AdminDashboard() {
         </section>
       </div>
 
+      {/* カルテ表示モーダル */}
+      {selectedCustomerId && (
+        <MedicalRecordView customerId={selectedCustomerId} onClose={() => setSelectedCustomerId(null)} />
+      )}
     </div>
   );
 }

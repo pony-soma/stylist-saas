@@ -24,7 +24,7 @@ type CustomerInfo = {
   created_at: string;
 };
 
-export default function MedicalRecordView() {
+export default function MedicalRecordView({ customerId, onClose }: { customerId: string, onClose: () => void }) {
   const [isCreating, setIsCreating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState<CustomerInfo | null>(null);
@@ -45,8 +45,6 @@ export default function MedicalRecordView() {
   const [savingBooking, setSavingBooking] = useState(false);
   const [stylistId, setStylistId] = useState<string | null>(null);
 
-  // TODO: 本来はURLのパラメータやリストから選択された顧客IDを利用する
-  // 今回はテストのため、一番最初に取得できた顧客を表示するか、ダミーを表示する
   useEffect(() => {
     const fetchCustomerAndRecords = async () => {
       setLoading(true);
@@ -54,11 +52,11 @@ export default function MedicalRecordView() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setStylistId(user.id);
 
-      // 1件顧客を取得
+      // propsの顧客IDを利用
       const { data: custData, error: custError } = await supabase
         .from('customers')
         .select('*')
-        .limit(1)
+        .eq('id', customerId)
         .single();
 
       if (custData) {
@@ -79,7 +77,7 @@ export default function MedicalRecordView() {
     };
 
     fetchCustomerAndRecords();
-  }, []);
+  }, [customerId]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -195,19 +193,34 @@ export default function MedicalRecordView() {
     return supabase.storage.from('record_photos').getPublicUrl(path).data.publicUrl;
   };
 
-  if (loading) return <div className="p-6 text-center text-gray-500">読み込み中...</div>;
-
-  if (!customer) return (
-    <div className="p-6 text-center text-gray-500">
-      <p>顧客データが存在しません。</p>
-      <p className="text-sm mt-2">（テスト用にSupabaseへcustomersデータを1件登録してください）</p>
+  if (loading) return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+        <p className="text-gray-500 font-medium">読み込み中...</p>
+      </div>
     </div>
   );
 
+  if (!customer) return null;
+
   return (
-    <div className="p-6 max-w-6xl mx-auto animate-in fade-in duration-500">
-      
-      <div className="flex flex-col lg:flex-row gap-8">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex justify-center items-start overflow-y-auto pt-10 pb-10 px-4 animate-in fade-in duration-200">
+      <div className="bg-gray-50 dark:bg-slate-950 w-full max-w-6xl rounded-2xl shadow-2xl relative animate-in slide-in-from-bottom-10 duration-300 overflow-hidden border border-gray-200 dark:border-gray-800">
+        
+        {/* モーダルのヘッダー (閉じるボタン) */}
+        <div className="sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center z-10">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">顧客カルテ</h2>
+          <button 
+            onClick={onClose}
+            className="w-10 h-10 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full flex items-center justify-center transition-colors"
+          >
+            <Plus className="w-6 h-6 rotate-45" />
+          </button>
+        </div>
+
+        <div className="p-6">
+          <div className="flex flex-col lg:flex-row gap-8">
         
         {/* 左側: 顧客プロファイル */}
         <div className="lg:w-1/3 space-y-6">
@@ -353,6 +366,9 @@ export default function MedicalRecordView() {
                 )}
               </div>
             ))}
+          </div>
+
+            </div>
           </div>
 
         </div>
