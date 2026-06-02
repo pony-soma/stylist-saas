@@ -62,8 +62,13 @@ export default function LiffBookingCalendar() {
         
         setCustomerId(customer!.id);
 
-        // TODO: 今回は最初の美容師をターゲットにする（本来はURLやLIFFのパラメータから判定）
-        const { data: sData } = await supabase.from('stylists').select('id').limit(1).single();
+        // TODO: 今回は最も新しく登録された美容師（実際のお客様のアカウント）をターゲットにする
+        const { data: sData } = await supabase
+          .from('stylists')
+          .select('id')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
         if (sData) setStylistId(sData.id);
 
         generateCalendar(currentMonth);
