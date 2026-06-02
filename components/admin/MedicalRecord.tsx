@@ -37,12 +37,23 @@ export default function MedicalRecordView() {
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
+  // 代理予約用State
+  const [isCreatingBooking, setIsCreatingBooking] = useState(false);
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingTime, setBookingTime] = useState('');
+  const [bookingMenu, setBookingMenu] = useState('');
+  const [savingBooking, setSavingBooking] = useState(false);
+  const [stylistId, setStylistId] = useState<string | null>(null);
+
   // TODO: 本来はURLのパラメータやリストから選択された顧客IDを利用する
   // 今回はテストのため、一番最初に取得できた顧客を表示するか、ダミーを表示する
   useEffect(() => {
     const fetchCustomerAndRecords = async () => {
       setLoading(true);
       
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setStylistId(user.id);
+
       // 1件顧客を取得
       const { data: custData, error: custError } = await supabase
         .from('customers')
@@ -139,6 +150,46 @@ export default function MedicalRecordView() {
     }
   };
 
+  const handleCreateProxyBooking = async () => {
+    if (!customer || !stylistId) return;
+    if (!bookingDate || !bookingTime || !bookingMenu) {
+      alert('日付、時間、メニューを入力してください');
+      return;
+    }
+    
+    setSavingBooking(true);
+    try {
+      // 日時を結合してISO文字列にする
+      const startDateTime = new Date(`${bookingDate}T${bookingTime}:00`);
+      // 終了時間は適当に1時間後に設定（必要に応じてフォームで入力させることも可能）
+      const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
+
+      const { error } = await supabase
+        .from('bookings')
+        .insert({
+          customer_id: customer.id,
+          stylist_id: stylistId,
+          start_time: startDateTime.toISOString(),
+          end_time: endDateTime.toISOString(),
+          menu_note: bookingMenu,
+          status: 'confirmed', // 代理予約は確定済みとする
+        });
+
+      if (error) throw error;
+
+      alert('代理予約を作成しました！');
+      setIsCreatingBooking(false);
+      setBookingDate('');
+      setBookingTime('');
+      setBookingMenu('');
+    } catch (error) {
+      console.error('Failed to create proxy booking:', error);
+      alert('予約の作成に失敗しました。');
+    } finally {
+      setSavingBooking(false);
+    }
+  };
+
   // 写真の公開URLを取得するヘルパー関数
   const getPhotoUrl = (path: string) => {
     return supabase.storage.from('record_photos').getPublicUrl(path).data.publicUrl;
@@ -182,10 +233,34 @@ export default function MedicalRecordView() {
             </div>
 
             <div className="flex flex-col gap-3">
-              <button className="w-full py-2.5 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition">
+              <button 
+                onClick={() => setIsCreatingBooking(!isCreatingBooking)}
+                className="w-full py-2.5 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition"
+              >
                 <CalendarPlus className="w-4 h-4" />
-                代理予約を作成
+                {isCreatingBooking ? 'キャンセル' : '代理予約を作成'}
               </button>
+
+              {isCreatingBooking && (
+                <div className="mt-4 p-4 bg-gray-50 dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-gray-700 space-y-4 animate-in fade-in slide-in-from-top-2">
+                  <h3 className="font-bold text-sm text-gray-900 dark:text-white">新規予約</h3>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">日付</label>
+                    <input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)} className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">時間</label>
+                    <input type="time" value={bookingTime} onChange={e => setBookingTime(e.target.value)} className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">メニュー・備考</label>
+                    <input type="text" value={bookingMenu} onChange={e => setBookingMenu(e.target.value)} placeholder="カット＋カラー" className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  </div>
+                  <button onClick={handleCreateProxyBooking} disabled={savingBooking} className="w-full py-2 mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm shadow-sm transition flex items-center justify-center gap-2">
+                    {savingBooking ? <><Loader2 className="w-4 h-4 animate-spin" /> 保存中...</> : '予約を確定する'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
