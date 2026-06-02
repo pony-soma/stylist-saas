@@ -26,12 +26,35 @@ export async function GET(request: Request) {
         },
       }
     )
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
+    const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code)
+    
+    if (!error && sessionData?.user) {
+      const user = sessionData.user;
+      
+      // 美容師テーブルに存在するか確認し、なければ作成
+      const { data: stylist } = await supabase.from('stylists').select('id').eq('id', user.id).single();
+      if (!stylist) {
+        await supabase.from('stylists').insert({
+          id: user.id,
+          name: user.user_metadata?.full_name || '美容師'
+        });
+        
+        // 無料トライアル（1年間有効とする等）のサブスクリプションを自動作成
+        const start = new Date();
+        const end = new Date(start.getTime() + 365 * 24 * 60 * 60 * 1000);
+        await supabase.from('subscriptions').insert({
+          stylist_id: user.id,
+          status: 'active',
+          plan_id: 'plan_basic',
+          current_period_start: start.toISOString(),
+          current_period_end: end.toISOString()
+        });
+      }
+      
       return NextResponse.redirect(`${origin}/admin`)
     }
     // エラー詳細をURLに含めてリダイレクト
-    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`)
+    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error?.message || 'auth failed')}`)
   }
 
   // codeが無い場合
