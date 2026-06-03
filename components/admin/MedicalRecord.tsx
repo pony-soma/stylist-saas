@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { User, Phone, MessageCircle, CalendarPlus, UploadCloud, Image as ImageIcon, Plus, Clock, Loader2 } from 'lucide-react';
+import { User, Phone, MessageCircle, CalendarPlus, UploadCloud, Image as ImageIcon, Plus, Clock, Loader2, Edit2, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 
 type RecordPhoto = {
@@ -419,7 +419,6 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white">{record.treatment_menu}</h3>
                       </div>
                       <div className="flex gap-4">
-                        <button onClick={() => handleDeleteRecord(record.id)} className="text-sm font-medium text-gray-400 hover:text-red-500 transition">削除</button>
                         <button 
                           onClick={() => {
                             setEditingRecordId(record.id);
@@ -430,9 +429,12 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                               notes: record.notes || ''
                             });
                           }} 
-                          className="text-sm font-medium text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition"
+                          className="text-sm font-medium text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition flex items-center gap-1"
                         >
-                          編集
+                          <Edit2 className="w-3.5 h-3.5" /> 編集
+                        </button>
+                        <button onClick={() => handleDeleteRecord(record.id)} className="text-sm font-medium text-gray-400 hover:text-red-500 transition flex items-center gap-1">
+                          <Trash2 className="w-3.5 h-3.5" /> 削除
                         </button>
                       </div>
                     </div>
