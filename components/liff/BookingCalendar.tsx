@@ -62,14 +62,34 @@ export default function LiffBookingCalendar() {
         
         setCustomerId(customer!.id);
 
-        // TODO: 今回は最も新しく登録された美容師（実際のお客様のアカウント）をターゲットにする
-        const { data: sData } = await supabase
-          .from('stylists')
-          .select('id')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-        if (sData) setStylistId(sData.id);
+        // URLパラメータから美容師IDを取得 (?stylist=xxx)
+        const searchParams = new URLSearchParams(window.location.search);
+        let targetStylistId = searchParams.get('stylist');
+
+        if (targetStylistId) {
+          // パラメータが指定された場合、その美容師の存在確認
+          const { data: sData } = await supabase
+            .from('stylists')
+            .select('id')
+            .eq('id', targetStylistId)
+            .single();
+            
+          if (sData) {
+            setStylistId(sData.id);
+          } else {
+            console.error('指定された美容師が見つかりませんでした');
+          }
+        } else {
+          // SaaS化後はパラメータ必須が望ましいが、テスト時の互換性のために
+          // パラメータがない場合は一番新しく登録された美容師にフォールバックする
+          const { data: sData } = await supabase
+            .from('stylists')
+            .select('id')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+          if (sData) setStylistId(sData.id);
+        }
 
         generateCalendar(currentMonth);
         setLoading(false);

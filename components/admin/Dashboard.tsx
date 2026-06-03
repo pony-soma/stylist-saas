@@ -126,7 +126,24 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">ダッシュボード</h1>
           <p className="text-gray-500 mt-1">予約状況の管理</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          {userId && (
+            <div className="hidden sm:block text-right">
+              <p className="text-xs text-gray-500 font-medium">あなた専用の予約URL（LINEに設定）</p>
+              <div className="mt-1">
+                <code 
+                  className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1.5 rounded text-gray-600 dark:text-gray-300 select-all cursor-copy border border-gray-200 dark:border-gray-700"
+                  onClick={(e) => {
+                    navigator.clipboard.writeText(`https://liff.line.me/あなたのLIFF_ID?stylist=${userId}`);
+                    alert('URLをコピーしました！');
+                  }}
+                  title="クリックでコピー"
+                >
+                  https://liff.line.me/あなたのLIFF_ID?stylist={userId}
+                </code>
+              </div>
+            </div>
+          )}
           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md">S</div>
         </div>
       </header>
