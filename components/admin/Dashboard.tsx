@@ -134,12 +134,13 @@ export default function AdminDashboard() {
                 <code 
                   className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1.5 rounded text-gray-600 dark:text-gray-300 select-all cursor-copy border border-gray-200 dark:border-gray-700"
                   onClick={(e) => {
-                    navigator.clipboard.writeText(`https://liff.line.me/あなたのLIFF_ID?stylist=${userId}`);
+                    const liffId = process.env.NEXT_PUBLIC_LIFF_ID || '未設定';
+                    navigator.clipboard.writeText(`https://liff.line.me/${liffId}?stylist=${userId}`);
                     alert('URLをコピーしました！');
                   }}
                   title="クリックでコピー"
                 >
-                  https://liff.line.me/あなたのLIFF_ID?stylist={userId}
+                  https://liff.line.me/{process.env.NEXT_PUBLIC_LIFF_ID || '未設定'}?stylist={userId}
                 </code>
               </div>
             </div>
