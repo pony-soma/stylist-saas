@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, User, ChevronRight, ChevronLeft } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, User, ChevronRight, ChevronLeft, Link as LinkIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import MedicalRecordView from '@/components/admin/MedicalRecord';
 
@@ -130,18 +130,18 @@ export default function AdminDashboard() {
           {userId && (
             <div className="hidden sm:block text-right">
               <p className="text-xs text-gray-500 font-medium">あなた専用の予約URL（LINEに設定）</p>
-              <div className="mt-1">
-                <code 
-                  className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1.5 rounded text-gray-600 dark:text-gray-300 select-all cursor-copy border border-gray-200 dark:border-gray-700"
-                  onClick={(e) => {
+              <div className="mt-1 flex justify-end">
+                <button
+                  className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors font-medium border border-indigo-100 dark:border-indigo-800 shadow-sm"
+                  onClick={() => {
                     const liffId = process.env.NEXT_PUBLIC_LIFF_ID || '未設定';
                     navigator.clipboard.writeText(`https://liff.line.me/${liffId}?stylist=${userId}`);
-                    alert('URLをコピーしました！');
+                    alert('予約URLをコピーしました！LINEのリッチメニュー等に設定してください。');
                   }}
-                  title="クリックでコピー"
                 >
-                  https://liff.line.me/{process.env.NEXT_PUBLIC_LIFF_ID || '未設定'}?stylist={userId}
-                </code>
+                  <LinkIcon className="w-3.5 h-3.5" />
+                  予約URLをコピー
+                </button>
               </div>
             </div>
           )}
