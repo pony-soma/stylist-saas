@@ -45,6 +45,16 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
   const [savingBooking, setSavingBooking] = useState(false);
   const [stylistId, setStylistId] = useState<string | null>(null);
 
+  // 編集用State
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editForm, setEditForm] = useState({
+    visit_date: '',
+    treatment_menu: '',
+    chemicals_used: '',
+    notes: ''
+  });
+
   useEffect(() => {
     const fetchCustomerAndRecords = async () => {
       setLoading(true);
@@ -145,6 +155,45 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
       alert('カルテの保存に失敗しました。');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleSaveEdit = async (recordId: string) => {
+    if (!customer) return;
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from('medical_records')
+        .update({
+          visit_date: editForm.visit_date,
+          treatment_menu: editForm.treatment_menu,
+          chemicals_used: editForm.chemicals_used,
+          notes: editForm.notes,
+        })
+        .eq('id', recordId);
+
+      if (error) throw error;
+
+      // Update local state without fetching all again
+      setRecords(records.map(r => r.id === recordId ? { ...r, ...editForm } : r));
+      setEditingRecordId(null);
+    } catch (error) {
+      console.error('Failed to update record:', error);
+      alert('カルテの更新に失敗しました。');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteRecord = async (recordId: string) => {
+    if (!confirm('本当にこのカルテを削除しますか？\n（紐づく写真も表示されなくなります）')) return;
+    try {
+      const { error } = await supabase.from('medical_records').delete().eq('id', recordId);
+      if (error) throw error;
+      setRecords(records.filter(r => r.id !== recordId));
+    } catch (error) {
+      console.error('Failed to delete record:', error);
+      alert('削除に失敗しました。');
     }
   };
 
@@ -331,38 +380,88 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
               <p className="text-gray-500 text-center py-10">カルテ履歴がありません。</p>
             ) : records.map((record) => (
               <div key={record.id} className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-full mb-2">
-                      {record.visit_date}
-                    </span>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">{record.treatment_menu}</h3>
-                  </div>
-                </div>
                 
-                <div className="space-y-3">
-                  {record.chemicals_used && (
-                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-3 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30">
-                      <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mb-1 uppercase tracking-wider">Chemicals</p>
-                      <p className="text-sm text-gray-800 dark:text-gray-200">{record.chemicals_used}</p>
+                {editingRecordId === record.id ? (
+                  <div className="space-y-4 animate-in fade-in">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-bold">カルテを編集</h3>
                     </div>
-                  )}
-                  {record.notes && (
-                    <div className="bg-gray-50 dark:bg-slate-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
-                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Notes</p>
-                      <p className="text-sm text-gray-800 dark:text-gray-200">{record.notes}</p>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">来店日</label>
+                      <input type="date" value={editForm.visit_date} onChange={e => setEditForm({...editForm, visit_date: e.target.value})} className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
                     </div>
-                  )}
-                </div>
-
-                {record.record_photos && record.record_photos.length > 0 && (
-                  <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
-                    {record.record_photos.map((photo, i) => (
-                      <div key={i} className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer flex-shrink-0">
-                        <img src={getPhotoUrl(photo.storage_path)} alt={`施術写真 ${i+1}`} className="w-24 h-24 object-cover group-hover:scale-105 transition-transform duration-300" />
-                      </div>
-                    ))}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">メニュー</label>
+                      <input type="text" value={editForm.treatment_menu} onChange={e => setEditForm({...editForm, treatment_menu: e.target.value})} className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">使用薬剤</label>
+                      <textarea rows={2} value={editForm.chemicals_used} onChange={e => setEditForm({...editForm, chemicals_used: e.target.value})} className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">メモ</label>
+                      <textarea rows={3} value={editForm.notes} onChange={e => setEditForm({...editForm, notes: e.target.value})} className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+                    </div>
+                    <div className="flex justify-end gap-3 pt-4">
+                      <button onClick={() => setEditingRecordId(null)} className="px-5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg text-sm font-medium transition">キャンセル</button>
+                      <button onClick={() => handleSaveEdit(record.id)} disabled={savingEdit} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition flex items-center gap-2">
+                        {savingEdit ? <><Loader2 className="w-4 h-4 animate-spin" /> 保存中...</> : '更新する'}
+                      </button>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-full mb-2">
+                          {record.visit_date}
+                        </span>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">{record.treatment_menu}</h3>
+                      </div>
+                      <div className="flex gap-4">
+                        <button onClick={() => handleDeleteRecord(record.id)} className="text-sm font-medium text-gray-400 hover:text-red-500 transition">削除</button>
+                        <button 
+                          onClick={() => {
+                            setEditingRecordId(record.id);
+                            setEditForm({
+                              visit_date: record.visit_date,
+                              treatment_menu: record.treatment_menu,
+                              chemicals_used: record.chemicals_used || '',
+                              notes: record.notes || ''
+                            });
+                          }} 
+                          className="text-sm font-medium text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition"
+                        >
+                          編集
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {record.chemicals_used && (
+                        <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-3 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30">
+                          <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mb-1 uppercase tracking-wider">Chemicals</p>
+                          <p className="text-sm text-gray-800 dark:text-gray-200">{record.chemicals_used}</p>
+                        </div>
+                      )}
+                      {record.notes && (
+                        <div className="bg-gray-50 dark:bg-slate-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
+                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Notes</p>
+                          <p className="text-sm text-gray-800 dark:text-gray-200">{record.notes}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {record.record_photos && record.record_photos.length > 0 && (
+                      <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+                        {record.record_photos.map((photo, i) => (
+                          <div key={i} className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer flex-shrink-0">
+                            <img src={getPhotoUrl(photo.storage_path)} alt={`施術写真 ${i+1}`} className="w-24 h-24 object-cover group-hover:scale-105 transition-transform duration-300" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             ))}
