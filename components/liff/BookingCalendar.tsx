@@ -104,15 +104,34 @@ export default function LiffBookingCalendar() {
     initLiff();
   }, []);
 
+  const handlePrevMonth = () => {
+    const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+    setCurrentMonth(newMonth);
+    generateCalendar(newMonth);
+  };
+
+  const handleNextMonth = () => {
+    const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    setCurrentMonth(newMonth);
+    generateCalendar(newMonth);
+  };
+
   const generateCalendar = (baseDate: Date) => {
-    const newDays = Array.from({ length: 14 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() + i);
-      return {
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth();
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const newDays = [];
+    for (let i = 1; i <= lastDay; i++) {
+      const d = new Date(year, month, i);
+      newDays.push({
         date: d,
-        isAvailable: true,
-      };
-    });
+        isAvailable: d.getTime() >= today.getTime(), // 今日以降のみ予約可能
+      });
+    }
     setDays(newDays);
   };
 
@@ -227,14 +246,14 @@ export default function LiffBookingCalendar() {
       <main className="p-5">
         <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-6">
-            <button className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-600 active:scale-95 transition-transform">
+            <button onClick={handlePrevMonth} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-600 active:scale-95 transition-transform hover:bg-gray-100">
               <ChevronLeft className="w-5 h-5" />
             </button>
             <h2 className="font-bold text-gray-800 flex items-center gap-2">
               <CalendarIcon className="w-4 h-4 text-indigo-500" />
               {currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月
             </h2>
-            <button className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-600 active:scale-95 transition-transform">
+            <button onClick={handleNextMonth} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-600 active:scale-95 transition-transform hover:bg-gray-100">
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
