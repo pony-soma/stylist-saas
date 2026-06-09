@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Stylist SaaS",
-  description: "SaaS application for freelance hair stylists",
+  title: "LiNo",
+  description: "美容師のための予約・顧客管理SaaS",
 };
 
 export default function RootLayout({

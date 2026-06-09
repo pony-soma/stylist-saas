@@ -36,7 +36,7 @@ export default function LoginPage() {
             <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/30 shadow-lg">
               <Scissors className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Stylist SaaS</h1>
+            <h1 className="text-3xl font-bold text-white tracking-tight">LiNo</h1>
             <p className="text-indigo-100 mt-2 text-sm font-medium">美容師向け予約・カルテ管理システム</p>
           </div>
         </div>

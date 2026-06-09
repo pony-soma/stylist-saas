@@ -1,9 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, Clock, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import liff from '@line/liff';
+import LiffMonthView from './calendar/LiffMonthView';
+import TimeSlotSheet from './calendar/TimeSlotSheet';
+
+type DayData = { date: Date; isAvailable: boolean };
 
 export default function LiffBookingCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -11,7 +15,7 @@ export default function LiffBookingCalendar() {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [days, setDays] = useState<{ date: Date, isAvailable: boolean }[]>([]);
+  const [days, setDays] = useState<DayData[]>([]);
   const [timeSlots, setTimeSlots] = useState<{ time: string, available: boolean }[]>([]);
   
   const [loading, setLoading] = useState(true);
@@ -21,6 +25,25 @@ export default function LiffBookingCalendar() {
   const [stylistId, setStylistId] = useState<string | null>(null);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [lineProfile, setLineProfile] = useState<{ displayName: string; userId: string } | null>(null);
+
+  const generateCalendar = useCallback((baseDate: Date) => {
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth();
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const newDays = [];
+    for (let i = 1; i <= lastDay; i++) {
+      const d = new Date(year, month, i);
+      newDays.push({
+        date: d,
+        isAvailable: d.getTime() >= today.getTime(), // 今日以降のみ予約可能
+      });
+    }
+    setDays(newDays);
+  }, []);
 
   useEffect(() => {
     const initLiff = async () => {
@@ -51,7 +74,6 @@ export default function LiffBookingCalendar() {
             .insert({
               line_user_id: profile.userId,
               display_name: profile.displayName,
-              // phone_number等は別途フォームで取得するフローが必要ですが今回は省略
             })
             .select()
             .single();
@@ -67,7 +89,6 @@ export default function LiffBookingCalendar() {
         let targetStylistId = searchParams.get('stylist');
 
         if (targetStylistId) {
-          // パラメータが指定された場合、その美容師の存在確認
           const { data: sData } = await supabase
             .from('stylists')
             .select('id')
@@ -80,8 +101,6 @@ export default function LiffBookingCalendar() {
             console.error('指定された美容師が見つかりませんでした');
           }
         } else {
-          // SaaS化後はパラメータ必須が望ましいが、テスト時の互換性のために
-          // パラメータがない場合は一番新しく登録された美容師にフォールバックする
           const { data: sData } = await supabase
             .from('stylists')
             .select('id')
@@ -102,7 +121,8 @@ export default function LiffBookingCalendar() {
     };
 
     initLiff();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generateCalendar]);
 
   const handlePrevMonth = () => {
     const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
@@ -116,26 +136,7 @@ export default function LiffBookingCalendar() {
     generateCalendar(newMonth);
   };
 
-  const generateCalendar = (baseDate: Date) => {
-    const year = baseDate.getFullYear();
-    const month = baseDate.getMonth();
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const newDays = [];
-    for (let i = 1; i <= lastDay; i++) {
-      const d = new Date(year, month, i);
-      newDays.push({
-        date: d,
-        isAvailable: d.getTime() >= today.getTime(), // 今日以降のみ予約可能
-      });
-    }
-    setDays(newDays);
-  };
-
-  const handleDateClick = async (day: { date: Date, isAvailable: boolean }) => {
+  const handleDateClick = async (day: DayData) => {
     if (!day.isAvailable || !stylistId) return;
     setSelectedDate(day.date);
     setSelectedTime(null);
@@ -205,7 +206,6 @@ export default function LiffBookingCalendar() {
       alert('仮予約を受け付けました！LINEのメッセージをご確認ください。');
       setShowBottomSheet(false);
       setSelectedTime(null);
-      // 予約完了メッセージをLINEトークに送信することも可能
       if (liff.isInClient()) {
         liff.closeWindow();
       }
@@ -244,124 +244,25 @@ export default function LiffBookingCalendar() {
       </header>
 
       <main className="p-5">
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-6">
-            <button onClick={handlePrevMonth} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-600 active:scale-95 transition-transform hover:bg-gray-100">
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <h2 className="font-bold text-gray-800 flex items-center gap-2">
-              <CalendarIcon className="w-4 h-4 text-indigo-500" />
-              {currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月
-            </h2>
-            <button onClick={handleNextMonth} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-600 active:scale-95 transition-transform hover:bg-gray-100">
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-7 gap-2 mb-2">
-            {['日', '月', '火', '水', '木', '金', '土'].map(day => (
-              <div key={day} className="text-center text-xs font-semibold text-gray-400 py-1">
-                {day}
-              </div>
-            ))}
-          </div>
-          
-          <div className="grid grid-cols-7 gap-2">
-            {days.length > 0 && Array.from({ length: days[0].date.getDay() }).map((_, i) => (
-              <div key={`empty-${i}`} className="h-10"></div>
-            ))}
-            
-            {days.map((day, i) => (
-              <button
-                key={i}
-                onClick={() => handleDateClick(day)}
-                disabled={!day.isAvailable}
-                className={`h-10 w-full rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 active:scale-90
-                  ${day.isAvailable 
-                    ? 'text-gray-700 bg-gray-50 hover:bg-indigo-50 hover:text-indigo-600 border border-transparent' 
-                    : 'text-gray-300 opacity-50 cursor-not-allowed'
-                  }
-                `}
-              >
-                {day.date.getDate()}
-              </button>
-            ))}
-          </div>
-        </div>
+        <LiffMonthView 
+          currentMonth={currentMonth}
+          days={days}
+          onPrevMonth={handlePrevMonth}
+          onNextMonth={handleNextMonth}
+          onDateClick={handleDateClick}
+        />
       </main>
 
-      {/* ボトムシート オーバーレイ */}
-      <div 
-        className={`fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 z-40 max-w-md mx-auto ${
-          showBottomSheet ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={() => setShowBottomSheet(false)}
+      <TimeSlotSheet 
+        isOpen={showBottomSheet}
+        onClose={() => setShowBottomSheet(false)}
+        selectedDate={selectedDate}
+        timeSlots={timeSlots}
+        selectedTime={selectedTime}
+        onSelectTime={setSelectedTime}
+        onSubmit={handleSubmit}
+        submitting={submitting}
       />
-
-      {/* 時間選択ボトムシート */}
-      <div 
-        className={`fixed bottom-0 w-full max-w-md mx-auto bg-white rounded-t-3xl shadow-2xl transition-transform duration-500 z-50 p-6 flex flex-col ${
-          showBottomSheet ? 'translate-y-0' : 'translate-y-full'
-        }`}
-        style={{ maxHeight: '80vh' }}
-      >
-        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
-        
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-gray-900">
-            {selectedDate ? `${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日 (${['日', '月', '火', '水', '木', '金', '土'][selectedDate.getDay()]})` : ''}
-          </h3>
-          <button 
-            onClick={() => setShowBottomSheet(false)}
-            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:scale-95"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 pr-2 space-y-3 pb-24">
-          {timeSlots.map((slot, i) => (
-            <button
-              key={i}
-              disabled={!slot.available}
-              onClick={() => setSelectedTime(slot.time)}
-              className={`w-full py-4 px-5 rounded-2xl flex justify-between items-center transition-all active:scale-[0.98]
-                ${!slot.available ? 'bg-gray-50 opacity-50 cursor-not-allowed' : 
-                  selectedTime === slot.time 
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' 
-                    : 'bg-white border border-gray-200 text-gray-700 hover:border-indigo-300'
-                }
-              `}
-            >
-              <span className="font-bold flex items-center gap-2 text-lg">
-                <Clock className="w-5 h-5 opacity-70" /> {slot.time}
-              </span>
-              {slot.available ? (
-                <span className={`text-sm font-medium ${selectedTime === slot.time ? 'text-indigo-100' : 'text-indigo-600'}`}>
-                  選択
-                </span>
-              ) : (
-                <span className="text-sm text-gray-400">× 満席</span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        <div className="absolute bottom-0 left-0 w-full p-5 bg-gradient-to-t from-white via-white to-transparent pt-10">
-          <button 
-            onClick={handleSubmit}
-            disabled={!selectedTime || submitting}
-            className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] flex justify-center items-center gap-2
-              ${selectedTime && !submitting
-                ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200' 
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
-              }
-            `}
-          >
-            {submitting ? <><Loader2 className="w-5 h-5 animate-spin" /> 送信中...</> : '予約リクエストを送信'}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
