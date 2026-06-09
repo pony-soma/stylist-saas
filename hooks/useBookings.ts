@@ -45,10 +45,10 @@ export function useBookings(userId: string | null) {
     return !error;
   };
 
-  const createProxyBooking = async (customerId: string, date: string, time: string, menu: string) => {
+  const createProxyBooking = async (customerId: string, date: string, startTime: string, endTime: string, menu: string) => {
     if (!userId) throw new Error('User not authenticated');
-    const startDateTime = new Date(`${date}T${time}:00`);
-    const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
+    const startDateTime = new Date(`${date}T${startTime}:00`);
+    const endDateTime = new Date(`${date}T${endTime}:00`);
     
     const { error } = await supabase
       .from('bookings')

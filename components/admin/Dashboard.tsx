@@ -222,6 +222,7 @@ export default function AdminDashboard() {
           onClose={() => setIsProxyModalOpen(false)} 
           userId={userId} 
           onSuccess={() => fetchBookings(currentMonth)}
+          selectedDate={selectedDate}
         />
       )}
     </div>

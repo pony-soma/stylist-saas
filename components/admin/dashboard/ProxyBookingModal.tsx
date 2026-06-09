@@ -8,37 +8,52 @@ type Props = {
   onClose: () => void;
   userId: string;
   onSuccess: () => void;
+  selectedDate: Date;
 };
 
-export default function ProxyBookingModal({ isOpen, onClose, userId, onSuccess }: Props) {
+export default function ProxyBookingModal({ isOpen, onClose, userId, onSuccess, selectedDate }: Props) {
   const { proxyCustomers, fetchProxyCustomers } = useCustomers(userId);
   const { createProxyBooking } = useBookings(userId);
   
-  const [form, setForm] = useState({ customerId: '', date: '', time: '', menu: '' });
+  const [form, setForm] = useState({ 
+    customerId: '', 
+    date: selectedDate ? new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000).toISOString().split('T')[0] : '', 
+    startTime: '10:00', 
+    endTime: '11:00', 
+    menu: '' 
+  });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
+      setForm(prev => ({ 
+        ...prev, 
+        date: selectedDate ? new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000).toISOString().split('T')[0] : prev.date 
+      }));
       fetchProxyCustomers().then(customers => {
         if (customers && customers.length > 0 && !form.customerId) {
           setForm(prev => ({ ...prev, customerId: customers[0].id }));
         }
       });
     }
-  }, [isOpen, fetchProxyCustomers, form.customerId]);
+  }, [isOpen, fetchProxyCustomers, selectedDate, form.customerId]);
 
   if (!isOpen) return null;
 
   const handleSave = async () => {
-    if (!form.customerId || !form.date || !form.time || !form.menu) {
+    if (!form.customerId || !form.date || !form.startTime || !form.endTime || !form.menu) {
       alert('すべての項目を入力してください');
+      return;
+    }
+    if (form.startTime >= form.endTime) {
+      alert('終了時間は開始時間より後に設定してください');
       return;
     }
     setSaving(true);
     try {
-      await createProxyBooking(form.customerId, form.date, form.time, form.menu);
+      await createProxyBooking(form.customerId, form.date, form.startTime, form.endTime, form.menu);
       alert('代理予約を作成しました！');
-      setForm({ customerId: proxyCustomers[0]?.id || '', date: '', time: '', menu: '' });
+      setForm({ customerId: proxyCustomers[0]?.id || '', date: '', startTime: '10:00', endTime: '11:00', menu: '' });
       onSuccess();
       onClose();
     } catch (err) {
@@ -79,7 +94,11 @@ export default function ProxyBookingModal({ isOpen, onClose, userId, onSuccess }
           </div>
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">時間</label>
-            <input type="time" value={form.time} onChange={e => setForm({...form, time: e.target.value})} className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+            <div className="flex items-center gap-2">
+              <input type="time" step="900" value={form.startTime} onChange={e => setForm({...form, startTime: e.target.value})} className="flex-1 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+              <span className="text-gray-500">〜</span>
+              <input type="time" step="900" value={form.endTime} onChange={e => setForm({...form, endTime: e.target.value})} className="flex-1 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">メニュー・備考</label>
