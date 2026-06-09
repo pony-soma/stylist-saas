@@ -11,11 +11,8 @@ type Props = {
   selectedDate: Date;
 };
 
-const timeOptions = Array.from({ length: 24 * 4 }).map((_, i) => {
-  const hours = Math.floor(i / 4).toString().padStart(2, '0');
-  const minutes = ((i % 4) * 15).toString().padStart(2, '0');
-  return `${hours}:${minutes}`;
-});
+const hoursOptions = Array.from({ length: 24 }).map((_, i) => i.toString().padStart(2, '0'));
+const minutesOptions = ['00', '15', '30', '45'];
 
 export default function ProxyBookingModal({ isOpen, onClose, userId, onSuccess, selectedDate }: Props) {
   const { proxyCustomers, fetchProxyCustomers } = useCustomers(userId);
@@ -24,8 +21,10 @@ export default function ProxyBookingModal({ isOpen, onClose, userId, onSuccess, 
   const [form, setForm] = useState({ 
     customerId: '', 
     date: selectedDate ? new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000).toISOString().split('T')[0] : '', 
-    startTime: '10:00', 
-    endTime: '11:00', 
+    startHour: '10', 
+    startMinute: '00', 
+    endHour: '11', 
+    endMinute: '00', 
     menu: '' 
   });
   const [saving, setSaving] = useState(false);
@@ -47,19 +46,22 @@ export default function ProxyBookingModal({ isOpen, onClose, userId, onSuccess, 
   if (!isOpen) return null;
 
   const handleSave = async () => {
-    if (!form.customerId || !form.date || !form.startTime || !form.endTime || !form.menu) {
+    const startTimeStr = `${form.startHour}:${form.startMinute}`;
+    const endTimeStr = `${form.endHour}:${form.endMinute}`;
+
+    if (!form.customerId || !form.date || !form.menu) {
       alert('すべての項目を入力してください');
       return;
     }
-    if (form.startTime >= form.endTime) {
+    if (startTimeStr >= endTimeStr) {
       alert('終了時間は開始時間より後に設定してください');
       return;
     }
     setSaving(true);
     try {
-      await createProxyBooking(form.customerId, form.date, form.startTime, form.endTime, form.menu);
+      await createProxyBooking(form.customerId, form.date, startTimeStr, endTimeStr, form.menu);
       alert('代理予約を作成しました！');
-      setForm({ customerId: proxyCustomers[0]?.id || '', date: '', startTime: '10:00', endTime: '11:00', menu: '' });
+      setForm({ customerId: proxyCustomers[0]?.id || '', date: '', startHour: '10', startMinute: '00', endHour: '11', endMinute: '00', menu: '' });
       onSuccess();
       onClose();
     } catch (err) {
@@ -100,14 +102,26 @@ export default function ProxyBookingModal({ isOpen, onClose, userId, onSuccess, 
           </div>
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">時間</label>
-            <div className="flex items-center gap-2">
-              <select value={form.startTime} onChange={e => setForm({...form, startTime: e.target.value})} className="flex-1 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition">
-                {timeOptions.map(t => <option key={`start-${t}`} value={t}>{t}</option>)}
-              </select>
-              <span className="text-gray-500">〜</span>
-              <select value={form.endTime} onChange={e => setForm({...form, endTime: e.target.value})} className="flex-1 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition">
-                {timeOptions.map(t => <option key={`end-${t}`} value={t}>{t}</option>)}
-              </select>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 flex-1">
+                <select value={form.startHour} onChange={e => setForm({...form, startHour: e.target.value})} className="w-16 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-2 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition text-center">
+                  {hoursOptions.map(h => <option key={`sh-${h}`} value={h}>{h}</option>)}
+                </select>
+                <span className="font-bold">:</span>
+                <select value={form.startMinute} onChange={e => setForm({...form, startMinute: e.target.value})} className="w-16 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-2 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition text-center">
+                  {minutesOptions.map(m => <option key={`sm-${m}`} value={m}>{m}</option>)}
+                </select>
+              </div>
+              <span className="text-gray-500 font-bold px-1">〜</span>
+              <div className="flex items-center gap-1 flex-1">
+                <select value={form.endHour} onChange={e => setForm({...form, endHour: e.target.value})} className="w-16 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-2 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition text-center">
+                  {hoursOptions.map(h => <option key={`eh-${h}`} value={h}>{h}</option>)}
+                </select>
+                <span className="font-bold">:</span>
+                <select value={form.endMinute} onChange={e => setForm({...form, endMinute: e.target.value})} className="w-16 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-2 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition text-center">
+                  {minutesOptions.map(m => <option key={`em-${m}`} value={m}>{m}</option>)}
+                </select>
+              </div>
             </div>
           </div>
           <div>
