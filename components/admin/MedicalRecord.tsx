@@ -11,6 +11,8 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
   const [records, setRecords] = useState<MedicalRecord[]>([]);
   
   // フォーム用State
+  const [isCreating, setIsCreating] = useState(false);
+  const [visitDate, setVisitDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [menu, setMenu] = useState('');
   const [chemicals, setChemicals] = useState('');
   const [notes, setNotes] = useState('');
@@ -76,7 +78,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
         .insert({
           customer_id: customer.id,
           stylist_id: user?.id,
-          visit_date: new Date().toISOString().split('T')[0],
+          visit_date: visitDate,
           treatment_menu: menu,
           chemicals_used: chemicals,
           notes: notes,
@@ -110,6 +112,8 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
       await Promise.all(photoPromises);
 
       // リセットと再取得
+      setIsCreating(false);
+      setVisitDate(new Date().toISOString().split('T')[0]);
       setMenu(''); setChemicals(''); setNotes(''); setSelectedFiles([]);
       
       // レコード一覧の更新処理
@@ -221,15 +225,36 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
         <div className="flex-1 overflow-y-auto p-6 space-y-8">
           
           {/* 追加フォーム */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <Plus className="w-5 h-5 text-indigo-500" /> カルテを追加
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">メニュー <span className="text-red-500">*</span></label>
-                <input type="text" value={menu} onChange={e => setMenu(e.target.value)} placeholder="例: カット＋カラー" className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+          {!isCreating ? (
+            <div className="flex justify-center py-2">
+              <button 
+                onClick={() => setIsCreating(true)}
+                className="px-6 py-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition flex items-center gap-2 border border-indigo-100 dark:border-indigo-800"
+              >
+                <Plus className="w-5 h-5" /> 新しいカルテを記録する
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-lg flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-indigo-500" /> カルテを追加
+                </h3>
+                <button onClick={() => setIsCreating(false)} className="text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition">
+                  キャンセル
+                </button>
               </div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">来店日 <span className="text-red-500">*</span></label>
+                    <input type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)} className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">メニュー <span className="text-red-500">*</span></label>
+                    <input type="text" value={menu} onChange={e => setMenu(e.target.value)} placeholder="例: カット＋カラー" className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+                  </div>
+                </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">使用薬剤・カラーレシピ</label>
@@ -249,12 +274,13 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
               </div>
 
               <div className="flex justify-end pt-4">
-                <button onClick={handleSaveRecord} disabled={uploading || !menu} className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-xl shadow-sm transition flex items-center gap-2">
+                <button onClick={handleSaveRecord} disabled={uploading || !menu || !visitDate} className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-xl shadow-sm transition flex items-center gap-2">
                   {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> 保存中...</> : '保存する'}
                 </button>
               </div>
             </div>
           </div>
+          )}
 
           {/* カルテタイムライン */}
           <div className="space-y-6">
