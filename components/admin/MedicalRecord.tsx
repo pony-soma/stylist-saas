@@ -110,64 +110,61 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
             />
           )}
 
-          <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 dark:before:via-gray-700 before:to-transparent">
+          <div className="space-y-6">
             {records.map((record) => (
-              <div key={record.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white dark:border-slate-950 bg-indigo-100 dark:bg-indigo-900 text-indigo-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
-                  <div className="w-2 h-2 bg-indigo-600 rounded-full"></div>
-                </div>
-                
-                <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)]">
-                  {editingRecordId === record.id ? (
-                    <MedicalRecordForm
-                      initialData={record}
-                      onSubmit={handleUpdate}
-                      onCancel={() => setEditingRecordId(null)}
-                    />
-                  ) : (
-                    <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-gray-100 dark:border-gray-800 hover:shadow-md transition">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-1">{formatDate(record.visit_date)}</p>
-                          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{record.treatment_menu}</h3>
-                        </div>
-                        <div className="flex gap-4">
-                          <button onClick={() => setEditingRecordId(record.id)} className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition flex items-center gap-1">
-                            <Edit2 className="w-3.5 h-3.5" /> 編集
-                          </button>
-                          <button onClick={() => handleDelete(record.id)} className="text-sm font-medium text-gray-400 hover:text-red-500 transition flex items-center gap-1">
-                            <Trash2 className="w-3.5 h-3.5" /> 削除
-                          </button>
-                        </div>
+              <div key={record.id} className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
+                {editingRecordId === record.id ? (
+                  <MedicalRecordForm
+                    initialData={record}
+                    onSubmit={handleUpdate}
+                    onCancel={() => setEditingRecordId(null)}
+                  />
+                ) : (
+                  <>
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-full mb-2">
+                          {formatDate(record.visit_date)}
+                        </span>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">{record.treatment_menu}</h3>
                       </div>
+                      <div className="flex gap-4">
+                        <button onClick={() => setEditingRecordId(record.id)} className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition flex items-center gap-1">
+                          <Edit2 className="w-3.5 h-3.5" /> 編集
+                        </button>
+                        <button onClick={() => handleDelete(record.id)} className="text-sm font-medium text-gray-400 hover:text-red-500 transition flex items-center gap-1">
+                          <Trash2 className="w-3.5 h-3.5" /> 削除
+                        </button>
+                      </div>
+                    </div>
 
+                    <div className="space-y-3">
                       {record.chemicals_used && (
-                        <div className="mb-3 bg-gray-50 dark:bg-slate-800/50 p-3 rounded-xl">
-                          <p className="text-xs font-bold text-gray-500 mb-1">使用薬剤・カラーレシピ</p>
-                          <p className="text-sm text-gray-700 dark:text-gray-300">{record.chemicals_used}</p>
+                        <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-3 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30">
+                          <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mb-1 uppercase tracking-wider">Chemicals</p>
+                          <p className="text-sm text-gray-800 dark:text-gray-200">{record.chemicals_used}</p>
                         </div>
                       )}
-
                       {record.notes && (
-                        <div className="mb-4">
-                          <p className="text-xs font-bold text-gray-500 mb-1">メモ・会話内容</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{record.notes}</p>
-                        </div>
-                      )}
-
-                      {record.record_photos && record.record_photos.length > 0 && (
-                        <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-                          {record.record_photos.map((photo, i) => (
-                            <div key={i} className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-slate-800 overflow-hidden border border-gray-200 dark:border-gray-700 flex items-center justify-center">
-                              {/* placeholder */}
-                              <ImageIcon className="w-6 h-6 text-gray-300" />
-                            </div>
-                          ))}
+                        <div className="bg-gray-50 dark:bg-slate-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
+                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Notes</p>
+                          <p className="text-sm text-gray-800 dark:text-gray-200">{record.notes}</p>
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
+
+                    {record.record_photos && record.record_photos.length > 0 && (
+                      <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+                        {record.record_photos.map((photo, i) => (
+                          <div key={i} className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer flex-shrink-0">
+                            {/* placeholder */}
+                            <ImageIcon className="w-6 h-6 text-gray-300" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             ))}
 
