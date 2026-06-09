@@ -11,6 +11,12 @@ type Props = {
   selectedDate: Date;
 };
 
+const timeOptions = Array.from({ length: 24 * 4 }).map((_, i) => {
+  const hours = Math.floor(i / 4).toString().padStart(2, '0');
+  const minutes = ((i % 4) * 15).toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+});
+
 export default function ProxyBookingModal({ isOpen, onClose, userId, onSuccess, selectedDate }: Props) {
   const { proxyCustomers, fetchProxyCustomers } = useCustomers(userId);
   const { createProxyBooking } = useBookings(userId);
@@ -95,9 +101,13 @@ export default function ProxyBookingModal({ isOpen, onClose, userId, onSuccess, 
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">時間</label>
             <div className="flex items-center gap-2">
-              <input type="time" step="900" value={form.startTime} onChange={e => setForm({...form, startTime: e.target.value})} className="flex-1 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+              <select value={form.startTime} onChange={e => setForm({...form, startTime: e.target.value})} className="flex-1 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition">
+                {timeOptions.map(t => <option key={`start-${t}`} value={t}>{t}</option>)}
+              </select>
               <span className="text-gray-500">〜</span>
-              <input type="time" step="900" value={form.endTime} onChange={e => setForm({...form, endTime: e.target.value})} className="flex-1 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+              <select value={form.endTime} onChange={e => setForm({...form, endTime: e.target.value})} className="flex-1 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition">
+                {timeOptions.map(t => <option key={`end-${t}`} value={t}>{t}</option>)}
+              </select>
             </div>
           </div>
           <div>
