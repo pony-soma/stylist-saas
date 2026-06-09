@@ -68,6 +68,10 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
 
   const handleSaveRecord = async () => {
     if (!customer) return;
+    if (!visitDate || !menu.trim()) {
+      alert('来店日とメニューは必須項目です。');
+      return;
+    }
     setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -77,7 +81,6 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
         .from('medical_records')
         .insert({
           customer_id: customer.id,
-          stylist_id: user?.id,
           visit_date: visitDate,
           treatment_menu: menu,
           chemicals_used: chemicals,
@@ -135,6 +138,10 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
 
   const handleSaveEdit = async (recordId: string) => {
     if (!customer) return;
+    if (!editForm.visit_date || !editForm.treatment_menu.trim()) {
+      alert('来店日とメニューは必須項目です。');
+      return;
+    }
     setSavingEdit(true);
     try {
       const { error } = await supabase
