@@ -185,11 +185,11 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex justify-end animate-in fade-in duration-300">
-      <div className="w-full max-w-2xl bg-gray-50 dark:bg-slate-950 h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-500">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+      <div className="w-full max-w-2xl bg-gray-50 dark:bg-slate-950 max-h-[90vh] rounded-3xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-300 overflow-hidden">
         
         {/* ヘッダー部分 */}
-        <div className="bg-white dark:bg-slate-900 p-6 shadow-sm z-10 sticky top-0">
+        <div className="bg-white dark:bg-slate-900 p-6 shadow-sm z-10 sticky top-0 shrink-0 border-b border-gray-100 dark:border-gray-800">
           <div className="flex justify-between items-start mb-4">
             <div>
               <div className="flex items-center gap-3 mb-1">
