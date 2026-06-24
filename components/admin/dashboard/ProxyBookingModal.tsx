@@ -48,18 +48,19 @@ export default function ProxyBookingModal({ isOpen, onClose, userId, onSuccess, 
   const handleSave = async () => {
     const startTimeStr = `${form.startHour}:${form.startMinute}`;
     const endTimeStr = `${form.endHour}:${form.endMinute}`;
+    const finalCustomerId = form.customerId || (proxyCustomers.length > 0 ? proxyCustomers[0].id : '');
 
-    if (!form.customerId || !form.date) {
-      alert('お客様と日付は必須項目です');
+    if (!finalCustomerId || !form.date) {
+      alert(`お客様と日付は必須項目です。 (Customer: ${!!finalCustomerId}, Date: ${!!form.date})`);
       return;
     }
     if (startTimeStr >= endTimeStr) {
-      alert('終了時間は開始時間より後に設定してください');
+      alert(`終了時間は開始時間より後に設定してください。(${startTimeStr} >= ${endTimeStr})`);
       return;
     }
     setSaving(true);
     try {
-      await createProxyBooking(form.customerId, form.date, startTimeStr, endTimeStr, form.menu);
+      await createProxyBooking(finalCustomerId, form.date, startTimeStr, endTimeStr, form.menu);
       alert('代理予約を作成しました！');
       setForm({ customerId: proxyCustomers[0]?.id || '', date: '', startHour: '10', startMinute: '00', endHour: '11', endMinute: '00', menu: '' });
       onSuccess();

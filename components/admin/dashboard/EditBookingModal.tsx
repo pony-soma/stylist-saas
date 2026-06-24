@@ -50,11 +50,11 @@ export default function EditBookingModal({ isOpen, onClose, booking, onSave }: P
     const endTimeStr = `${form.endHour}:${form.endMinute}`;
 
     if (!form.date) {
-      alert('日付は必須項目です');
+      alert(`日付は必須項目です。 (Date: ${!!form.date})`);
       return;
     }
     if (startTimeStr >= endTimeStr) {
-      alert('終了時間は開始時間より後に設定してください');
+      alert(`終了時間は開始時間より後に設定してください。(${startTimeStr} >= ${endTimeStr})`);
       return;
     }
 
