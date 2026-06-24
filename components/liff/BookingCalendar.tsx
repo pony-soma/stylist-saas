@@ -195,7 +195,8 @@ export default function LiffBookingCalendar() {
         start_time: startDateTime.toISOString(),
         end_time: endDateTime.toISOString(),
         status: 'pending',
-        menu_note: 'LIFFからのWeb予約'
+        menu_note: 'LIFFからのWeb予約',
+        source: 'liff'
       });
 
     setSubmitting(false);

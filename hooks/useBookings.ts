@@ -14,7 +14,7 @@ export function useBookings(userId: string | null) {
     // 1. 未承認の予約を取得
     const { data: pendingData } = await supabase
       .from('bookings')
-      .select('id, start_time, end_time, menu_note, status, customer_id, customers(display_name)')
+      .select('id, start_time, end_time, menu_note, status, source, customer_id, customers(display_name)')
       .eq('stylist_id', userId)
       .eq('status', 'pending')
       .order('start_time', { ascending: true });
@@ -27,7 +27,7 @@ export function useBookings(userId: string | null) {
     
     const { data: monthData } = await supabase
       .from('bookings')
-      .select('id, start_time, end_time, menu_note, status, customer_id, customers(display_name)')
+      .select('id, start_time, end_time, menu_note, status, source, customer_id, customers(display_name)')
       .eq('stylist_id', userId)
       .gte('start_time', firstDay.toISOString())
       .lte('start_time', lastDay.toISOString())
@@ -45,6 +45,18 @@ export function useBookings(userId: string | null) {
     return !error;
   };
 
+  const updateBookingDetails = async (id: string, startTime: string, endTime: string, menuNote: string) => {
+    const { error } = await supabase
+      .from('bookings')
+      .update({
+        start_time: startTime,
+        end_time: endTime,
+        menu_note: menuNote
+      })
+      .eq('id', id);
+    return !error;
+  };
+
   const createProxyBooking = async (customerId: string, date: string, startTime: string, endTime: string, menu: string) => {
     if (!userId) throw new Error('User not authenticated');
     const startDateTime = new Date(`${date}T${startTime}:00`);
@@ -58,7 +70,8 @@ export function useBookings(userId: string | null) {
         start_time: startDateTime.toISOString(),
         end_time: endDateTime.toISOString(),
         menu_note: menu,
-        status: 'confirmed'
+        status: 'confirmed',
+        source: 'proxy'
       });
       
     if (error) throw error;
@@ -70,6 +83,7 @@ export function useBookings(userId: string | null) {
     loading,
     fetchBookings,
     updateBookingStatus,
+    updateBookingDetails,
     createProxyBooking
   };
 }

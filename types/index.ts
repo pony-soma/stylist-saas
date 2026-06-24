@@ -11,6 +11,7 @@ export type Booking = {
   end_time: string;
   menu_note: string;
   status: string;
+  source?: 'proxy' | 'liff' | null;
   customer_id: string;
   customers: { display_name: string } | null;
 };

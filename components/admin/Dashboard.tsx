@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, ChevronRight, ChevronLeft, Link as LinkIcon, CalendarPlus, Clock } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronRight, ChevronLeft, Link as LinkIcon, CalendarPlus, Clock, Pencil } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import MedicalRecordView from '@/components/admin/MedicalRecord';
 import ProxyBookingModal from './dashboard/ProxyBookingModal';
+import EditBookingModal from './dashboard/EditBookingModal';
 import PendingBookingsList from './dashboard/PendingBookingsList';
 import { useBookings } from '@/hooks/useBookings';
 import { formatTime, getDurationMinutes } from '@/lib/utils';
+import { Booking } from '@/types';
 
 export default function AdminDashboard() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -16,8 +18,9 @@ export default function AdminDashboard() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [isProxyModalOpen, setIsProxyModalOpen] = useState(false);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
 
-  const { pending, monthBookings, loading, fetchBookings, updateBookingStatus } = useBookings(userId);
+  const { pending, monthBookings, loading, fetchBookings, updateBookingStatus, updateBookingDetails } = useBookings(userId);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -192,26 +195,49 @@ export default function AdminDashboard() {
                     }`}>
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-bold text-gray-900 dark:text-white">{item.customers?.display_name}</h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{item.menu_note}</p>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-bold text-gray-900 dark:text-white">{item.customers?.display_name}</h3>
+                            {item.source === 'proxy' && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                                代理予約
+                              </span>
+                            )}
+                            {item.source === 'liff' && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
+                                Web予約
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{item.menu_note}</p>
                           <p className="text-xs text-gray-500 mt-2 font-medium flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {getDurationMinutes(item.start_time, item.end_time)}分
                           </p>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           {item.status === 'confirmed' && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (confirm(`${item.customers?.display_name}様の予約をキャンセルしますか？`)) {
-                                  updateBookingStatus(item.id, 'cancelled').then(() => fetchBookings(currentMonth));
-                                }
-                              }}
-                              className="text-xs font-bold px-3 py-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition border border-red-100 dark:bg-red-900/20 dark:border-red-900/30 dark:hover:bg-red-900/40"
-                            >
-                              キャンセル
-                            </button>
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingBooking(item);
+                                }}
+                                className="text-xs font-bold px-3 py-1.5 rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30 dark:hover:bg-indigo-900/40"
+                              >
+                                編集
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`${item.customers?.display_name}様の予約をキャンセルしますか？`)) {
+                                    updateBookingStatus(item.id, 'cancelled').then(() => fetchBookings(currentMonth));
+                                  }
+                                }}
+                                className="text-xs font-bold px-3 py-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition border border-red-100 dark:bg-red-900/20 dark:border-red-900/30 dark:hover:bg-red-900/40"
+                              >
+                                キャンセル
+                              </button>
+                            </>
                           )}
                           <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
@@ -240,6 +266,17 @@ export default function AdminDashboard() {
           selectedDate={selectedDate}
         />
       )}
+
+      {/* 予約編集モーダル */}
+      <EditBookingModal
+        isOpen={!!editingBooking}
+        onClose={() => setEditingBooking(null)}
+        booking={editingBooking}
+        onSave={async (id, start, end, menu) => {
+          await updateBookingDetails(id, start, end, menu);
+          await fetchBookings(currentMonth);
+        }}
+      />
     </div>
   );
 }
