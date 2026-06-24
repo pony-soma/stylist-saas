@@ -199,7 +199,22 @@ export default function AdminDashboard() {
                             {getDurationMinutes(item.start_time, item.end_time)}分
                           </p>
                         </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="flex items-center gap-3">
+                          {item.status === 'confirmed' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`${item.customers?.display_name}様の予約をキャンセルしますか？`)) {
+                                  updateBookingStatus(item.id, 'cancelled').then(() => fetchBookings(currentMonth));
+                                }
+                              }}
+                              className="text-xs font-bold px-3 py-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition border border-red-100 dark:bg-red-900/20 dark:border-red-900/30 dark:hover:bg-red-900/40"
+                            >
+                              キャンセル
+                            </button>
+                          )}
+                          <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
                       </div>
                     </div>
                   </div>
