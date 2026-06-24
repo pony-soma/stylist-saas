@@ -49,8 +49,8 @@ export default function ProxyBookingModal({ isOpen, onClose, userId, onSuccess, 
     const startTimeStr = `${form.startHour}:${form.startMinute}`;
     const endTimeStr = `${form.endHour}:${form.endMinute}`;
 
-    if (!form.customerId || !form.date || !form.menu) {
-      alert('すべての項目を入力してください');
+    if (!form.customerId || !form.date) {
+      alert('お客様と日付は必須項目です');
       return;
     }
     if (startTimeStr >= endTimeStr) {
