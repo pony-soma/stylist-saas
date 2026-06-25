@@ -14,7 +14,7 @@ export function useBookings(userId: string | null) {
     // 1. 未承認の予約を取得
     const { data: pendingData } = await supabase
       .from('bookings')
-      .select('id, start_time, end_time, menu_note, status, source, customer_id, customers(display_name)')
+      .select('id, start_time, end_time, menu_note, status, source, selected_menus, total_price, customer_id, customers(display_name)')
       .eq('stylist_id', userId)
       .eq('status', 'pending')
       .order('start_time', { ascending: true });
@@ -27,7 +27,7 @@ export function useBookings(userId: string | null) {
     
     const { data: monthData } = await supabase
       .from('bookings')
-      .select('id, start_time, end_time, menu_note, status, source, customer_id, customers(display_name)')
+      .select('id, start_time, end_time, menu_note, status, source, selected_menus, total_price, customer_id, customers(display_name)')
       .eq('stylist_id', userId)
       .gte('start_time', firstDay.toISOString())
       .lte('start_time', lastDay.toISOString())

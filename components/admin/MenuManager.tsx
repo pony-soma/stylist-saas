@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useMenus } from '@/hooks/useMenus';
-import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import { Menu } from '@/types';
 
 export default function MenuManager() {
@@ -75,6 +76,13 @@ export default function MenuManager() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto animate-in fade-in duration-500">
+      <div className="mb-6">
+        <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 transition font-medium">
+          <ArrowLeft className="w-4 h-4" />
+          ダッシュボードに戻る
+        </Link>
+      </div>
+
       <div className="flex justify-between items-center mb-8 pb-4 border-b border-gray-200 dark:border-gray-800">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">メニュー管理</h1>
