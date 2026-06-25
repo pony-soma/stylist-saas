@@ -8,12 +8,11 @@ type Props = {
   timeSlots: { time: string, available: boolean }[];
   selectedTime: string | null;
   onSelectTime: (time: string) => void;
-  onSubmit: () => void;
-  submitting: boolean;
+  children?: React.ReactNode;
 };
 
 export default function TimeSlotSheet({
-  isOpen, onClose, selectedDate, timeSlots, selectedTime, onSelectTime, onSubmit, submitting
+  isOpen, onClose, selectedDate, timeSlots, selectedTime, onSelectTime, children
 }: Props) {
   return (
     <>
@@ -72,20 +71,7 @@ export default function TimeSlotSheet({
           ))}
         </div>
 
-        <div className="absolute bottom-0 left-0 w-full p-5 bg-gradient-to-t from-white via-white to-transparent pt-10">
-          <button 
-            onClick={onSubmit}
-            disabled={!selectedTime || submitting}
-            className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] flex justify-center items-center gap-2
-              ${selectedTime && !submitting
-                ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200' 
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
-              }
-            `}
-          >
-            {submitting ? <><Loader2 className="w-5 h-5 animate-spin" /> 送信中...</> : '予約リクエストを送信'}
-          </button>
-        </div>
+        {children}
       </div>
     </>
   );

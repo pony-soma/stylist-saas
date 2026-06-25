@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, ChevronRight, ChevronLeft, Link as LinkIcon, CalendarPlus, Clock, Pencil } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronRight, ChevronLeft, Link as LinkIcon, CalendarPlus, Clock, Pencil, Settings } from 'lucide-react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import MedicalRecordView from '@/components/admin/MedicalRecord';
 import ProxyBookingModal from './dashboard/ProxyBookingModal';
@@ -100,6 +101,15 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
+          
+          <Link 
+            href="/admin/menus" 
+            className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+            title="メニュー設定"
+          >
+            <Settings className="w-5 h-5" />
+          </Link>
+
           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md">S</div>
         </div>
       </header>
@@ -208,7 +218,21 @@ export default function AdminDashboard() {
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{item.menu_note}</p>
+                          <div className="flex gap-2 text-sm text-gray-500 mt-2 flex-wrap">
+                            {item.selected_menus && item.selected_menus.length > 0 ? (
+                              item.selected_menus.map(menu => (
+                                <span key={menu.id} className="bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-xs font-medium text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
+                                  {menu.name}
+                                </span>
+                              ))
+                            ) : null}
+                            {item.menu_note && (
+                              <span className="flex items-center gap-1 text-xs">
+                                <span className="w-1 h-1 bg-gray-400 rounded-full mx-1"></span>
+                                {item.menu_note}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-500 mt-2 font-medium flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {getDurationMinutes(item.start_time, item.end_time)}分
@@ -268,14 +292,18 @@ export default function AdminDashboard() {
       )}
 
       {/* 予約編集モーダル */}
-      <EditBookingModal
-        isOpen={!!editingBooking}
+      <EditBookingModal 
+        isOpen={!!editingBooking} 
         onClose={() => setEditingBooking(null)}
         booking={editingBooking}
-        onSave={async (id, start, end, menu) => {
-          await updateBookingDetails(id, start, end, menu);
-          await fetchBookings(currentMonth);
+        onSave={async (id, start, end, menuNote, selectedMenus, totalPrice) => {
+          if (await updateBookingDetails(id, start, end, menuNote, selectedMenus, totalPrice)) {
+            fetchBookings(currentMonth);
+          } else {
+            throw new Error('Update failed');
+          }
         }}
+        userId={userId!}
       />
     </div>
   );

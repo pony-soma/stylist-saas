@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { Booking } from '@/types';
+import { Booking, Menu } from '@/types';
 
 export function useBookings(userId: string | null) {
   const [pending, setPending] = useState<Booking[]>([]);
@@ -45,19 +45,37 @@ export function useBookings(userId: string | null) {
     return !error;
   };
 
-  const updateBookingDetails = async (id: string, startTime: string, endTime: string, menuNote: string) => {
+  const updateBookingDetails = async (
+    id: string, 
+    startTime: string, 
+    endTime: string, 
+    menuNote: string,
+    selectedMenus: Menu[] = [],
+    totalPrice: number = 0
+  ) => {
+    if (!userId) return false;
     const { error } = await supabase
       .from('bookings')
       .update({
         start_time: startTime,
         end_time: endTime,
-        menu_note: menuNote
+        menu_note: menuNote,
+        selected_menus: selectedMenus,
+        total_price: totalPrice
       })
       .eq('id', id);
     return !error;
   };
 
-  const createProxyBooking = async (customerId: string, date: string, startTime: string, endTime: string, menu: string) => {
+  const createProxyBooking = async (
+    customerId: string, 
+    date: string, 
+    startTime: string, 
+    endTime: string, 
+    menu: string,
+    selectedMenus: Menu[] = [],
+    totalPrice: number = 0
+  ) => {
     if (!userId) throw new Error('User not authenticated');
     const startDateTime = new Date(`${date}T${startTime}:00`);
     const endDateTime = new Date(`${date}T${endTime}:00`);
@@ -71,7 +89,9 @@ export function useBookings(userId: string | null) {
         end_time: endDateTime.toISOString(),
         menu_note: menu,
         status: 'confirmed',
-        source: 'proxy'
+        source: 'proxy',
+        selected_menus: selectedMenus,
+        total_price: totalPrice
       });
       
     if (error) throw error;

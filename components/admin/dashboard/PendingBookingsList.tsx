@@ -31,6 +31,21 @@ export default function PendingBookingsList({ pending, onApprove, onReject, onSe
                 <CalendarIcon className="w-4 h-4" />
                 {formatDate(booking.start_time)} {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
               </p>
+              <div className="flex gap-2 text-xs text-gray-500 mt-2 flex-wrap">
+                {booking.selected_menus && booking.selected_menus.length > 0 ? (
+                  booking.selected_menus.map(menu => (
+                    <span key={menu.id} className="bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-full font-medium text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
+                      {menu.name}
+                    </span>
+                  ))
+                ) : null}
+                {booking.menu_note && (
+                  <span className="flex items-center gap-1">
+                    <span className="w-1 h-1 bg-gray-400 rounded-full mx-1"></span>
+                    {booking.menu_note}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
               <button onClick={(e) => { e.stopPropagation(); onReject(booking.id); }} className="flex-1 sm:flex-none px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium flex items-center justify-center gap-1"><XCircle className="w-4 h-4" /> 拒否</button>

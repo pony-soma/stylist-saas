@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase/client';
 import liff from '@line/liff';
 import LiffMonthView from './calendar/LiffMonthView';
 import TimeSlotSheet from './calendar/TimeSlotSheet';
+import { Menu } from '@/types';
 
 type DayData = { date: Date; isAvailable: boolean };
 
@@ -25,6 +26,10 @@ export default function LiffBookingCalendar() {
   const [stylistId, setStylistId] = useState<string | null>(null);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [lineProfile, setLineProfile] = useState<{ displayName: string; userId: string } | null>(null);
+
+  const [menus, setMenus] = useState<Menu[]>([]);
+  const [selectedMenuIds, setSelectedMenuIds] = useState<Set<string>>(new Set());
+  const [menuNote, setMenuNote] = useState('');
 
   const generateCalendar = useCallback((baseDate: Date) => {
     const year = baseDate.getFullYear();
@@ -97,6 +102,7 @@ export default function LiffBookingCalendar() {
             
           if (sData) {
             setStylistId(sData.id);
+            fetchStylistMenus(sData.id);
           } else {
             console.error('指定された美容師が見つかりませんでした');
           }
@@ -107,7 +113,10 @@ export default function LiffBookingCalendar() {
             .order('created_at', { ascending: false })
             .limit(1)
             .single();
-          if (sData) setStylistId(sData.id);
+          if (sData) {
+            setStylistId(sData.id);
+            fetchStylistMenus(sData.id);
+          }
         }
 
         generateCalendar(currentMonth);
@@ -118,6 +127,11 @@ export default function LiffBookingCalendar() {
         setLiffError(err.message);
         setLoading(false);
       }
+    };
+
+    const fetchStylistMenus = async (sid: string) => {
+      const { data } = await supabase.from('menus').select('*').eq('stylist_id', sid).order('created_at');
+      if (data) setMenus(data as Menu[]);
     };
 
     initLiff();
@@ -138,6 +152,11 @@ export default function LiffBookingCalendar() {
 
   const handleDateClick = async (day: DayData) => {
     if (!day.isAvailable || !stylistId) return;
+    if (selectedMenuIds.size === 0) {
+      alert('先にメニューを選択してください。');
+      return;
+    }
+    
     setSelectedDate(day.date);
     setSelectedTime(null);
     setShowBottomSheet(true);
@@ -155,16 +174,37 @@ export default function LiffBookingCalendar() {
       .lte('start_time', endOfDay.toISOString())
       .neq('status', 'cancelled');
 
-    const baseSlots = ['10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+    // 選択されたメニューの合計時間を計算
+    const selectedMenusList = menus.filter(m => selectedMenuIds.has(m.id));
+    const totalDuration = selectedMenusList.reduce((acc, curr) => acc + curr.duration, 0);
+
+    // 9:00 から 21:00 まで、30分刻みのスロットを生成
+    const baseSlots: string[] = [];
+    for (let h = 9; h < 21; h++) {
+      baseSlots.push(`${h.toString().padStart(2, '0')}:00`);
+      baseSlots.push(`${h.toString().padStart(2, '0')}:30`);
+    }
     
     const calculatedSlots = baseSlots.map(timeStr => {
       const [hours, mins] = timeStr.split(':').map(Number);
-      const slotTime = new Date(day.date);
-      slotTime.setHours(hours, mins, 0, 0);
+      const slotStartTime = new Date(day.date);
+      slotStartTime.setHours(hours, mins, 0, 0);
       
+      const slotEndTime = new Date(slotStartTime.getTime() + totalDuration * 60000);
+      
+      // 営業終了時間（21:00）を越える場合は予約不可
+      const endOfDayLimit = new Date(day.date);
+      endOfDayLimit.setHours(21, 0, 0, 0);
+      if (slotEndTime.getTime() > endOfDayLimit.getTime()) {
+        return { time: timeStr, available: false };
+      }
+
+      // 既存の予約と被るかチェック
       const isBooked = bookings?.some(b => {
-        const bStart = new Date(b.start_time);
-        return bStart.getTime() === slotTime.getTime();
+        const bStart = new Date(b.start_time).getTime();
+        const bEnd = new Date(b.end_time).getTime();
+        // 提案スロットが既存予約と重なるか: (StartA < EndB) && (EndA > StartB)
+        return (slotStartTime.getTime() < bEnd) && (slotEndTime.getTime() > bStart);
       });
 
       return {
@@ -178,14 +218,18 @@ export default function LiffBookingCalendar() {
 
   const handleSubmit = async () => {
     if (!selectedDate || !selectedTime || !stylistId || !customerId) return;
+    
     setSubmitting(true);
 
     const [hours, mins] = selectedTime.split(':').map(Number);
     const startDateTime = new Date(selectedDate);
     startDateTime.setHours(hours, mins, 0, 0);
     
-    const endDateTime = new Date(startDateTime);
-    endDateTime.setHours(hours + 1, mins, 0, 0);
+    const selectedMenusList = menus.filter(m => selectedMenuIds.has(m.id));
+    const totalDuration = selectedMenusList.reduce((acc, curr) => acc + curr.duration, 0);
+    const totalPrice = selectedMenusList.reduce((acc, curr) => acc + curr.price, 0);
+    
+    const endDateTime = new Date(startDateTime.getTime() + totalDuration * 60000);
 
     const { error } = await supabase
       .from('bookings')
@@ -195,21 +239,21 @@ export default function LiffBookingCalendar() {
         start_time: startDateTime.toISOString(),
         end_time: endDateTime.toISOString(),
         status: 'pending',
-        menu_note: 'LIFFからのWeb予約',
-        source: 'liff'
+        menu_note: menuNote,
+        source: 'liff',
+        selected_menus: selectedMenusList,
+        total_price: totalPrice
       });
 
     setSubmitting(false);
 
     if (error) {
-      alert('予約リクエストに失敗しました。');
+      console.error(error);
+      alert('予約の保存に失敗しました。');
     } else {
-      alert('仮予約を受け付けました！LINEのメッセージをご確認ください。');
+      alert('予約を受け付けました！');
       setShowBottomSheet(false);
-      setSelectedTime(null);
-      if (liff.isInClient()) {
-        liff.closeWindow();
-      }
+      liff.closeWindow();
     }
   };
 
@@ -224,34 +268,102 @@ export default function LiffBookingCalendar() {
 
   if (liffError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="bg-red-50 text-red-600 p-6 rounded-2xl shadow-sm text-center">
-          <p className="font-bold mb-2">エラーが発生しました</p>
-          <p className="text-sm">{liffError}</p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center bg-gray-50">
+        <p className="text-red-500 font-bold mb-2">エラーが発生しました</p>
+        <p className="text-sm text-gray-500 mb-4">{liffError}</p>
+        <p className="text-sm text-gray-500">LINEアプリ内で開くか、URLを確認してください。</p>
       </div>
     );
   }
 
+  const toggleMenu = (id: string) => {
+    const newSet = new Set(selectedMenuIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedMenuIds(newSet);
+  };
+
+  const selectedMenusList = menus.filter(m => selectedMenuIds.has(m.id));
+  const totalDuration = selectedMenusList.reduce((acc, curr) => acc + curr.duration, 0);
+  const totalPrice = selectedMenusList.reduce((acc, curr) => acc + curr.price, 0);
+
   return (
-    <div className="bg-gray-50 min-h-screen w-full max-w-md mx-auto shadow-xl relative overflow-hidden font-sans">
+    <div className="bg-gray-50 min-h-screen w-full max-w-md mx-auto shadow-xl relative font-sans pb-24">
+      {/* ヘッダーエリア */}
       <header className="bg-white px-5 pt-8 pb-4 shadow-sm relative z-10 flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight text-gray-900">空き状況・予約</h1>
+        <h1 className="font-bold text-xl text-gray-900">ご予約</h1>
         {lineProfile && (
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-600">{lineProfile.displayName}</span>
+            <span className="text-sm font-medium text-gray-600">{lineProfile.displayName} 様</span>
           </div>
         )}
       </header>
 
-      <main className="p-5">
-        <LiffMonthView 
-          currentMonth={currentMonth}
-          days={days}
-          onPrevMonth={handlePrevMonth}
-          onNextMonth={handleNextMonth}
-          onDateClick={handleDateClick}
-        />
+      <main className="p-4">
+        {/* メニュー選択エリア */}
+        <div className="bg-white p-4 rounded-2xl mb-4 shadow-sm border border-gray-100">
+          <h2 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <span className="bg-indigo-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs">1</span>
+            メニューの選択
+          </h2>
+          {menus.length === 0 ? (
+            <p className="text-sm text-gray-500">メニューが設定されていません</p>
+          ) : (
+            <div className="space-y-2">
+              {menus.map(menu => (
+                <label key={menu.id} className={`flex items-center justify-between p-3 rounded-lg border-2 transition cursor-pointer ${selectedMenuIds.has(menu.id) ? 'border-indigo-600 bg-indigo-50' : 'border-gray-100 hover:border-gray-200'}`}>
+                  <div className="flex items-center gap-3">
+                    <input type="checkbox" checked={selectedMenuIds.has(menu.id)} onChange={() => toggleMenu(menu.id)} className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" />
+                    <div>
+                      <p className="font-bold text-gray-900">{menu.name}</p>
+                      <p className="text-xs text-gray-500">{menu.duration}分</p>
+                    </div>
+                  </div>
+                  <div className="font-bold text-gray-900">
+                    ¥{menu.price.toLocaleString()}
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+          
+          {selectedMenuIds.size > 0 && (
+            <div className="mt-4 p-3 bg-gray-50 rounded-lg flex justify-between items-center border border-gray-200">
+              <span className="text-sm text-gray-600 font-medium">合計: {totalDuration}分</span>
+              <span className="font-bold text-lg text-indigo-600">¥{totalPrice.toLocaleString()}</span>
+            </div>
+          )}
+        </div>
+
+        {/* 日時選択エリア */}
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+          <h2 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <span className="bg-indigo-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs">2</span>
+            日時の選択
+          </h2>
+          {selectedMenuIds.size === 0 && (
+            <p className="text-sm text-red-500 mb-2 font-medium">※まずはメニューを選択してください</p>
+          )}
+          <div className={selectedMenuIds.size === 0 ? "opacity-50 pointer-events-none" : ""}>
+            <div className="flex justify-between items-center mb-4 bg-gray-50 p-2 rounded-lg border border-gray-100">
+              <button onClick={handlePrevMonth} className="px-3 py-1 text-indigo-600 hover:bg-indigo-100 rounded transition font-medium text-sm">
+                先月
+              </button>
+              <span className="font-bold text-gray-800">{currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月</span>
+              <button onClick={handleNextMonth} className="px-3 py-1 text-indigo-600 hover:bg-indigo-100 rounded transition font-medium text-sm">
+                翌月
+              </button>
+            </div>
+
+            <LiffMonthView 
+              currentMonth={currentMonth}
+              days={days}
+              onPrevMonth={handlePrevMonth}
+              onNextMonth={handleNextMonth}
+              onDateClick={handleDateClick}
+            />
+          </div>
+        </div>
       </main>
 
       <TimeSlotSheet 
@@ -261,9 +373,39 @@ export default function LiffBookingCalendar() {
         timeSlots={timeSlots}
         selectedTime={selectedTime}
         onSelectTime={setSelectedTime}
-        onSubmit={handleSubmit}
-        submitting={submitting}
-      />
+      >
+        <div className="mt-6 border-t pt-4">
+          <div className="bg-gray-50 p-4 rounded-xl mb-4 border border-gray-100">
+            <p className="text-sm text-gray-500 mb-1 font-medium">ご予約内容</p>
+            {selectedDate && selectedTime && (
+              <p className="font-bold text-lg text-gray-900 mb-2">
+                {selectedDate.getMonth() + 1}月{selectedDate.getDate()}日 {selectedTime} 〜
+              </p>
+            )}
+            <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+              <span className="text-sm text-indigo-600 font-bold">合計: {totalDuration}分 / ¥{totalPrice.toLocaleString()}</span>
+            </div>
+          </div>
+          
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-1 text-gray-700">ご要望・備考欄 (任意)</label>
+            <textarea 
+              className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition" 
+              rows={3} 
+              placeholder="事前に伝えておきたいことがあればご記入ください"
+              value={menuNote}
+              onChange={(e) => setMenuNote(e.target.value)}
+            />
+          </div>
+          <button
+            onClick={handleSubmit}
+            disabled={!selectedTime || submitting}
+            className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl disabled:bg-gray-300 disabled:cursor-not-allowed transition hover:bg-indigo-700 shadow-sm flex items-center justify-center gap-2"
+          >
+            {submitting ? <><Loader2 className="w-5 h-5 animate-spin" /> 処理中...</> : 'この内容で予約をリクエスト'}
+          </button>
+        </div>
+      </TimeSlotSheet>
     </div>
   );
 }

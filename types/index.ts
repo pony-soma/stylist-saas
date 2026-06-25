@@ -5,6 +5,15 @@ export type CustomerInfo = {
   created_at: string;
 };
 
+export type Menu = {
+  id: string;
+  stylist_id: string;
+  name: string;
+  duration: number;
+  price: number;
+  created_at: string;
+};
+
 export type Booking = {
   id: string;
   start_time: string;
@@ -12,6 +21,8 @@ export type Booking = {
   menu_note: string;
   status: string;
   source?: 'proxy' | 'liff' | null;
+  selected_menus?: Menu[];
+  total_price?: number;
   customer_id: string;
   customers: { display_name: string } | null;
 };
