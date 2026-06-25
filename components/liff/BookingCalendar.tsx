@@ -178,11 +178,13 @@ export default function LiffBookingCalendar() {
     const selectedMenusList = menus.filter(m => selectedMenuIds.has(m.id));
     const totalDuration = selectedMenusList.reduce((acc, curr) => acc + curr.duration, 0);
 
-    // 9:00 から 21:00 まで、30分刻みのスロットを生成
+    // 9:00 から 21:00 まで、15分刻みのスロットを生成
     const baseSlots: string[] = [];
     for (let h = 9; h < 21; h++) {
       baseSlots.push(`${h.toString().padStart(2, '0')}:00`);
+      baseSlots.push(`${h.toString().padStart(2, '0')}:15`);
       baseSlots.push(`${h.toString().padStart(2, '0')}:30`);
+      baseSlots.push(`${h.toString().padStart(2, '0')}:45`);
     }
     
     const calculatedSlots = baseSlots.map(timeStr => {
