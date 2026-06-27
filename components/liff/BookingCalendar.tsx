@@ -376,8 +376,8 @@ export default function LiffBookingCalendar() {
         selectedTime={selectedTime}
         onSelectTime={setSelectedTime}
       >
-        <div className="mt-6 border-t pt-4">
-          <div className="bg-gray-50 p-4 rounded-xl mb-4 border border-gray-100">
+        <div className="mt-4 border-t pt-4">
+          <div className="bg-gray-50 p-3 rounded-xl mb-3 border border-gray-100">
             <p className="text-sm text-gray-500 mb-1 font-medium">ご予約内容</p>
             {selectedDate && selectedTime && (
               <p className="font-bold text-lg text-gray-900 mb-2">
@@ -385,7 +385,7 @@ export default function LiffBookingCalendar() {
               </p>
             )}
             
-            <div className="mb-3 space-y-1">
+            <div className="mb-2 space-y-1">
               {selectedMenusList.map(menu => (
                 <div key={menu.id} className="flex justify-between items-center text-sm">
                   <span className="text-gray-700">{menu.name}</span>
@@ -399,11 +399,11 @@ export default function LiffBookingCalendar() {
             </div>
           </div>
           
-          <div className="mb-6">
+          <div className="mb-4">
             <label className="block text-sm font-medium mb-1 text-gray-700">ご要望・備考欄 (任意)</label>
             <textarea 
-              className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition" 
-              rows={3} 
+              className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition" 
+              rows={2} 
               placeholder="事前に伝えておきたいことがあればご記入ください"
               value={menuNote}
               onChange={(e) => setMenuNote(e.target.value)}

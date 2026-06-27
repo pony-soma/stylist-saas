@@ -43,7 +43,7 @@ export default function TimeSlotSheet({
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 pr-2 pb-24">
+        <div className="overflow-y-auto flex-1 pr-2 pb-4">
           <div className="grid grid-cols-3 gap-3">
             {timeSlots.map((slot, i) => (
               <button
