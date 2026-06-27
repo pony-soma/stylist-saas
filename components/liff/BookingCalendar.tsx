@@ -384,6 +384,16 @@ export default function LiffBookingCalendar() {
                 {selectedDate.getMonth() + 1}月{selectedDate.getDate()}日 {selectedTime} 〜
               </p>
             )}
+            
+            <div className="mb-3 space-y-1">
+              {selectedMenusList.map(menu => (
+                <div key={menu.id} className="flex justify-between items-center text-sm">
+                  <span className="text-gray-700">{menu.name}</span>
+                  <span className="text-gray-500">¥{menu.price.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+
             <div className="flex justify-between items-center pt-2 border-t border-gray-200">
               <span className="text-sm text-indigo-600 font-bold">合計: {totalDuration}分 / ¥{totalPrice.toLocaleString()}</span>
             </div>

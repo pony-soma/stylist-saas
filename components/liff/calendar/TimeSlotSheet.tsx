@@ -43,32 +43,35 @@ export default function TimeSlotSheet({
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 pr-2 space-y-3 pb-24">
-          {timeSlots.map((slot, i) => (
-            <button
-              key={i}
-              disabled={!slot.available}
-              onClick={() => onSelectTime(slot.time)}
-              className={`w-full py-4 px-5 rounded-2xl flex justify-between items-center transition-all active:scale-[0.98]
-                ${!slot.available ? 'bg-gray-50 opacity-50 cursor-not-allowed' : 
-                  selectedTime === slot.time 
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' 
-                    : 'bg-white border border-gray-200 text-gray-700 hover:border-indigo-300'
-                }
-              `}
-            >
-              <span className="font-bold flex items-center gap-2 text-lg">
-                <Clock className="w-5 h-5 opacity-70" /> {slot.time}
-              </span>
-              {slot.available ? (
-                <span className={`text-sm font-medium ${selectedTime === slot.time ? 'text-indigo-100' : 'text-indigo-600'}`}>
-                  選択
+        <div className="overflow-y-auto flex-1 pr-2 pb-24">
+          <div className="grid grid-cols-3 gap-3">
+            {timeSlots.map((slot, i) => (
+              <button
+                key={i}
+                disabled={!slot.available}
+                onClick={() => onSelectTime(slot.time)}
+                className={`py-3 px-2 rounded-xl flex flex-col items-center justify-center transition-all active:scale-[0.95]
+                  ${!slot.available ? 'bg-gray-50 opacity-50 cursor-not-allowed' : 
+                    selectedTime === slot.time 
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 border border-indigo-600' 
+                      : 'bg-white border border-gray-200 text-gray-700 hover:border-indigo-300'
+                  }
+                `}
+              >
+                <span className="font-bold flex items-center justify-center gap-1 text-base">
+                  <Clock className={`w-4 h-4 ${selectedTime === slot.time ? 'opacity-80' : 'opacity-60'}`} /> 
+                  {slot.time}
                 </span>
-              ) : (
-                <span className="text-sm text-gray-400">× 満席</span>
-              )}
-            </button>
-          ))}
+                {slot.available ? (
+                  <span className={`text-xs mt-1 font-medium ${selectedTime === slot.time ? 'text-indigo-100' : 'text-indigo-600/0'}`}>
+                    選択中
+                  </span>
+                ) : (
+                  <span className="text-xs mt-1 text-gray-400">× 満席</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {children}
