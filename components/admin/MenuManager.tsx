@@ -166,7 +166,7 @@ export default function MenuManager() {
                     onChange={e => setForm({...form, duration: parseInt(e.target.value)})}
                     className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition"
                   >
-                    {Array.from({ length: 20 }, (_, i) => (i + 1) * 15).map(m => (
+                    {Array.from({ length: 21 }, (_, i) => i * 15).map(m => (
                       <option key={m} value={m}>{m}分</option>
                     ))}
                   </select>
