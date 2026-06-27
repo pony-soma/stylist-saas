@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { XCircle, Loader2 } from 'lucide-react';
 import { Booking, Menu } from '@/types';
 import { useMenus } from '@/hooks/useMenus';
+import { supabase } from '@/lib/supabase/client';
 
 type Props = {
   isOpen: boolean;
@@ -105,6 +106,24 @@ export default function EditBookingModal({ isOpen, onClose, booking, onSave, use
     const totalPrice = selectedMenusList.reduce((acc, curr) => acc + curr.price, 0);
 
     setSaving(true);
+
+    // 重複チェック（自分自身の予約は除外）
+    const { data: overlappingBookings } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('stylist_id', userId)
+      .neq('id', booking.id)
+      .neq('status', 'cancelled')
+      .lt('start_time', endDateTime.toISOString())
+      .gt('end_time', startDateTime.toISOString())
+      .limit(1);
+
+    if (overlappingBookings && overlappingBookings.length > 0) {
+      alert('指定された時間はすでに他の予約が入っています。');
+      setSaving(false);
+      return;
+    }
+
     try {
       await onSave(booking.id, startDateTime.toISOString(), endDateTime.toISOString(), form.menuNote, selectedMenusList, totalPrice);
       alert('予約内容を更新しました！');

@@ -3,6 +3,7 @@ import { XCircle, Loader2 } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useBookings } from '@/hooks/useBookings';
 import { useMenus } from '@/hooks/useMenus';
+import { supabase } from '@/lib/supabase/client';
 import { Menu } from '@/types';
 
 type Props = {
@@ -90,7 +91,27 @@ export default function ProxyBookingModal({ isOpen, onClose, userId, onSuccess, 
     const selectedMenusList = menus.filter(m => selectedMenuIds.has(m.id));
     const totalPrice = selectedMenusList.reduce((acc, curr) => acc + curr.price, 0);
 
+    const startDateTime = new Date(`${form.date}T${startTimeStr}:00`);
+    const endDateTime = new Date(`${form.date}T${endTimeStr}:00`);
+
     setSaving(true);
+
+    // 重複チェック
+    const { data: overlappingBookings } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('stylist_id', userId)
+      .neq('status', 'cancelled')
+      .lt('start_time', endDateTime.toISOString())
+      .gt('end_time', startDateTime.toISOString())
+      .limit(1);
+
+    if (overlappingBookings && overlappingBookings.length > 0) {
+      alert('指定された時間はすでに他の予約が入っています。');
+      setSaving(false);
+      return;
+    }
+
     try {
       await createProxyBooking(finalCustomerId, form.date, startTimeStr, endTimeStr, form.menuNote, selectedMenusList, totalPrice);
       alert('代理予約を作成しました！');
