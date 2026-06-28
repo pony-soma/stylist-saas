@@ -13,6 +13,7 @@ type DayData = { date: Date; isAvailable: boolean };
 export default function LiffBookingCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showBottomSheet, setShowBottomSheet] = useState(false);
+  const [customerName, setCustomerName] = useState('お客様');
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -88,6 +89,7 @@ export default function LiffBookingCalendar() {
         }
         
         setCustomerId(customer!.id);
+        setCustomerName(profile.displayName);
 
         // URLパラメータから美容師IDを取得 (?stylist=xxx)
         const searchParams = new URLSearchParams(window.location.search);
@@ -96,7 +98,7 @@ export default function LiffBookingCalendar() {
         if (targetStylistId) {
           const { data: sData } = await supabase
             .from('stylists')
-            .select('id')
+            .select('id, line_user_id')
             .eq('id', targetStylistId)
             .single();
             
@@ -109,7 +111,7 @@ export default function LiffBookingCalendar() {
         } else {
           const { data: sData } = await supabase
             .from('stylists')
-            .select('id')
+            .select('id, line_user_id')
             .order('created_at', { ascending: false })
             .limit(1)
             .single();
@@ -246,6 +248,35 @@ export default function LiffBookingCalendar() {
         selected_menus: selectedMenusList,
         total_price: totalPrice
       });
+
+    // エラーがなければLINEに通知を送信
+    if (!error) {
+      try {
+        // 美容師の line_user_id を取得
+        const { data: stylistData } = await supabase
+          .from('stylists')
+          .select('line_user_id')
+          .eq('id', stylistId)
+          .single();
+
+        if (stylistData && stylistData.line_user_id) {
+          await fetch('/api/notify/booking', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lineUserId: stylistData.line_user_id,
+              customerName: customerName,
+              startTime: startDateTime.toISOString(),
+              menuNames: selectedMenusList.map(m => m.name).join(', '),
+              totalPrice,
+              menuNote
+            })
+          });
+        }
+      } catch (err) {
+        console.error('Failed to send LINE notification:', err);
+      }
+    }
 
     setSubmitting(false);
 

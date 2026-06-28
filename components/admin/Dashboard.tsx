@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, ChevronRight, ChevronLeft, Link as LinkIcon, CalendarPlus, Clock, Pencil, Settings } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronRight, ChevronLeft, Link as LinkIcon, CalendarPlus, Clock, Pencil, Settings, Menu as MenuIcon, UserCog } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import MedicalRecordView from '@/components/admin/MedicalRecord';
@@ -106,6 +106,14 @@ export default function AdminDashboard() {
             href="/admin/menus" 
             className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
             title="メニュー設定"
+          >
+            <MenuIcon className="w-5 h-5" />
+          </Link>
+
+          <Link 
+            href="/admin/settings" 
+            className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+            title="各種設定"
           >
             <Settings className="w-5 h-5" />
           </Link>
