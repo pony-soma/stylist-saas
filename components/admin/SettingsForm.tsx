@@ -72,7 +72,7 @@ function SettingsContent() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto animate-in fade-in duration-500">
+    <div className="p-6 max-w-2xl mx-auto animate-in fade-in duration-500">
       <div className="mb-6">
         <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 transition font-medium">
           <ArrowLeft className="w-4 h-4" />
