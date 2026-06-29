@@ -32,7 +32,9 @@ export default function LiffBookingCalendar() {
   const [selectedMenuIds, setSelectedMenuIds] = useState<Set<string>>(new Set());
   const [menuNote, setMenuNote] = useState('');
 
-  const generateCalendar = useCallback((baseDate: Date) => {
+  const [availabilitySettings, setAvailabilitySettings] = useState<any[]>([]);
+
+  const generateCalendar = useCallback((baseDate: Date, settings: any[] = availabilitySettings) => {
     const year = baseDate.getFullYear();
     const month = baseDate.getMonth();
     const lastDay = new Date(year, month + 1, 0).getDate();
@@ -43,16 +45,44 @@ export default function LiffBookingCalendar() {
     const newDays = [];
     for (let i = 1; i <= lastDay; i++) {
       const d = new Date(year, month, i);
+      const yyyyMmDd = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+      const dayOfWeek = d.getDay();
+      
+      let isOff = false;
+      const specificSetting = settings.find(s => s.specific_date === yyyyMmDd);
+      if (specificSetting) {
+        isOff = specificSetting.is_day_off;
+      } else {
+        const weekSetting = settings.find(s => s.day_of_week === dayOfWeek);
+        if (weekSetting) {
+          isOff = weekSetting.is_day_off;
+        }
+      }
+
       newDays.push({
         date: d,
-        isAvailable: d.getTime() >= today.getTime(), // 今日以降のみ予約可能
+        isAvailable: d.getTime() >= today.getTime() && !isOff,
       });
     }
     setDays(newDays);
-  }, []);
+  }, [availabilitySettings]);
 
   useEffect(() => {
-    const initLiff = async () => {
+    const fetchStylistMenus = async (sid: string) => {
+      const { data } = await supabase.from('menus').select('*').eq('stylist_id', sid).order('created_at');
+      if (data) setMenus(data as Menu[]);
+    };
+
+    const fetchAvailability = async (sid: string) => {
+      const { data } = await supabase.from('availability_settings').select('*').eq('stylist_id', sid);
+      if (data) {
+        setAvailabilitySettings(data);
+        return data;
+      }
+      return [];
+    };
+
+    const initLiffAndData = async () => {
       try {
         const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
         if (!liffId) throw new Error("LIFF ID が設定されていません");
@@ -94,6 +124,7 @@ export default function LiffBookingCalendar() {
         // URLパラメータから美容師IDを取得 (?stylist=xxx)
         const searchParams = new URLSearchParams(window.location.search);
         let targetStylistId = searchParams.get('stylist');
+        let finalSettings = availabilitySettings;
 
         if (targetStylistId) {
           const { data: sData } = await supabase
@@ -105,6 +136,7 @@ export default function LiffBookingCalendar() {
           if (sData) {
             setStylistId(sData.id);
             fetchStylistMenus(sData.id);
+            finalSettings = await fetchAvailability(sData.id);
           } else {
             console.error('指定された美容師が見つかりませんでした');
           }
@@ -118,10 +150,11 @@ export default function LiffBookingCalendar() {
           if (sData) {
             setStylistId(sData.id);
             fetchStylistMenus(sData.id);
+            finalSettings = await fetchAvailability(sData.id);
           }
         }
 
-        generateCalendar(currentMonth);
+        generateCalendar(currentMonth, finalSettings);
         setLoading(false);
 
       } catch (err: any) {
@@ -131,14 +164,9 @@ export default function LiffBookingCalendar() {
       }
     };
 
-    const fetchStylistMenus = async (sid: string) => {
-      const { data } = await supabase.from('menus').select('*').eq('stylist_id', sid).order('created_at');
-      if (data) setMenus(data as Menu[]);
-    };
-
-    initLiff();
+    initLiffAndData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [generateCalendar]);
+  }, []);
 
   const handlePrevMonth = () => {
     const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
@@ -176,13 +204,43 @@ export default function LiffBookingCalendar() {
       .lte('start_time', endOfDay.toISOString())
       .neq('status', 'cancelled');
 
+    const { data: blockedSlots } = await supabase
+      .from('blocked_time_slots')
+      .select('start_time, end_time')
+      .eq('stylist_id', stylistId)
+      .gte('start_time', startOfDay.toISOString())
+      .lte('start_time', endOfDay.toISOString());
+
     // 選択されたメニューの合計時間を計算
     const selectedMenusList = menus.filter(m => selectedMenuIds.has(m.id));
     const totalDuration = selectedMenusList.reduce((acc, curr) => acc + curr.duration, 0);
 
-    // 9:00 から 21:00 まで、15分刻みのスロットを生成
+    // 該当日の営業時間を取得
+    const yyyyMmDd = `${day.date.getFullYear()}-${(day.date.getMonth()+1).toString().padStart(2, '0')}-${day.date.getDate().toString().padStart(2, '0')}`;
+    const dayOfWeek = day.date.getDay();
+    
+    let startHour = 9;
+    let endHour = 21;
+    let startMin = 0;
+    let endMin = 0;
+
+    const specificSetting = availabilitySettings.find(s => s.specific_date === yyyyMmDd);
+    const weekSetting = availabilitySettings.find(s => s.day_of_week === dayOfWeek);
+    
+    const targetSetting = specificSetting || weekSetting;
+    if (targetSetting && !targetSetting.is_day_off && targetSetting.start_time && targetSetting.end_time) {
+      const [sH, sM] = targetSetting.start_time.split(':').map(Number);
+      const [eH, eM] = targetSetting.end_time.split(':').map(Number);
+      startHour = sH;
+      startMin = sM;
+      endHour = eH;
+      endMin = eM;
+    }
+
+    // startHourからendHourまで、15分刻みのスロットを生成
     const baseSlots: string[] = [];
-    for (let h = 9; h < 21; h++) {
+    for (let h = startHour; h <= endHour; h++) {
+      if (h === endHour && endMin === 0) continue; // 終了時刻ぴったりは枠に含めない
       baseSlots.push(`${h.toString().padStart(2, '0')}:00`);
       baseSlots.push(`${h.toString().padStart(2, '0')}:15`);
       baseSlots.push(`${h.toString().padStart(2, '0')}:30`);
@@ -191,14 +249,17 @@ export default function LiffBookingCalendar() {
     
     const calculatedSlots = baseSlots.map(timeStr => {
       const [hours, mins] = timeStr.split(':').map(Number);
+      
+      // 営業開始時間前、終了時間後を除外
+      if (hours < startHour || (hours === startHour && mins < startMin)) return null;
+      
       const slotStartTime = new Date(day.date);
       slotStartTime.setHours(hours, mins, 0, 0);
-      
       const slotEndTime = new Date(slotStartTime.getTime() + totalDuration * 60000);
       
-      // 営業終了時間（21:00）を越える場合は予約不可
+      // 営業終了時間を越える場合は予約不可
       const endOfDayLimit = new Date(day.date);
-      endOfDayLimit.setHours(21, 0, 0, 0);
+      endOfDayLimit.setHours(endHour, endMin, 0, 0);
       if (slotEndTime.getTime() > endOfDayLimit.getTime()) {
         return { time: timeStr, available: false };
       }
@@ -207,15 +268,21 @@ export default function LiffBookingCalendar() {
       const isBooked = bookings?.some(b => {
         const bStart = new Date(b.start_time).getTime();
         const bEnd = new Date(b.end_time).getTime();
-        // 提案スロットが既存予約と重なるか: (StartA < EndB) && (EndA > StartB)
+        return (slotStartTime.getTime() < bEnd) && (slotEndTime.getTime() > bStart);
+      });
+
+      // 不可枠（ブロック）と被るかチェック
+      const isBlocked = blockedSlots?.some(b => {
+        const bStart = new Date(b.start_time).getTime();
+        const bEnd = new Date(b.end_time).getTime();
         return (slotStartTime.getTime() < bEnd) && (slotEndTime.getTime() > bStart);
       });
 
       return {
         time: timeStr,
-        available: !isBooked
+        available: !isBooked && !isBlocked
       };
-    });
+    }).filter(Boolean) as { time: string, available: boolean }[];
 
     setTimeSlots(calculatedSlots);
   };
