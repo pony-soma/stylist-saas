@@ -11,6 +11,8 @@ import { useAvailability } from '@/hooks/useAvailability';
 import { supabase } from '@/lib/supabase/client';
 import { Loader2, ArrowLeft, Calendar as CalendarIcon, Settings } from 'lucide-react';
 import Link from 'next/link';
+import EditBookingModal from './dashboard/EditBookingModal';
+import { Menu } from '@/types';
 
 const locales = {
   'ja': ja,
@@ -80,10 +82,11 @@ export default function ScheduleCalendar() {
   const [userId, setUserId] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   
-  const { monthBookings, loading: bookingsLoading, fetchBookings } = useBookings(userId);
+  const { monthBookings, loading: bookingsLoading, fetchBookings, updateBookingDetails } = useBookings(userId);
   const { blockedSlots, loading: availabilityLoading, fetchAvailability, createBlockedSlot, deleteBlockedSlot } = useAvailability(userId);
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [editingBooking, setEditingBooking] = useState<any | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -160,7 +163,10 @@ export default function ScheduleCalendar() {
       }
     } else {
       // It's a booking
-      alert(`${event.title} の予約です。（詳細編集機能は別画面で行います）`);
+      const booking = monthBookings.find(b => b.id === event.id);
+      if (booking) {
+        setEditingBooking(booking);
+      }
     }
   };
 
@@ -246,6 +252,21 @@ export default function ScheduleCalendar() {
           max={new Date(2020, 0, 1, 23, 0, 0)} // End week/day view at 11 PM
         />
       </div>
+
+      {/* 予約編集モーダル */}
+      <EditBookingModal 
+        isOpen={!!editingBooking} 
+        onClose={() => setEditingBooking(null)}
+        booking={editingBooking}
+        onSave={async (id: string, start: string, end: string, menuNote: string, selectedMenus: Menu[], totalPrice: number) => {
+          if (await updateBookingDetails(id, start, end, menuNote, selectedMenus, totalPrice)) {
+            fetchBookings(currentDate);
+          } else {
+            throw new Error('Update failed');
+          }
+        }}
+        userId={userId!}
+      />
     </div>
   );
 }
