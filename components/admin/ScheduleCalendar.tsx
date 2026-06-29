@@ -9,7 +9,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { useBookings } from '@/hooks/useBookings';
 import { useAvailability } from '@/hooks/useAvailability';
 import { supabase } from '@/lib/supabase/client';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, ArrowLeft, Calendar as CalendarIcon, Settings } from 'lucide-react';
 import Link from 'next/link';
 
 const locales = {
@@ -31,7 +31,50 @@ type CalendarEvent = {
   end: Date;
   type: 'booking' | 'block';
   status?: string;
+  customers?: any;
 };
+
+// --- Custom Toolbar Component ---
+const CustomToolbar = (toolbar: any) => {
+  const goToBack = () => toolbar.onNavigate('PREV');
+  const goToNext = () => toolbar.onNavigate('NEXT');
+  const goToCurrent = () => toolbar.onNavigate('TODAY');
+
+  const label = () => {
+    // ツールバーのラベル（「2026年 6月」など）
+    const date = format(toolbar.date, toolbar.view === 'day' ? 'yyyy年 M月 d日 (E)' : 'yyyy年 M月', { locale: ja });
+    return <span className="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2"><CalendarIcon className="w-5 h-5 text-indigo-500" /> {date}</span>;
+  };
+
+  return (
+    <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+      <div className="flex items-center gap-2">
+        <button className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" onClick={goToBack}>前へ</button>
+        <button className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" onClick={goToCurrent}>今日</button>
+        <button className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" onClick={goToNext}>次へ</button>
+      </div>
+      <div>
+        {label()}
+      </div>
+      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50">
+        {toolbar.views.map((viewName: string) => (
+          <button
+            key={viewName}
+            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition ${
+              toolbar.view === viewName 
+                ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-400 border border-slate-200 dark:border-slate-600' 
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border border-transparent'
+            }`}
+            onClick={() => toolbar.onView(viewName)}
+          >
+            {viewName === 'month' ? '月' : viewName === 'week' ? '週' : '日'}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+// ---------------------------------
 
 export default function ScheduleCalendar() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -122,24 +165,27 @@ export default function ScheduleCalendar() {
   };
 
   const eventStyleGetter = (event: CalendarEvent) => {
-    let backgroundColor = '#4f46e5'; // Indigo for confirmed bookings
+    let style: React.CSSProperties = {
+      borderRadius: '6px',
+      opacity: 0.95,
+      color: 'white',
+      border: '0px',
+      display: 'block',
+      padding: '2px 4px',
+      fontSize: '12px',
+      fontWeight: '500',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    };
     
     if (event.type === 'block') {
-      backgroundColor = '#64748b'; // Slate for blocked slots
+      style.background = 'linear-gradient(135deg, #64748b 0%, #475569 100%)'; // Slate for blocked
     } else if (event.status === 'pending') {
-      backgroundColor = '#f59e0b'; // Amber for pending
+      style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'; // Amber for pending
+    } else {
+      style.background = 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'; // Indigo for confirmed
     }
 
-    return {
-      style: {
-        backgroundColor,
-        borderRadius: '4px',
-        opacity: 0.9,
-        color: 'white',
-        border: '0px',
-        display: 'block'
-      }
-    };
+    return { style };
   };
 
   if (!userId || (bookingsLoading && monthBookings.length === 0)) {
@@ -147,21 +193,29 @@ export default function ScheduleCalendar() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto animate-in fade-in duration-500">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto animate-in fade-in duration-500">
+      <div className="mb-6">
+        <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600 transition font-medium">
+          <ArrowLeft className="w-4 h-4" />
+          ダッシュボードに戻る
+        </Link>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">スケジュール</h1>
-          <p className="text-sm text-gray-500 mt-1">空いている枠をクリック＆ドラッグして「予約不可」にできます。</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">スケジュール</h1>
+          <p className="text-sm text-slate-500 mt-1">空いている枠をクリック＆ドラッグして「予約不可」にできます。</p>
         </div>
         <Link 
           href="/admin/schedule/settings"
-          className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 dark:bg-slate-800 dark:border-slate-700 dark:text-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm"
+          className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm flex items-center gap-2 group"
         >
+          <Settings className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition" />
           営業時間・定休日の設定
         </Link>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800" style={{ height: '700px' }}>
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800/50" style={{ height: '700px' }}>
         <Calendar
           localizer={localizer}
           events={events}
@@ -175,6 +229,9 @@ export default function ScheduleCalendar() {
           onSelectSlot={handleSelectSlot}
           onSelectEvent={handleSelectEvent}
           eventPropGetter={eventStyleGetter}
+          components={{
+            toolbar: CustomToolbar
+          }}
           culture="ja"
           messages={{
             next: "次へ",
