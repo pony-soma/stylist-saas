@@ -148,10 +148,24 @@ function SettingsContent() {
             )}
           </div>
 
-          <p className="text-xs text-gray-500 leading-relaxed bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-900/50">
-            <strong className="block text-blue-800 dark:text-blue-300 mb-1">【重要】通知を受け取るために</strong>
-            この連携ボタンを押してあなたのLINEを紐付けたあと、通知の送信元となる<strong>公式アカウント（ボット）をLINEで友だち追加</strong>しておく必要があります。友だち追加されていないと、システムからメッセージを送信できません。
-          </p>
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/50">
+            <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              【重要】通知を受け取るために
+            </h3>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 leading-relaxed">
+              この連携ボタンを押してあなたのLINEを紐付けたあと、通知の送信元となる<strong>公式アカウントを「友だち追加」</strong>しておく必要があります。友だち追加されていないと、システムからメッセージを送信できません。
+            </p>
+            <a
+              href="https://lin.ee/PLovQIR"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#06C755] hover:bg-[#05b34c] text-white rounded-lg text-sm font-bold transition shadow-sm"
+            >
+              <MessageCircle className="w-4 h-4" />
+              通知用LINEを友だち追加する
+            </a>
+          </div>
         </div>
       </div>
     </div>
