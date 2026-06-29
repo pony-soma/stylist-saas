@@ -74,15 +74,15 @@ function SettingsContent() {
   return (
     <div className="p-6 max-w-2xl mx-auto animate-in fade-in duration-500">
       <div className="mb-6">
-        <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 transition font-medium">
+        <Link href="/admin/settings" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#06C755] transition font-medium">
           <ArrowLeft className="w-4 h-4" />
-          ダッシュボードに戻る
+          設定一覧に戻る
         </Link>
       </div>
 
       <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">各種設定</h1>
-        <p className="text-gray-500 mt-1">通知先などの基本設定を行います。</p>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">LINE通知設定</h1>
+        <p className="text-gray-500 mt-1">予約リクエスト時の通知先LINE連携を行います。</p>
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 md:p-8">

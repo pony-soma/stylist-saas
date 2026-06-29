@@ -77,9 +77,9 @@ export default function MenuManager() {
   return (
     <div className="p-6 max-w-4xl mx-auto animate-in fade-in duration-500">
       <div className="mb-6">
-        <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 transition font-medium">
+        <Link href="/admin/settings" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 transition font-medium">
           <ArrowLeft className="w-4 h-4" />
-          ダッシュボードに戻る
+          設定一覧に戻る
         </Link>
       </div>
 

@@ -103,19 +103,11 @@ export default function AdminDashboard() {
           )}
           
           <Link 
-            href="/admin/menus" 
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full transition-all shadow-sm"
-          >
-            <MenuIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 dark:text-slate-400" />
-            <span>メニュー設定</span>
-          </Link>
-
-          <Link 
             href="/admin/settings" 
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full transition-all shadow-sm"
           >
             <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 dark:text-slate-400" />
-            <span>各種設定</span>
+            <span>設定</span>
           </Link>
 
           <div className="w-9 h-9 sm:w-10 sm:h-10 ml-1 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md text-sm sm:text-base">S</div>
