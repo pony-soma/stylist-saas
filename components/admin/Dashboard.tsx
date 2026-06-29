@@ -77,14 +77,14 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
-      <header className="flex justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-800">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-gray-200 dark:border-gray-800">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">LiNo Dashboard</h1>
-          <p className="text-gray-500 mt-1">予約状況の管理</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">LiNo Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-500 mt-1">予約状況の管理</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
           {userId && (
-            <div className="hidden sm:block text-right">
+            <div className="hidden md:block text-right mr-2">
               <p className="text-xs text-gray-500 font-medium">あなた専用の予約URL（LINEに設定）</p>
               <div className="mt-1 flex justify-end">
                 <button
@@ -104,21 +104,21 @@ export default function AdminDashboard() {
           
           <Link 
             href="/admin/menus" 
-            className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
-            title="メニュー設定"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full transition-all shadow-sm"
           >
-            <MenuIcon className="w-5 h-5" />
+            <MenuIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 dark:text-slate-400" />
+            <span>メニュー設定</span>
           </Link>
 
           <Link 
             href="/admin/settings" 
-            className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
-            title="各種設定"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full transition-all shadow-sm"
           >
-            <Settings className="w-5 h-5" />
+            <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 dark:text-slate-400" />
+            <span>各種設定</span>
           </Link>
 
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md">S</div>
+          <div className="w-9 h-9 sm:w-10 sm:h-10 ml-1 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md text-sm sm:text-base">S</div>
         </div>
       </header>
 
