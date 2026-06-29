@@ -70,8 +70,8 @@ export default function MenuManager() {
     }
   };
 
-  if (loading && !menus.length) {
-    return <div className="p-6 text-center text-gray-500">読み込み中...</div>;
+  if (!userId || (loading && !menus.length)) {
+    return <div className="p-6 text-center text-gray-500 flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />読み込み中...</div>;
   }
 
   return (
