@@ -80,21 +80,17 @@ function SettingsContent() {
         </Link>
       </div>
 
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">LINE通知設定</h1>
-        <p className="text-gray-500 mt-1">予約リクエスト時の通知先LINE連携を行います。</p>
+      <div className="mb-8 flex items-start gap-4">
+        <div className="w-12 h-12 rounded-xl bg-[#06C755]/10 flex items-center justify-center shrink-0">
+          <MessageCircle className="w-6 h-6 text-[#06C755]" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">LINE通知設定</h1>
+          <p className="text-gray-500 mt-1">予約リクエストが入った際の通知先として、あなたのLINEアカウントを連携します。</p>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 md:p-8">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-full bg-[#06C755]/10 flex items-center justify-center">
-            <MessageCircle className="w-5 h-5 text-[#06C755]" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold">LINE通知設定</h2>
-            <p className="text-sm text-gray-500">予約が入った際の通知先LINE User IDを設定します。</p>
-          </div>
-        </div>
 
         {successParam === 'line_linked' && (
           <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
