@@ -82,7 +82,7 @@ export default function ScheduleCalendar() {
   const [userId, setUserId] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   
-  const { monthBookings, loading: bookingsLoading, fetchBookings, updateBookingDetails } = useBookings(userId);
+  const { monthBookings, loading: bookingsLoading, fetchBookings, updateBookingDetails, updateBookingStatus } = useBookings(userId);
   const { blockedSlots, loading: availabilityLoading, fetchAvailability, createBlockedSlot, deleteBlockedSlot } = useAvailability(userId);
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -264,6 +264,10 @@ export default function ScheduleCalendar() {
           } else {
             throw new Error('Update failed');
           }
+        }}
+        onDelete={async (id: string) => {
+          await updateBookingStatus(id, 'cancelled');
+          fetchBookings(currentDate);
         }}
         userId={userId!}
       />

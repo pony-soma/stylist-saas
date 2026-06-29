@@ -313,6 +313,10 @@ export default function AdminDashboard() {
             throw new Error('Update failed');
           }
         }}
+        onDelete={async (id) => {
+          await updateBookingStatus(id, 'cancelled');
+          fetchBookings(currentMonth);
+        }}
         userId={userId!}
       />
     </div>

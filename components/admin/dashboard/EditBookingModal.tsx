@@ -9,13 +9,14 @@ type Props = {
   onClose: () => void;
   booking: Booking | null;
   onSave: (id: string, startTime: string, endTime: string, menuNote: string, selectedMenus: Menu[], totalPrice: number) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
   userId: string;
 };
 
 const hoursOptions = Array.from({ length: 24 }).map((_, i) => i.toString().padStart(2, '0'));
 const minutesOptions = ['00', '15', '30', '45'];
 
-export default function EditBookingModal({ isOpen, onClose, booking, onSave, userId }: Props) {
+export default function EditBookingModal({ isOpen, onClose, booking, onSave, onDelete, userId }: Props) {
   const { menus, fetchMenus } = useMenus(userId);
   
   const [form, setForm] = useState({
@@ -136,6 +137,23 @@ export default function EditBookingModal({ isOpen, onClose, booking, onSave, use
     }
   };
 
+  const handleDelete = async () => {
+    if (!onDelete || !booking) return;
+    if (confirm('この予約を削除（キャンセル）しますか？')) {
+      setSaving(true);
+      try {
+        await onDelete(booking.id);
+        alert('予約を削除しました。');
+        onClose();
+      } catch (err) {
+        console.error(err);
+        alert('削除に失敗しました。');
+      } finally {
+        setSaving(false);
+      }
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh]">
@@ -203,11 +221,20 @@ export default function EditBookingModal({ isOpen, onClose, booking, onSave, use
             <input type="text" value={form.menuNote} onChange={e => setForm({...form, menuNote: e.target.value})} placeholder="事前に伝えておきたいこと等" className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
           </div>
         </div>
-        <div className="px-6 py-4 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3 shrink-0">
-          <button onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 transition">キャンセル</button>
-          <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-sm transition flex items-center gap-2">
-            {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> 保存中...</> : '変更を保存'}
-          </button>
+        <div className="px-6 py-4 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center shrink-0">
+          <div>
+            {onDelete && (
+              <button onClick={handleDelete} disabled={saving} className="px-4 py-2 text-red-600 dark:text-red-400 font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition text-sm">
+                予約を削除
+              </button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 transition">キャンセル</button>
+            <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-sm transition flex items-center gap-2">
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> 保存中...</> : '変更を保存'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
