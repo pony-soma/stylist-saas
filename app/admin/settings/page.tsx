@@ -30,6 +30,19 @@ export default function SettingsHubPage() {
             <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-500 transition translate-x-0 group-hover:translate-x-1" />
           </Link>
 
+          <Link href="/admin/schedule/settings" className="flex items-center p-6 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition group">
+            <div className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center mr-4">
+              <svg className="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-orange-600 transition">営業時間・定休日設定</h2>
+              <p className="text-sm text-gray-500 mt-0.5">基本のスケジュールと臨時休業・営業日を設定します</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-orange-500 transition translate-x-0 group-hover:translate-x-1" />
+          </Link>
+
           <Link href="/admin/settings/line" className="flex items-center p-6 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition group">
             <div className="w-12 h-12 rounded-xl bg-[#06C755]/10 flex items-center justify-center mr-4">
               <MessageCircle className="w-6 h-6 text-[#06C755]" />
