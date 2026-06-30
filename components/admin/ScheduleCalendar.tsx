@@ -140,6 +140,16 @@ export default function ScheduleCalendar() {
       end.setHours(start.getHours() + 1);
     }
 
+    const isOverlapping = events.some(e => {
+      // 提案スロットが既存のイベントと重なるか: (StartA < EndB) && (EndA > StartB)
+      return (start.getTime() < e.end.getTime()) && (end.getTime() > e.start.getTime());
+    });
+
+    if (isOverlapping) {
+      alert('指定された時間はすでに他の予定（予約または不可枠）と重複しています。');
+      return;
+    }
+
     const confirmMsg = `${format(start, 'MM/dd HH:mm')} 〜 ${format(end, 'HH:mm')} を「予約不可」としてブロックしますか？`;
     if (confirm(confirmMsg)) {
       const title = prompt('予定のタイトルを入力（空欄なら「予約不可」）') || '予約不可';
