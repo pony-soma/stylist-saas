@@ -106,6 +106,7 @@ export default function ScheduleCalendar() {
 
     // Add bookings
     monthBookings.forEach(b => {
+      if (b.status === 'cancelled') return;
       newEvents.push({
         id: b.id,
         title: b.customers?.display_name ? `${b.customers.display_name}様` : '予約',
