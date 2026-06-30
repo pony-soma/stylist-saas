@@ -108,7 +108,7 @@ export default function EditBookingModal({ isOpen, onClose, booking, onSave, onD
 
     setSaving(true);
 
-    // 重複チェック（自分自身の予約は除外）
+    // 予約との重複チェック（自分自身の予約は除外）
     const { data: overlappingBookings } = await supabase
       .from('bookings')
       .select('id')
@@ -119,8 +119,17 @@ export default function EditBookingModal({ isOpen, onClose, booking, onSave, onD
       .gt('end_time', startDateTime.toISOString())
       .limit(1);
 
-    if (overlappingBookings && overlappingBookings.length > 0) {
-      alert('指定された時間はすでに他の予約が入っています。');
+    // 予約不可枠との重複チェック
+    const { data: overlappingBlocks } = await supabase
+      .from('blocked_time_slots')
+      .select('id')
+      .eq('stylist_id', userId)
+      .lt('start_time', endDateTime.toISOString())
+      .gt('end_time', startDateTime.toISOString())
+      .limit(1);
+
+    if ((overlappingBookings && overlappingBookings.length > 0) || (overlappingBlocks && overlappingBlocks.length > 0)) {
+      alert('指定された時間はすでに他の予定（予約または予約不可枠）が入っています。');
       setSaving(false);
       return;
     }
