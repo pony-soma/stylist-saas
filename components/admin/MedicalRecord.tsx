@@ -318,11 +318,11 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-      <div className="w-full max-w-2xl bg-gray-50 dark:bg-slate-950 max-h-[90vh] rounded-3xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-300 overflow-hidden">
+    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-300">
+      <div className="w-full max-w-2xl bg-gray-50 dark:bg-slate-950 max-h-[90vh] rounded-3xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-300 overflow-hidden transform-gpu">
         
         {/* ヘッダー部分 */}
-        <div className="bg-white dark:bg-slate-900 p-6 shadow-sm z-10 sticky top-0 shrink-0 border-b border-gray-100 dark:border-gray-800">
+        <div className="bg-white dark:bg-slate-900 p-6 shadow-sm z-10 shrink-0 border-b border-gray-100 dark:border-gray-800">
           <div className="flex justify-between items-start mb-4">
             <div>
               <div className="flex items-center gap-3 mb-1">
@@ -351,7 +351,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
         </div>
 
         {/* スクロール領域 */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-8 transform-gpu" style={{ WebkitOverflowScrolling: 'touch' }}>
           
           {/* 追加フォーム */}
           {!isCreating ? (
@@ -593,7 +593,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
       {/* 写真拡大モーダル */}
       {previewPhotoUrl && (
         <div 
-          className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200 transform-gpu"
           onClick={() => setPreviewPhotoUrl(null)}
         >
           <button 
