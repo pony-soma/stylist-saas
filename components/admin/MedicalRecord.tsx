@@ -23,6 +23,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editSelectedFiles, setEditSelectedFiles] = useState<File[]>([]);
+  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     visit_date: '',
     treatment_menu: '',
@@ -103,7 +104,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
       if (recordError || !recordData) throw recordError;
 
       // 2. 画像のアップロード
-      const photoPromises = selectedFiles.map(async (file) => {
+      for (const file of selectedFiles) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${recordData.id}-${Math.random()}.${fileExt}`;
         const filePath = `records/${fileName}`;
@@ -112,18 +113,24 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
           .from('record-photos')
           .upload(filePath, file);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Storage upload error:', uploadError);
+          throw uploadError;
+        }
 
         // 3. 写真パスをDBに保存
-        await supabase
+        const { error: insertError } = await supabase
           .from('record_photos')
           .insert({
             record_id: recordData.id,
             storage_path: filePath
           });
-      });
 
-      await Promise.all(photoPromises);
+        if (insertError) {
+          console.error('Record_photos insert error:', insertError);
+          throw insertError;
+        }
+      }
 
       // リセットと再取得
       setIsCreating(false);
@@ -169,7 +176,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
 
       // 写真の追加アップロード
       if (editSelectedFiles.length > 0) {
-        const photoPromises = editSelectedFiles.map(async (file) => {
+        for (const file of editSelectedFiles) {
           const fileExt = file.name.split('.').pop();
           const fileName = `${recordId}-${Math.random()}.${fileExt}`;
           const filePath = `records/${fileName}`;
@@ -178,16 +185,23 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
             .from('record-photos')
             .upload(filePath, file);
 
-          if (uploadError) throw uploadError;
+          if (uploadError) {
+            console.error('Storage upload error (edit):', uploadError);
+            throw uploadError;
+          }
 
-          await supabase
+          const { error: insertError } = await supabase
             .from('record_photos')
             .insert({
               record_id: recordId,
               storage_path: filePath
             });
-        });
-        await Promise.all(photoPromises);
+
+          if (insertError) {
+            console.error('Record_photos insert error (edit):', insertError);
+            throw insertError;
+          }
+        }
       }
 
       // データの再取得
@@ -472,7 +486,11 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                     {record.record_photos && record.record_photos.length > 0 && (
                       <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
                         {record.record_photos.map((photo, i) => (
-                          <div key={i} className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer flex-shrink-0">
+                          <div 
+                            key={i} 
+                            onClick={() => setPreviewPhotoUrl(getPhotoUrl(photo.storage_path))}
+                            className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer flex-shrink-0"
+                          >
                             <img src={getPhotoUrl(photo.storage_path)} alt={`施術写真 ${i+1}`} className="w-24 h-24 object-cover group-hover:scale-105 transition-transform duration-300" />
                           </div>
                         ))}
@@ -486,6 +504,26 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
 
         </div>
       </div>
+
+      {/* 写真拡大モーダル */}
+      {previewPhotoUrl && (
+        <div 
+          className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewPhotoUrl(null)}
+        >
+          <button 
+            className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition"
+            onClick={() => setPreviewPhotoUrl(null)}
+          >
+            <XCircle className="w-8 h-8" />
+          </button>
+          <img 
+            src={previewPhotoUrl} 
+            alt="拡大写真" 
+            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" 
+          />
+        </div>
+      )}
     </div>
   );
 }
