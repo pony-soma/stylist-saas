@@ -73,7 +73,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
         // その顧客のカルテを取得
         const { data: recData } = await supabase
           .from('medical_records')
-          .select('id, visit_date, treatment_menu, chemicals_used, notes, record_photos(storage_path)')
+          .select('id, visit_date, treatment_menu, chemicals_used, notes, record_photos(id, storage_path)')
           .eq('customer_id', custData.id)
           .order('visit_date', { ascending: false });
           
@@ -165,7 +165,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
       // レコード一覧の更新処理
       const { data: newData } = await supabase
         .from('medical_records')
-        .select('id, visit_date, treatment_menu, chemicals_used, notes, record_photos(storage_path)')
+        .select('id, visit_date, treatment_menu, chemicals_used, notes, record_photos(id, storage_path)')
         .eq('customer_id', customer.id)
         .order('visit_date', { ascending: false });
       
@@ -232,7 +232,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
       // データの再取得
       const { data: newData } = await supabase
         .from('medical_records')
-        .select('id, visit_date, treatment_menu, chemicals_used, notes, record_photos(storage_path)')
+        .select('id, visit_date, treatment_menu, chemicals_used, notes, record_photos(id, storage_path)')
         .eq('customer_id', customer.id)
         .order('visit_date', { ascending: false });
       
@@ -257,6 +257,30 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
     } catch (error) {
       console.error('Failed to delete record:', error);
       alert('削除に失敗しました。');
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: string, storagePath: string, recordId: string) => {
+    if (!confirm('この写真を削除してもよろしいですか？')) return;
+    
+    try {
+      const { error: dbError } = await supabase.from('record_photos').delete().eq('id', photoId);
+      if (dbError) throw dbError;
+      
+      await supabase.storage.from('record-photos').remove([storagePath]);
+
+      setRecords(records.map(r => {
+        if (r.id === recordId) {
+          return {
+            ...r,
+            record_photos: r.record_photos.filter(p => p.id !== photoId)
+          };
+        }
+        return r;
+      }));
+    } catch (error) {
+      console.error('Failed to delete photo:', error);
+      alert('写真の削除に失敗しました。');
     }
   };
 
@@ -409,6 +433,33 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">メモ</label>
                       <textarea rows={3} value={editForm.notes} onChange={e => setEditForm({...editForm, notes: e.target.value})} className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
                     </div>
+
+                    {record.record_photos && record.record_photos.length > 0 && (
+                      <div className="pt-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">保存済みの写真</label>
+                        <div className="flex gap-3 overflow-x-auto pb-2">
+                          {record.record_photos.map((photo, i) => (
+                            <div key={photo.id} className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
+                              <img 
+                                src={getPhotoUrl(photo.storage_path)} 
+                                alt={`保存済み写真 ${i+1}`} 
+                                className="w-16 h-16 object-cover cursor-pointer" 
+                                onClick={() => setPreviewPhotoUrl(getPhotoUrl(photo.storage_path))}
+                              />
+                              <button 
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleDeletePhoto(photo.id, photo.storage_path, record.id);
+                                }} 
+                                className="absolute top-1 right-1 bg-black/50 hover:bg-red-500 text-white rounded-full p-1 transition opacity-0 group-hover:opacity-100 z-20"
+                              >
+                                <XCircle className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">施術写真の追加</label>

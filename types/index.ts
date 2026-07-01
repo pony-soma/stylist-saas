@@ -28,6 +28,7 @@ export type Booking = {
 };
 
 export type RecordPhoto = {
+  id: string;
   storage_path: string;
 };
 
