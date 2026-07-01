@@ -13,6 +13,7 @@
     "@line/liff": "^2.29.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.43.0",
+    "browser-image-compression": "^2.0.2",
     "date-fns": "^4.4.0",
     "date-fns-tz": "^3.2.0",
     "lucide-react": "^0.378.0",

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import imageCompression from 'browser-image-compression';
 import { User, Phone, MessageCircle, UploadCloud, Plus, Loader2, Edit2, Trash2, XCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { MedicalRecord, CustomerInfo } from '@/types';
@@ -131,13 +132,21 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
 
       // 2. 画像のアップロード
       for (const file of selectedFiles) {
-        const fileExt = file.name.split('.').pop();
+        // 画像をクライアント側で圧縮する
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1200,
+          useWebWorker: true,
+        };
+        const compressedFile = await imageCompression(file, options);
+        
+        const fileExt = compressedFile.name.split('.').pop() || 'jpg';
         const fileName = `${recordData.id}-${Math.random()}.${fileExt}`;
         const filePath = `records/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('record-photos')
-          .upload(filePath, file);
+          .upload(filePath, compressedFile);
 
         if (uploadError) {
           console.error('Storage upload error:', uploadError);
@@ -203,13 +212,20 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
       // 写真の追加アップロード
       if (editSelectedFiles.length > 0) {
         for (const file of editSelectedFiles) {
-          const fileExt = file.name.split('.').pop();
+          const options = {
+            maxSizeMB: 1,
+            maxWidthOrHeight: 1200,
+            useWebWorker: true,
+          };
+          const compressedFile = await imageCompression(file, options);
+          
+          const fileExt = compressedFile.name.split('.').pop() || 'jpg';
           const fileName = `${recordId}-${Math.random()}.${fileExt}`;
           const filePath = `records/${fileName}`;
 
           const { error: uploadError } = await supabase.storage
             .from('record-photos')
-            .upload(filePath, file);
+            .upload(filePath, compressedFile);
 
           if (uploadError) {
             console.error('Storage upload error (edit):', uploadError);
@@ -440,7 +456,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">保存済みの写真</label>
                         <div className="flex gap-3 overflow-x-auto pb-2">
                           {record.record_photos.map((photo, i) => (
-                            <div key={photo.id} className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
+                            <div key={photo.id} className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0 bg-gray-100 dark:bg-gray-800">
                               <Image 
                                 src={getPhotoUrl(photo.storage_path)} 
                                 alt={`保存済み写真 ${i+1}`} 
@@ -552,7 +568,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                           <div 
                             key={i} 
                             onClick={() => setPreviewPhotoUrl(getPhotoUrl(photo.storage_path))}
-                            className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer flex-shrink-0"
+                            className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer flex-shrink-0 bg-gray-100 dark:bg-gray-800"
                           >
                             <Image 
                               src={getPhotoUrl(photo.storage_path)} 
