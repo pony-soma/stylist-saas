@@ -22,6 +22,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
   // 編集用State
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editSelectedFiles, setEditSelectedFiles] = useState<File[]>([]);
   const [editForm, setEditForm] = useState({
     visit_date: '',
     treatment_menu: '',
@@ -156,9 +157,40 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
 
       if (error) throw error;
 
-      // Update local state without fetching all again
-      setRecords(records.map(r => r.id === recordId ? { ...r, ...editForm } : r));
+      // 写真の追加アップロード
+      if (editSelectedFiles.length > 0) {
+        const photoPromises = editSelectedFiles.map(async (file) => {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${recordId}-${Math.random()}.${fileExt}`;
+          const filePath = `records/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('record-photos')
+            .upload(filePath, file);
+
+          if (uploadError) throw uploadError;
+
+          await supabase
+            .from('record_photos')
+            .insert({
+              record_id: recordId,
+              storage_path: filePath
+            });
+        });
+        await Promise.all(photoPromises);
+      }
+
+      // データの再取得
+      const { data: newData } = await supabase
+        .from('medical_records')
+        .select('id, visit_date, treatment_menu, chemicals_used, notes, record_photos(storage_path)')
+        .eq('customer_id', customer.id)
+        .order('visit_date', { ascending: false });
+      
+      if (newData) setRecords(newData as unknown as MedicalRecord[]);
+      
       setEditingRecordId(null);
+      setEditSelectedFiles([]);
     } catch (error) {
       console.error('Failed to update record:', error);
       alert('カルテの更新に失敗しました。');
@@ -317,8 +349,29 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">メモ</label>
                       <textarea rows={3} value={editForm.notes} onChange={e => setEditForm({...editForm, notes: e.target.value})} className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
                     </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">施術写真の追加</label>
+                      <div className="relative border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 text-center hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+                        <input 
+                          type="file" 
+                          multiple 
+                          accept="image/*" 
+                          onChange={(e) => {
+                            if (e.target.files) {
+                              setEditSelectedFiles(Array.from(e.target.files));
+                            }
+                          }} 
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                        />
+                        <UploadCloud className="w-6 h-6 text-indigo-500 mx-auto mb-1" />
+                        <p className="text-sm font-medium">写真を追加アップロード</p>
+                        <p className="text-xs mt-1 text-gray-500">{editSelectedFiles.length > 0 ? `${editSelectedFiles.length}個のファイルを選択済み` : 'クリックまたはドラッグ＆ドロップ'}</p>
+                      </div>
+                    </div>
+
                     <div className="flex justify-end gap-3 pt-4">
-                      <button onClick={() => setEditingRecordId(null)} className="px-5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg text-sm font-medium transition">キャンセル</button>
+                      <button onClick={() => { setEditingRecordId(null); setEditSelectedFiles([]); }} className="px-5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg text-sm font-medium transition">キャンセル</button>
                       <button onClick={() => handleSaveEdit(record.id)} disabled={savingEdit} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition flex items-center gap-2">
                         {savingEdit ? <><Loader2 className="w-4 h-4 animate-spin" /> 保存中...</> : '更新する'}
                       </button>
@@ -337,6 +390,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                         <button 
                           onClick={() => {
                             setEditingRecordId(record.id);
+                            setEditSelectedFiles([]);
                             setEditForm({
                               visit_date: record.visit_date,
                               treatment_menu: record.treatment_menu,
