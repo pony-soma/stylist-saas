@@ -8,6 +8,7 @@ import MedicalRecordView from '@/components/admin/MedicalRecord';
 import ProxyBookingModal from './dashboard/ProxyBookingModal';
 import EditBookingModal from './dashboard/EditBookingModal';
 import PendingBookingsList from './dashboard/PendingBookingsList';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useBookings } from '@/hooks/useBookings';
 import { formatTime, getDurationMinutes } from '@/lib/utils';
 import { Booking } from '@/types';
@@ -119,6 +120,10 @@ export default function AdminDashboard() {
             <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 dark:text-slate-400" />
             <span>設定</span>
           </Link>
+
+          <div className="mx-1">
+            <ThemeToggle />
+          </div>
 
           <div className="w-9 h-9 sm:w-10 sm:h-10 ml-1 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md text-sm sm:text-base">S</div>
         </div>

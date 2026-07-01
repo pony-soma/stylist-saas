@@ -398,38 +398,38 @@ export default function LiffBookingCalendar() {
   const totalPrice = selectedMenusList.reduce((acc, curr) => acc + curr.price, 0);
 
   return (
-    <div className="bg-gray-50 min-h-screen w-full max-w-md mx-auto shadow-xl relative font-sans pb-24">
+    <div className="bg-gray-50 dark:bg-slate-950 min-h-screen w-full max-w-md mx-auto shadow-xl relative font-sans pb-24 transition-colors duration-300">
       {/* ヘッダーエリア */}
-      <header className="bg-white px-5 pt-8 pb-4 shadow-sm relative z-10 flex items-center justify-between">
-        <h1 className="font-bold text-xl text-gray-900">ご予約</h1>
+      <header className="bg-white dark:bg-slate-900 px-5 pt-8 pb-4 shadow-sm relative z-10 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
+        <h1 className="font-bold text-xl text-gray-900 dark:text-white">ご予約</h1>
         {lineProfile && (
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-600">{lineProfile.displayName} 様</span>
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{lineProfile.displayName} 様</span>
           </div>
         )}
       </header>
 
       <main className="p-4">
         {/* メニュー選択エリア */}
-        <div className="bg-white p-4 rounded-2xl mb-4 shadow-sm border border-gray-100">
-          <h2 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl mb-4 shadow-sm border border-gray-100 dark:border-gray-800">
+          <h2 className="font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-2">
             <span className="bg-indigo-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs">1</span>
             メニューの選択
           </h2>
           {menus.length === 0 ? (
-            <p className="text-sm text-gray-500">メニューが設定されていません</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">メニューが設定されていません</p>
           ) : (
             <div className="space-y-2">
               {menus.map(menu => (
-                <label key={menu.id} className={`flex items-center justify-between p-3 rounded-lg border-2 transition cursor-pointer ${selectedMenuIds.has(menu.id) ? 'border-indigo-600 bg-indigo-50' : 'border-gray-100 hover:border-gray-200'}`}>
+                <label key={menu.id} className={`flex items-center justify-between p-3 rounded-lg border-2 transition cursor-pointer ${selectedMenuIds.has(menu.id) ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' : 'border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700'}`}>
                   <div className="flex items-center gap-3">
-                    <input type="checkbox" checked={selectedMenuIds.has(menu.id)} onChange={() => toggleMenu(menu.id)} className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" />
+                    <input type="checkbox" checked={selectedMenuIds.has(menu.id)} onChange={() => toggleMenu(menu.id)} className="w-5 h-5 text-indigo-600 rounded border-gray-300 dark:border-gray-600 dark:bg-slate-800 focus:ring-indigo-500" />
                     <div>
-                      <p className="font-bold text-gray-900">{menu.name}</p>
-                      <p className="text-xs text-gray-500">{menu.duration}分</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{menu.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{menu.duration}分</p>
                     </div>
                   </div>
-                  <div className="font-bold text-gray-900">
+                  <div className="font-bold text-gray-900 dark:text-white">
                     ¥{menu.price.toLocaleString()}
                   </div>
                 </label>
@@ -438,16 +438,16 @@ export default function LiffBookingCalendar() {
           )}
           
           {selectedMenuIds.size > 0 && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg flex justify-between items-center border border-gray-200">
-              <span className="text-sm text-gray-600 font-medium">合計: {totalDuration}分</span>
-              <span className="font-bold text-lg text-indigo-600">¥{totalPrice.toLocaleString()}</span>
+            <div className="mt-4 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg flex justify-between items-center border border-gray-200 dark:border-gray-700">
+              <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">合計: {totalDuration}分</span>
+              <span className="font-bold text-lg text-indigo-600 dark:text-indigo-400">¥{totalPrice.toLocaleString()}</span>
             </div>
           )}
         </div>
 
         {/* 日時選択エリア */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-          <h2 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
+          <h2 className="font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-2">
             <span className="bg-indigo-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs">2</span>
             日時の選択
           </h2>
