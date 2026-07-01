@@ -110,12 +110,22 @@ export default function LiffBookingCalendar() {
             .insert({
               line_user_id: profile.userId,
               display_name: profile.displayName,
+              line_picture_url: profile.pictureUrl
             })
             .select()
             .single();
             
           if (insertError) throw insertError;
           customer = newCustomer;
+        } else {
+          // すでに存在する場合も名前と画像を最新化しておく
+          await supabase
+            .from('customers')
+            .update({
+              display_name: profile.displayName,
+              line_picture_url: profile.pictureUrl
+            })
+            .eq('id', customer.id);
         }
         
         setCustomerId(customer!.id);

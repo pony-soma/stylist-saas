@@ -3,6 +3,8 @@ export type CustomerInfo = {
   display_name: string;
   phone_number: string;
   created_at: string;
+  line_user_id?: string;
+  line_picture_url?: string;
 };
 
 export type Menu = {

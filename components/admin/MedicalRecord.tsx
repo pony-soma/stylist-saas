@@ -325,9 +325,14 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
         <div className="bg-white dark:bg-slate-900 p-6 shadow-sm z-10 shrink-0 border-b border-gray-100 dark:border-gray-800">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <div className="flex items-center gap-3 mb-1">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 flex items-center justify-center">
-                  <User className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+              <div className="flex items-center gap-3">
+                {/* アバター */}
+                <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0 border border-indigo-200 dark:border-indigo-800 overflow-hidden">
+                  {customer?.line_picture_url ? (
+                    <img src={customer.line_picture_url} alt={customer?.display_name || ''} className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                  )}
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{customer.display_name}</h2>
@@ -344,7 +349,16 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                 <Phone className="w-4 h-4 text-green-500" /> 電話する
               </a>
             )}
-            <button className="flex-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition shadow-sm">
+            <button 
+              onClick={() => {
+                if (customer?.line_user_id) {
+                  window.open(`https://chat.line.biz/U${customer.line_user_id}`, '_blank');
+                } else {
+                  alert('LINE連携がされていないお客様です。');
+                }
+              }}
+              className="flex-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition shadow-sm"
+            >
               <MessageCircle className="w-4 h-4 text-blue-500" /> LINE送信
             </button>
           </div>
