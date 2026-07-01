@@ -5,6 +5,31 @@ import { User, Phone, MessageCircle, UploadCloud, Plus, Loader2, Edit2, Trash2, 
 import { supabase } from '@/lib/supabase/client';
 import { MedicalRecord, CustomerInfo } from '@/types';
 
+function ImagePreview({ file, onRemove }: { file: File; onRemove: () => void }) {
+  const [url, setUrl] = useState<string>('');
+  
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  return (
+    <div className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
+      {url && <img src={url} alt="プレビュー" className="w-20 h-20 object-cover" />}
+      <button 
+        onClick={(e) => {
+          e.preventDefault();
+          onRemove();
+        }} 
+        className="absolute top-1 right-1 bg-black/50 hover:bg-red-500 text-white rounded-full p-1 transition opacity-0 group-hover:opacity-100 z-10"
+      >
+        <XCircle className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
 export default function MedicalRecordView({ customerId, onClose }: { customerId: string, onClose: () => void }) {
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState<CustomerInfo | null>(null);
@@ -63,10 +88,10 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
   }, [customerId]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setSelectedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
-      // Reset input value so the same file can be selected again if removed
-      e.target.value = '';
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files);
+      setSelectedFiles(prev => [...prev, ...newFiles]);
+      // 値のリセットは一部ブラウザでFileオブジェクトを無効化するため削除
     }
   };
 
@@ -341,15 +366,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                 {selectedFiles.length > 0 && (
                   <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
                     {selectedFiles.map((file, i) => (
-                      <div key={i} className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
-                        <img src={URL.createObjectURL(file)} alt={`選択中 ${i+1}`} className="w-20 h-20 object-cover" />
-                        <button 
-                          onClick={() => removeSelectedFile(i)} 
-                          className="absolute top-1 right-1 bg-black/50 hover:bg-red-500 text-white rounded-full p-1 transition opacity-0 group-hover:opacity-100"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <ImagePreview key={i} file={file} onRemove={() => removeSelectedFile(i)} />
                     ))}
                   </div>
                 )}
@@ -401,9 +418,9 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                           multiple 
                           accept="image/*" 
                           onChange={(e) => {
-                            if (e.target.files) {
-                              setEditSelectedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
-                              e.target.value = '';
+                            if (e.target.files && e.target.files.length > 0) {
+                              const newFiles = Array.from(e.target.files);
+                              setEditSelectedFiles(prev => [...prev, ...newFiles]);
                             }
                           }} 
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
@@ -416,15 +433,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                       {editSelectedFiles.length > 0 && (
                         <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
                           {editSelectedFiles.map((file, i) => (
-                            <div key={i} className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
-                              <img src={URL.createObjectURL(file)} alt={`追加予定 ${i+1}`} className="w-16 h-16 object-cover" />
-                              <button 
-                                onClick={() => removeEditSelectedFile(i)} 
-                                className="absolute top-1 right-1 bg-black/50 hover:bg-red-500 text-white rounded-full p-1 transition opacity-0 group-hover:opacity-100 z-20"
-                              >
-                                <XCircle className="w-3 h-3" />
-                              </button>
-                            </div>
+                            <ImagePreview key={i} file={file} onRemove={() => removeEditSelectedFile(i)} />
                           ))}
                         </div>
                       )}
