@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { User, Phone, MessageCircle, UploadCloud, Plus, Loader2, Edit2, Trash2 } from 'lucide-react';
+import { User, Phone, MessageCircle, UploadCloud, Plus, Loader2, Edit2, Trash2, XCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { MedicalRecord, CustomerInfo } from '@/types';
 
@@ -63,8 +63,18 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setSelectedFiles(Array.from(e.target.files));
+      setSelectedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+      // Reset input value so the same file can be selected again if removed
+      e.target.value = '';
     }
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeEditSelectedFile = (index: number) => {
+    setEditSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSaveRecord = async () => {
@@ -305,11 +315,30 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                 <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
               </div>
 
-              <div className="relative border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-6 text-center hover:bg-gray-50 dark:hover:bg-slate-800 transition">
-                <input type="file" multiple accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                <UploadCloud className="w-8 h-8 text-indigo-500 mb-2" />
-                <p className="font-medium">施術写真を追加</p>
-                <p className="text-sm mt-1">{selectedFiles.length > 0 ? `${selectedFiles.length}個のファイルを選択済み` : 'クリックまたはドラッグ＆ドロップ'}</p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">施術写真の追加</label>
+                <div className="relative border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-6 text-center hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+                  <input type="file" multiple accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                  <UploadCloud className="w-8 h-8 text-indigo-500 mb-2 mx-auto" />
+                  <p className="font-medium">施術写真を追加</p>
+                  <p className="text-sm mt-1 text-gray-500">クリックまたはドラッグ＆ドロップで複数追加できます</p>
+                </div>
+                
+                {selectedFiles.length > 0 && (
+                  <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+                    {selectedFiles.map((file, i) => (
+                      <div key={i} className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
+                        <img src={URL.createObjectURL(file)} alt={`選択中 ${i+1}`} className="w-20 h-20 object-cover" />
+                        <button 
+                          onClick={() => removeSelectedFile(i)} 
+                          className="absolute top-1 right-1 bg-black/50 hover:bg-red-500 text-white rounded-full p-1 transition opacity-0 group-hover:opacity-100"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end pt-4">
@@ -359,15 +388,32 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                           accept="image/*" 
                           onChange={(e) => {
                             if (e.target.files) {
-                              setEditSelectedFiles(Array.from(e.target.files));
+                              setEditSelectedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                              e.target.value = '';
                             }
                           }} 
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                         />
                         <UploadCloud className="w-6 h-6 text-indigo-500 mx-auto mb-1" />
                         <p className="text-sm font-medium">写真を追加アップロード</p>
-                        <p className="text-xs mt-1 text-gray-500">{editSelectedFiles.length > 0 ? `${editSelectedFiles.length}個のファイルを選択済み` : 'クリックまたはドラッグ＆ドロップ'}</p>
+                        <p className="text-xs mt-1 text-gray-500">クリックまたはドラッグ＆ドロップで複数追加</p>
                       </div>
+                      
+                      {editSelectedFiles.length > 0 && (
+                        <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+                          {editSelectedFiles.map((file, i) => (
+                            <div key={i} className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
+                              <img src={URL.createObjectURL(file)} alt={`追加予定 ${i+1}`} className="w-16 h-16 object-cover" />
+                              <button 
+                                onClick={() => removeEditSelectedFile(i)} 
+                                className="absolute top-1 right-1 bg-black/50 hover:bg-red-500 text-white rounded-full p-1 transition opacity-0 group-hover:opacity-100 z-20"
+                              >
+                                <XCircle className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4">
