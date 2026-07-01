@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { User, Phone, MessageCircle, UploadCloud, Plus, Loader2, Edit2, Trash2, XCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { MedicalRecord, CustomerInfo } from '@/types';
@@ -440,13 +441,13 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                         <div className="flex gap-3 overflow-x-auto pb-2">
                           {record.record_photos.map((photo, i) => (
                             <div key={photo.id} className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
-                              <img 
+                              <Image 
                                 src={getPhotoUrl(photo.storage_path)} 
                                 alt={`保存済み写真 ${i+1}`} 
+                                width={64}
+                                height={64}
                                 className="w-16 h-16 object-cover cursor-pointer" 
                                 onClick={() => setPreviewPhotoUrl(getPhotoUrl(photo.storage_path))}
-                                loading="lazy"
-                                decoding="async"
                               />
                               <button 
                                 onClick={(e) => {
@@ -553,12 +554,12 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                             onClick={() => setPreviewPhotoUrl(getPhotoUrl(photo.storage_path))}
                             className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer flex-shrink-0"
                           >
-                            <img 
+                            <Image 
                               src={getPhotoUrl(photo.storage_path)} 
                               alt={`施術写真 ${i+1}`} 
+                              width={96}
+                              height={96}
                               className="w-24 h-24 object-cover group-hover:scale-105 transition-transform duration-300" 
-                              loading="lazy"
-                              decoding="async"
                             />
                           </div>
                         ))}
