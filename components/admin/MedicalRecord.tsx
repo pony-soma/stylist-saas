@@ -16,7 +16,7 @@ function ImagePreview({ file, onRemove }: { file: File; onRemove: () => void }) 
 
   return (
     <div className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
-      {url && <img src={url} alt="プレビュー" className="w-20 h-20 object-cover" />}
+      {url && <img src={url} alt="プレビュー" className="w-20 h-20 object-cover" decoding="async" />}
       <button 
         onClick={(e) => {
           e.preventDefault();
@@ -445,6 +445,8 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                                 alt={`保存済み写真 ${i+1}`} 
                                 className="w-16 h-16 object-cover cursor-pointer" 
                                 onClick={() => setPreviewPhotoUrl(getPhotoUrl(photo.storage_path))}
+                                loading="lazy"
+                                decoding="async"
                               />
                               <button 
                                 onClick={(e) => {
@@ -551,7 +553,13 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                             onClick={() => setPreviewPhotoUrl(getPhotoUrl(photo.storage_path))}
                             className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer flex-shrink-0"
                           >
-                            <img src={getPhotoUrl(photo.storage_path)} alt={`施術写真 ${i+1}`} className="w-24 h-24 object-cover group-hover:scale-105 transition-transform duration-300" />
+                            <img 
+                              src={getPhotoUrl(photo.storage_path)} 
+                              alt={`施術写真 ${i+1}`} 
+                              className="w-24 h-24 object-cover group-hover:scale-105 transition-transform duration-300" 
+                              loading="lazy"
+                              decoding="async"
+                            />
                           </div>
                         ))}
                       </div>
@@ -581,6 +589,8 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
             src={previewPhotoUrl} 
             alt="拡大写真" 
             className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" 
+            loading="lazy"
+            decoding="async"
           />
         </div>
       )}
