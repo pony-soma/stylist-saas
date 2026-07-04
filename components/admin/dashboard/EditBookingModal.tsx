@@ -108,16 +108,7 @@ export default function EditBookingModal({ isOpen, onClose, booking, onSave, onD
 
     setSaving(true);
 
-    // 予約との重複チェック（自分自身の予約は除外）
-    const { data: overlappingBookings } = await supabase
-      .from('bookings')
-      .select('id')
-      .eq('stylist_id', userId)
-      .neq('id', booking.id)
-      .neq('status', 'cancelled')
-      .lt('start_time', endDateTime.toISOString())
-      .gt('end_time', startDateTime.toISOString())
-      .limit(1);
+    // 予約との重複チェックは行わず、重複を許可する
 
     // 予約不可枠との重複チェック
     const { data: overlappingBlocks } = await supabase
@@ -128,8 +119,8 @@ export default function EditBookingModal({ isOpen, onClose, booking, onSave, onD
       .gt('end_time', startDateTime.toISOString())
       .limit(1);
 
-    if ((overlappingBookings && overlappingBookings.length > 0) || (overlappingBlocks && overlappingBlocks.length > 0)) {
-      alert('指定された時間はすでに他の予定（予約または予約不可枠）が入っています。');
+    if (overlappingBlocks && overlappingBlocks.length > 0) {
+      alert('指定された時間は「予約不可枠（休憩等）」としてブロックされているため変更できません。');
       setSaving(false);
       return;
     }

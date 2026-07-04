@@ -274,12 +274,8 @@ export default function LiffBookingCalendar() {
         return { time: timeStr, available: false };
       }
 
-      // 既存の予約と被るかチェック
-      const isBooked = bookings?.some(b => {
-        const bStart = new Date(b.start_time).getTime();
-        const bEnd = new Date(b.end_time).getTime();
-        return (slotStartTime.getTime() < bEnd) && (slotEndTime.getTime() > bStart);
-      });
+      // 既存の予約と被るかどうかのチェックは行わず、重複予約を許可する
+      // (不可枠のチェックのみ行う)
 
       // 不可枠（ブロック）と被るかチェック
       const isBlocked = blockedSlots?.some(b => {
@@ -290,7 +286,7 @@ export default function LiffBookingCalendar() {
 
       return {
         time: timeStr,
-        available: !isBooked && !isBlocked
+        available: !isBlocked
       };
     }).filter(Boolean) as { time: string, available: boolean }[];
 
