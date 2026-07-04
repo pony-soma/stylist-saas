@@ -44,9 +44,14 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
   const [chemicals, setChemicals] = useState('');
   const [notes, setNotes] = useState('');
 
-  // お客様メモ用State
-  const [customerMemo, setCustomerMemo] = useState('');
-  const [isSavingMemo, setIsSavingMemo] = useState(false);
+  // お客様プロフィール用State
+  const [customerProfile, setCustomerProfile] = useState({
+    memo: '',
+    birth_date: '',
+    address: '',
+    gender: 'unspecified'
+  });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [stylistId, setStylistId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -83,13 +88,18 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
           setStylistId(user.id);
           const { data: memoData } = await supabase
             .from('customer_memos')
-            .select('memo')
+            .select('memo, birth_date, address, gender')
             .eq('stylist_id', user.id)
             .eq('customer_id', custData.id)
             .single();
             
           if (memoData) {
-            setCustomerMemo(memoData.memo || '');
+            setCustomerProfile({
+              memo: memoData.memo || '',
+              birth_date: memoData.birth_date || '',
+              address: memoData.address || '',
+              gender: memoData.gender || 'unspecified'
+            });
           }
         }
 
@@ -122,24 +132,27 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSaveMemo = async () => {
+  const handleSaveProfile = async () => {
     if (!stylistId || !customer) return;
-    setIsSavingMemo(true);
+    setIsSavingProfile(true);
     try {
       const { error } = await supabase
         .from('customer_memos')
         .upsert({
           stylist_id: stylistId,
           customer_id: customer.id,
-          memo: customerMemo,
+          memo: customerProfile.memo,
+          birth_date: customerProfile.birth_date || null,
+          address: customerProfile.address,
+          gender: customerProfile.gender,
           updated_at: new Date().toISOString()
         }, { onConflict: 'stylist_id,customer_id' });
       if (error) throw error;
     } catch (err) {
       console.error(err);
-      alert('メモの保存に失敗しました。');
+      alert('プロフィールの保存に失敗しました。');
     } finally {
-      setIsSavingMemo(false);
+      setIsSavingProfile(false);
     }
   };
 
@@ -406,16 +419,80 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
           </div>
 
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">プロフィール・メモ</label>
+            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">お客様プロフィール</h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              {/* 生年月日と年齢 */}
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">生年月日</label>
+                  <input
+                    type="date"
+                    value={customerProfile.birth_date}
+                    onChange={(e) => setCustomerProfile(prev => ({...prev, birth_date: e.target.value}))}
+                    onBlur={handleSaveProfile}
+                    className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                  />
+                </div>
+                <div className="w-16">
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">年齢</label>
+                  <div className="w-full bg-gray-100 dark:bg-slate-800 border border-transparent rounded-xl px-3 py-2 text-sm text-gray-500 text-center font-medium">
+                    {(() => {
+                      if (!customerProfile.birth_date) return '-';
+                      const today = new Date();
+                      const birth = new Date(customerProfile.birth_date);
+                      let age = today.getFullYear() - birth.getFullYear();
+                      const m = today.getMonth() - birth.getMonth();
+                      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                      return `${age}歳`;
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* 性別 */}
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">性別</label>
+                <select
+                  value={customerProfile.gender}
+                  onChange={(e) => {
+                    setCustomerProfile(prev => ({...prev, gender: e.target.value}));
+                    // selectはonBlurよりonChangeの直後に保存する方が確実
+                  }}
+                  onBlur={handleSaveProfile}
+                  className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                >
+                  <option value="unspecified">未回答</option>
+                  <option value="female">女性</option>
+                  <option value="male">男性</option>
+                  <option value="other">その他</option>
+                </select>
+              </div>
+
+              {/* 住所 */}
+              <div className="sm:col-span-2">
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">住所</label>
+                <input
+                  type="text"
+                  value={customerProfile.address}
+                  onChange={(e) => setCustomerProfile(prev => ({...prev, address: e.target.value}))}
+                  onBlur={handleSaveProfile}
+                  placeholder="都道府県・市区町村・番地など"
+                  className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                />
+              </div>
+            </div>
+
+            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">専用メモ（注意事項・アレルギー・好みなど）</label>
             <div className="relative">
               <textarea
-                value={customerMemo}
-                onChange={(e) => setCustomerMemo(e.target.value)}
-                onBlur={handleSaveMemo}
-                placeholder="お客様の好み、アレルギー、注意事項などを記録できます（自動保存）"
+                value={customerProfile.memo}
+                onChange={(e) => setCustomerProfile(prev => ({...prev, memo: e.target.value}))}
+                onBlur={handleSaveProfile}
+                placeholder="自由に記録できます（フォーカスを外すと自動保存）"
                 className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition min-h-[80px] resize-y"
               />
-              {isSavingMemo && (
+              {isSavingProfile && (
                 <div className="absolute right-3 bottom-3 text-indigo-500">
                   <Loader2 className="w-4 h-4 animate-spin" />
                 </div>
