@@ -43,6 +43,11 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
   const [menu, setMenu] = useState('');
   const [chemicals, setChemicals] = useState('');
   const [notes, setNotes] = useState('');
+
+  // お客様メモ用State
+  const [customerMemo, setCustomerMemo] = useState('');
+  const [isSavingMemo, setIsSavingMemo] = useState(false);
+  const [stylistId, setStylistId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
@@ -72,6 +77,22 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
       if (custData) {
         setCustomer(custData);
         
+        // 担当美容師のIDを取得して、顧客メモも取得
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setStylistId(user.id);
+          const { data: memoData } = await supabase
+            .from('customer_memos')
+            .select('memo')
+            .eq('stylist_id', user.id)
+            .eq('customer_id', custData.id)
+            .single();
+            
+          if (memoData) {
+            setCustomerMemo(memoData.memo || '');
+          }
+        }
+
         // その顧客のカルテを取得
         const { data: recData } = await supabase
           .from('medical_records')
@@ -99,6 +120,27 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
 
   const removeSelectedFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveMemo = async () => {
+    if (!stylistId || !customer) return;
+    setIsSavingMemo(true);
+    try {
+      const { error } = await supabase
+        .from('customer_memos')
+        .upsert({
+          stylist_id: stylistId,
+          customer_id: customer.id,
+          memo: customerMemo,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'stylist_id,customer_id' });
+      if (error) throw error;
+    } catch (err) {
+      console.error(err);
+      alert('メモの保存に失敗しました。');
+    } finally {
+      setIsSavingMemo(false);
+    }
   };
 
   const removeEditSelectedFile = (index: number) => {
@@ -361,6 +403,24 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
             >
               <MessageCircle className="w-4 h-4 text-blue-500" /> LINE送信
             </button>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">プロフィール・メモ</label>
+            <div className="relative">
+              <textarea
+                value={customerMemo}
+                onChange={(e) => setCustomerMemo(e.target.value)}
+                onBlur={handleSaveMemo}
+                placeholder="お客様の好み、アレルギー、注意事項などを記録できます（自動保存）"
+                className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition min-h-[80px] resize-y"
+              />
+              {isSavingMemo && (
+                <div className="absolute right-3 bottom-3 text-indigo-500">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

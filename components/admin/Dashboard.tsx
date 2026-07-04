@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, ChevronRight, ChevronLeft, Link as LinkIcon, CalendarPlus, Clock, Pencil, Settings, Menu as MenuIcon, UserCog } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronRight, ChevronLeft, Link as LinkIcon, CalendarPlus, Clock, Pencil, Settings, Menu as MenuIcon, UserCog, User } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import MedicalRecordView from '@/components/admin/MedicalRecord';
@@ -111,6 +111,14 @@ export default function AdminDashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <span>カレンダー</span>
+          </Link>
+
+          <Link 
+            href="/admin/customers" 
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full transition-all shadow-sm"
+          >
+            <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 dark:text-slate-400" />
+            <span>顧客一覧</span>
           </Link>
 
           <Link 
