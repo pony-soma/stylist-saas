@@ -180,22 +180,22 @@ export default function ScheduleSettingsForm() {
               const isOff = current.is_day_off || false;
               
               return (
-                <div key={day.id} className="p-4 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4 w-32">
+                <div key={day.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                  <div className="flex items-center w-full sm:w-24 shrink-0">
                     <span className={`font-medium ${day.id === 0 ? 'text-red-500' : day.id === 6 ? 'text-blue-500' : 'text-gray-700 dark:text-gray-200'}`}>
                       {day.name}
                     </span>
                   </div>
                   
-                  <div className="flex items-center gap-3 flex-1 justify-end">
-                    <label className="flex items-center gap-2 cursor-pointer mr-2">
+                  <div className="flex items-center gap-3 flex-1 justify-between sm:justify-end">
+                    <label className="flex items-center gap-2 cursor-pointer shrink-0">
                       <input 
                         type="checkbox" 
                         className="rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
                         checked={isOff}
                         onChange={(e) => handleWeekChange(day.id, 'is_day_off', e.target.checked)}
                       />
-                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">定休日</span>
+                      <span className="whitespace-nowrap text-sm font-medium text-gray-600 dark:text-gray-400">定休日</span>
                     </label>
 
                     {!isOff && (
@@ -249,7 +249,7 @@ export default function ScheduleSettingsForm() {
                     onChange={() => setNewDateIsDayOff(true)}
                     className="text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-sm font-medium">臨時休業</span>
+                  <span className="whitespace-nowrap text-sm font-medium">臨時休業</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input 
@@ -259,7 +259,7 @@ export default function ScheduleSettingsForm() {
                     onChange={() => setNewDateIsDayOff(false)}
                     className="text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span className="text-sm font-medium">臨時営業</span>
+                  <span className="whitespace-nowrap text-sm font-medium">臨時営業</span>
                 </label>
               </div>
               
