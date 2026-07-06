@@ -450,13 +450,13 @@ export default function LiffBookingCalendar() {
           {selectedMenuIds.size === 0 && (
             <p className="text-sm text-red-500 mb-2 font-medium">※まずはメニューを選択してください</p>
           )}
-          <div className={selectedMenuIds.size === 0 ? "opacity-50 pointer-events-none" : ""}>
-            <div className="flex justify-between items-center mb-4 bg-gray-50 p-2 rounded-lg border border-gray-100">
-              <button onClick={handlePrevMonth} className="px-3 py-1 text-indigo-600 hover:bg-indigo-100 rounded transition font-medium text-sm">
+          <div className={selectedMenuIds.size === 0 ? "opacity-50 pointer-events-none transition-opacity duration-300" : "transition-opacity duration-300"}>
+            <div className="flex justify-between items-center mb-4 bg-gray-50 dark:bg-slate-800/50 p-2 rounded-lg border border-gray-100 dark:border-gray-800">
+              <button onClick={handlePrevMonth} className="px-3 py-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded transition font-medium text-sm">
                 先月
               </button>
-              <span className="font-bold text-gray-800">{currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月</span>
-              <button onClick={handleNextMonth} className="px-3 py-1 text-indigo-600 hover:bg-indigo-100 rounded transition font-medium text-sm">
+              <span className="font-bold text-gray-800 dark:text-gray-200">{currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月</span>
+              <button onClick={handleNextMonth} className="px-3 py-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded transition font-medium text-sm">
                 翌月
               </button>
             </div>
@@ -480,11 +480,11 @@ export default function LiffBookingCalendar() {
         selectedTime={selectedTime}
         onSelectTime={setSelectedTime}
       >
-        <div className="mt-4 border-t pt-4">
-          <div className="bg-gray-50 p-3 rounded-xl mb-3 border border-gray-100">
-            <p className="text-sm text-gray-500 mb-1 font-medium">ご予約内容</p>
+        <div className="mt-4 border-t border-gray-200 dark:border-gray-800 pt-4">
+          <div className="bg-gray-50 dark:bg-slate-800/50 p-3 rounded-xl mb-3 border border-gray-100 dark:border-gray-800">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 font-medium">ご予約内容</p>
             {selectedDate && selectedTime && (
-              <p className="font-bold text-lg text-gray-900 mb-2">
+              <p className="font-bold text-lg text-gray-900 dark:text-white mb-2">
                 {selectedDate.getMonth() + 1}月{selectedDate.getDate()}日 {selectedTime} 〜
               </p>
             )}
