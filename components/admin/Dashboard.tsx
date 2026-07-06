@@ -189,9 +189,9 @@ export default function AdminDashboard() {
 
         {/* 右側: 選択された日のタイムライン */}
         <section className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-          <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-indigo-500" />
+          <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center gap-2">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
+              <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 shrink-0" />
               {selectedDate.getMonth() + 1}月{selectedDate.getDate()}日のスケジュール
             </h2>
             <button 
