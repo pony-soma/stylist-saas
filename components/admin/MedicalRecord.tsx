@@ -400,7 +400,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
           
           <div className="flex gap-4">
             {customer.phone_number && (
-              <a href={`tel:${customer.phone_number}`} className="flex-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition shadow-sm">
+              <a href={`tel:${customer.phone_number}`} className="whitespace-nowrap flex-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition shadow-sm">
                 <Phone className="w-4 h-4 text-green-500" /> 電話する
               </a>
             )}
@@ -412,7 +412,7 @@ export default function MedicalRecordView({ customerId, onClose }: { customerId:
                   alert('LINE連携がされていないお客様です。');
                 }
               }}
-              className="flex-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition shadow-sm"
+              className="whitespace-nowrap flex-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition shadow-sm"
             >
               <MessageCircle className="w-4 h-4 text-blue-500" /> LINE送信
             </button>

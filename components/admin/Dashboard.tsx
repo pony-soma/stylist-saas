@@ -89,7 +89,7 @@ export default function AdminDashboard() {
               <p className="text-xs text-gray-500 font-medium">あなた専用の予約URL（LINEに設定）</p>
               <div className="mt-1 flex justify-end">
                 <button
-                  className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors font-medium border border-indigo-100 dark:border-indigo-800 shadow-sm"
+                  className="whitespace-nowrap text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors font-medium border border-indigo-100 dark:border-indigo-800 shadow-sm"
                   onClick={() => {
                     const liffId = process.env.NEXT_PUBLIC_LIFF_ID || '未設定';
                     navigator.clipboard.writeText(`https://liff.line.me/${liffId}?stylist=${userId}`);
@@ -105,17 +105,15 @@ export default function AdminDashboard() {
           
           <Link 
             href="/admin/schedule" 
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full transition-all shadow-sm"
+            className="whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full transition-all shadow-sm"
           >
-            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+            <CalendarIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 dark:text-slate-400" />
             <span>カレンダー</span>
           </Link>
 
           <Link 
             href="/admin/customers" 
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full transition-all shadow-sm"
+            className="whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full transition-all shadow-sm"
           >
             <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 dark:text-slate-400" />
             <span>顧客一覧</span>
@@ -123,7 +121,7 @@ export default function AdminDashboard() {
 
           <Link 
             href="/admin/settings"  
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full transition-all shadow-sm"
+            className="whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-full transition-all shadow-sm"
           >
             <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 dark:text-slate-400" />
             <span>設定</span>
@@ -147,7 +145,7 @@ export default function AdminDashboard() {
 
       <div className="grid lg:grid-cols-3 gap-8">
         {/* 左側: カレンダー */}
-        <section className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5 h-fit sticky top-6">
+        <section className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5 h-fit lg:sticky lg:top-6">
           <div className="flex justify-between items-center mb-6">
             <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600"><ChevronLeft className="w-5 h-5"/></button>
             <h2 className="font-bold text-lg text-gray-800 dark:text-white">{currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月</h2>
@@ -198,7 +196,7 @@ export default function AdminDashboard() {
             </h2>
             <button 
               onClick={() => setIsProxyModalOpen(true)}
-              className="text-sm px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 font-medium rounded-lg flex items-center gap-2 transition border border-indigo-200 dark:border-indigo-800"
+              className="whitespace-nowrap text-sm px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 font-medium rounded-lg flex items-center gap-2 transition border border-indigo-200 dark:border-indigo-800"
             >
               <CalendarPlus className="w-4 h-4" />
               代理予約
