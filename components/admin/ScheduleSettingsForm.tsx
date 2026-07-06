@@ -153,7 +153,7 @@ export default function ScheduleSettingsForm() {
         </Link>
       </div>
 
-      <div className="mb-8 flex justify-between items-end">
+      <div className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">営業時間・定休日設定</h1>
           <p className="text-gray-500 mt-1">基本の営業時間と定休日の設定、および臨時休業等の管理を行います。</p>
@@ -161,7 +161,7 @@ export default function ScheduleSettingsForm() {
         <button
           onClick={handleSaveAll}
           disabled={saving}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-medium transition flex items-center gap-2 shadow-sm disabled:opacity-50"
+          className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-medium transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           設定を保存

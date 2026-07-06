@@ -50,19 +50,19 @@ const CustomToolbar = (toolbar: any) => {
 
   return (
     <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-      <div className="flex items-center gap-2">
-        <button className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" onClick={goToBack}>前へ</button>
-        <button className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" onClick={goToCurrent}>今日</button>
-        <button className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" onClick={goToNext}>次へ</button>
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 w-full sm:w-auto">
+        <button className="whitespace-nowrap px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" onClick={goToBack}>前へ</button>
+        <button className="whitespace-nowrap px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" onClick={goToCurrent}>今日</button>
+        <button className="whitespace-nowrap px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" onClick={goToNext}>次へ</button>
       </div>
       <div>
         {label()}
       </div>
-      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50">
+      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50 w-full sm:w-auto overflow-x-auto">
         {toolbar.views.map((viewName: string) => (
           <button
             key={viewName}
-            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition ${
+            className={`whitespace-nowrap px-4 py-1.5 text-sm font-medium rounded-lg transition ${
               toolbar.view === viewName 
                 ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-400 border border-slate-200 dark:border-slate-600' 
                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 border border-transparent'
@@ -233,35 +233,39 @@ export default function ScheduleCalendar() {
       </div>
 
       <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800/50" style={{ height: '700px' }}>
-        <Calendar
-          localizer={localizer}
-          events={events}
-          startAccessor="start"
-          endAccessor="end"
-          style={{ height: '100%' }}
-          views={[Views.MONTH, Views.WEEK, Views.DAY]}
-          defaultView={Views.WEEK}
-          onNavigate={(date) => setCurrentDate(date)}
-          selectable={true}
-          onSelectSlot={handleSelectSlot}
-          onSelectEvent={handleSelectEvent}
-          eventPropGetter={eventStyleGetter}
-          components={{
-            toolbar: CustomToolbar
-          }}
-          culture="ja"
-          messages={{
-            next: "次へ",
-            previous: "前へ",
-            today: "今日",
-            month: "月",
-            week: "週",
-            day: "日",
-            noEventsInRange: "この期間に予定はありません"
-          }}
-          min={new Date(2020, 0, 1, 8, 0, 0)} // Start week/day view at 8 AM
-          max={new Date(2020, 0, 1, 23, 0, 0)} // End week/day view at 11 PM
-        />
+        <div className="h-full overflow-x-auto">
+          <div className="h-full min-w-[768px]">
+            <Calendar
+              localizer={localizer}
+              events={events}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: '100%' }}
+              views={[Views.MONTH, Views.WEEK, Views.DAY]}
+              defaultView={Views.WEEK}
+              onNavigate={(date) => setCurrentDate(date)}
+              selectable={true}
+              onSelectSlot={handleSelectSlot}
+              onSelectEvent={handleSelectEvent}
+              eventPropGetter={eventStyleGetter}
+              components={{
+                toolbar: CustomToolbar
+              }}
+              culture="ja"
+              messages={{
+                next: "次へ",
+                previous: "前へ",
+                today: "今日",
+                month: "月",
+                week: "週",
+                day: "日",
+                noEventsInRange: "この期間に予定はありません"
+              }}
+              min={new Date(2020, 0, 1, 8, 0, 0)} // Start week/day view at 8 AM
+              max={new Date(2020, 0, 1, 23, 0, 0)} // End week/day view at 11 PM
+            />
+          </div>
+        </div>
       </div>
 
       {/* 予約編集モーダル */}

@@ -83,14 +83,14 @@ export default function MenuManager() {
         </Link>
       </div>
 
-      <div className="flex justify-between items-center mb-8 pb-4 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8 pb-4 border-b border-gray-200 dark:border-gray-800">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">メニュー管理</h1>
           <p className="text-gray-500 mt-1">提供するメニューと料金・所要時間を設定します</p>
         </div>
         <button
           onClick={() => openModal()}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 shadow-sm"
+          className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center justify-center gap-2 shadow-sm"
         >
           <Plus className="w-4 h-4" />
           新規メニュー
@@ -103,41 +103,72 @@ export default function MenuManager() {
             登録されているメニューがありません。<br/>新規メニューを追加してください。
           </div>
         ) : (
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-gray-800">
-                <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">メニュー名</th>
-                <th className="p-4 font-semibold text-gray-600 dark:text-gray-300 w-32">所要時間</th>
-                <th className="p-4 font-semibold text-gray-600 dark:text-gray-300 w-32">料金</th>
-                <th className="p-4 font-semibold text-gray-600 dark:text-gray-300 w-24 text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* スマホ用: カードレイアウト */}
+            <div className="block sm:hidden divide-y divide-gray-100 dark:divide-gray-800">
               {menus.map((menu) => (
-                <tr key={menu.id} className="border-b border-gray-50 dark:border-gray-800/50 last:border-0 hover:bg-gray-50/50 dark:hover:bg-slate-800/30 transition">
-                  <td className="p-4 font-medium text-gray-900 dark:text-white">{menu.name}</td>
-                  <td className="p-4 text-gray-600 dark:text-gray-400">{menu.duration}分</td>
-                  <td className="p-4 text-gray-600 dark:text-gray-400">¥{menu.price.toLocaleString()}</td>
-                  <td className="p-4 text-right">
-                    <div className="flex justify-end gap-2">
+                <div key={menu.id} className="p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
+                  <div className="font-bold text-gray-900 dark:text-white mb-3 text-lg">{menu.name}</div>
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      {menu.duration}分 / ¥{menu.price.toLocaleString()}
+                    </div>
+                    <div className="flex gap-2">
                       <button
                         onClick={() => openModal(menu)}
-                        className="p-1.5 text-gray-400 hover:text-indigo-600 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded transition"
+                        className="p-2.5 text-gray-500 hover:text-indigo-600 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm transition"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(menu)}
-                        className="p-1.5 text-gray-400 hover:text-red-600 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded transition"
+                        className="p-2.5 text-gray-500 hover:text-red-600 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm transition"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            {/* PC用: テーブルレイアウト */}
+            <table className="hidden sm:table w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-gray-800">
+                  <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">メニュー名</th>
+                  <th className="p-4 font-semibold text-gray-600 dark:text-gray-300 w-32">所要時間</th>
+                  <th className="p-4 font-semibold text-gray-600 dark:text-gray-300 w-32">料金</th>
+                  <th className="p-4 font-semibold text-gray-600 dark:text-gray-300 w-24 text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {menus.map((menu) => (
+                  <tr key={menu.id} className="border-b border-gray-50 dark:border-gray-800/50 last:border-0 hover:bg-gray-50/50 dark:hover:bg-slate-800/30 transition">
+                    <td className="p-4 font-medium text-gray-900 dark:text-white">{menu.name}</td>
+                    <td className="p-4 text-gray-600 dark:text-gray-400">{menu.duration}分</td>
+                    <td className="p-4 text-gray-600 dark:text-gray-400">¥{menu.price.toLocaleString()}</td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => openModal(menu)}
+                          className="p-1.5 text-gray-400 hover:text-indigo-600 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded transition"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(menu)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
 
