@@ -425,7 +425,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
             
             <div className="flex flex-wrap gap-2 mb-4">
               {/* 生年月日 */}
-              <div className="w-[145px] shrink-0">
+              <div className="flex-1 min-w-[150px] max-w-[220px]">
                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">生年月日</label>
                 <input
                   type="date"
