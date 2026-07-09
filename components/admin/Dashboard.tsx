@@ -184,17 +184,17 @@ export default function AdminDashboard() {
 
         {/* 右側: 選択された日のタイムライン */}
         <section className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-          <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center gap-2">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
+          <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-2">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-1.5 sm:gap-2">
               <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 shrink-0" />
               {selectedDate.getMonth() + 1}月{selectedDate.getDate()}日のスケジュール
             </h2>
             <Link 
               href={`/admin/bookings/new?date=${selectedDate.toISOString().split('T')[0]}`}
-              className="whitespace-nowrap text-sm px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 font-medium rounded-lg flex items-center gap-2 transition border border-indigo-200 dark:border-indigo-800"
+              className="w-full sm:w-auto justify-center whitespace-nowrap text-sm px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 font-medium rounded-lg flex items-center gap-2 transition border border-indigo-200 dark:border-indigo-800"
             >
               <CalendarPlus className="w-4 h-4" />
-              代理予約
+              代理予約を作成
             </Link>
           </div>
           <div className="p-5 relative min-h-[300px]">
@@ -219,8 +219,8 @@ export default function AdminDashboard() {
                       item.status === 'completed' ? 'bg-gray-50 border-gray-200 dark:bg-slate-800 dark:border-gray-700 opacity-70' :
                       'bg-indigo-50/50 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800/50'
                     }`}>
-                      <div className="flex justify-between items-start">
-                        <div>
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 sm:gap-2">
+                        <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="font-bold text-gray-900 dark:text-white">{item.customers?.display_name}</h3>
                             {item.source === 'proxy' && (
@@ -254,13 +254,13 @@ export default function AdminDashboard() {
                             {getDurationMinutes(item.start_time, item.end_time)}分
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t border-indigo-100/50 sm:border-t-0 dark:border-indigo-800/30">
                           {item.status === 'confirmed' && (
-                            <>
+                            <div className="flex gap-2 w-full sm:w-auto">
                               <Link
                                 href={`/admin/bookings/${item.id}/edit`}
                                 onClick={(e) => e.stopPropagation()}
-                                className="text-xs font-bold px-3 py-1.5 rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30 dark:hover:bg-indigo-900/40 inline-block"
+                                className="flex-1 sm:flex-none text-center text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30 dark:hover:bg-indigo-900/40"
                               >
                                 詳細・編集
                               </Link>
@@ -271,13 +271,13 @@ export default function AdminDashboard() {
                                     updateBookingStatus(item.id, 'cancelled').then(() => fetchBookings(currentMonth));
                                   }
                                 }}
-                                className="text-xs font-bold px-3 py-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition border border-red-100 dark:bg-red-900/20 dark:border-red-900/30 dark:hover:bg-red-900/40"
+                                className="flex-1 sm:flex-none text-center text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition border border-red-100 dark:bg-red-900/20 dark:border-red-900/30 dark:hover:bg-red-900/40"
                               >
                                 キャンセル
                               </button>
-                            </>
+                            </div>
                           )}
-                          <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <ChevronRight className="hidden sm:block w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
                         </div>
                       </div>
                     </div>
