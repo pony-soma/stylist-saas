@@ -423,43 +423,42 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
             <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">お客様プロフィール</h3>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              {/* 生年月日と年齢 */}
-              <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-                <div className="w-full sm:flex-1">
-                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">生年月日</label>
-                  <input
-                    type="date"
-                    value={customerProfile.birth_date}
-                    onChange={(e) => setCustomerProfile(prev => ({...prev, birth_date: e.target.value}))}
-                    onBlur={handleSaveProfile}
-                    className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                  />
-                </div>
-                <div className="w-full sm:w-24 shrink-0">
-                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">年齢</label>
-                  <div className="w-full bg-gray-100 dark:bg-slate-800 border border-transparent rounded-xl px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
-                    {(() => {
-                      if (!customerProfile.birth_date) return '-';
-                      const today = new Date();
-                      const birth = new Date(customerProfile.birth_date);
-                      let age = today.getFullYear() - birth.getFullYear();
-                      const m = today.getMonth() - birth.getMonth();
-                      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-                      return `${age}歳`;
-                    })()}
-                  </div>
+            <div className="flex flex-wrap gap-4 mb-4">
+              {/* 生年月日 */}
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">生年月日</label>
+                <input
+                  type="date"
+                  value={customerProfile.birth_date}
+                  onChange={(e) => setCustomerProfile(prev => ({...prev, birth_date: e.target.value}))}
+                  onBlur={handleSaveProfile}
+                  className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                />
+              </div>
+
+              {/* 年齢 */}
+              <div className="w-20 shrink-0">
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 text-center">年齢</label>
+                <div className="w-full bg-gray-100 dark:bg-slate-800 border border-transparent rounded-xl px-2 py-2.5 text-sm text-gray-500 dark:text-gray-400 text-center font-medium whitespace-nowrap">
+                  {(() => {
+                    if (!customerProfile.birth_date) return '-';
+                    const today = new Date();
+                    const birth = new Date(customerProfile.birth_date);
+                    let age = today.getFullYear() - birth.getFullYear();
+                    const m = today.getMonth() - birth.getMonth();
+                    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                    return `${age}歳`;
+                  })()}
                 </div>
               </div>
 
               {/* 性別 */}
-              <div>
+              <div className="w-32 shrink-0 flex-grow sm:flex-grow-0">
                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">性別</label>
                 <select
                   value={customerProfile.gender}
                   onChange={(e) => {
                     setCustomerProfile(prev => ({...prev, gender: e.target.value}));
-                    // selectはonBlurよりonChangeの直後に保存する方が確実
                   }}
                   onBlur={handleSaveProfile}
                   className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition appearance-none"
@@ -472,7 +471,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
               </div>
 
               {/* 住所 */}
-              <div className="sm:col-span-2">
+              <div className="w-full">
                 <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">住所</label>
                 <input
                   type="text"
