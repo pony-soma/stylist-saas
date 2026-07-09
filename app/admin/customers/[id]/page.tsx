@@ -471,7 +471,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
               </div>
 
               {/* 住所 */}
-              <div className="w-full">
+              <div className="col-span-3">
                 <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">住所</label>
                 <input
                   type="text"
