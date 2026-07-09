@@ -446,7 +446,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                   value={customerProfile.birth_date}
                   onChange={(e) => setCustomerProfile(prev => ({...prev, birth_date: e.target.value}))}
                   onBlur={handleSaveProfile}
-                  className="w-full min-w-0 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-0 sm:px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-center sm:text-left appearance-none sm:appearance-auto"
+                  className="w-full min-h-[36px] min-w-0 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-0 sm:px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-center sm:text-left appearance-none sm:appearance-auto"
                 />
               </div>
 
