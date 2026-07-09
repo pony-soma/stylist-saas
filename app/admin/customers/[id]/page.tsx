@@ -52,7 +52,8 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
     memo: '',
     birth_date: '',
     address: '',
-    gender: 'unspecified'
+    gender: 'unspecified',
+    phone_number: ''
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [stylistId, setStylistId] = useState<string | null>(null);
@@ -101,8 +102,11 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
               memo: memoData.memo || '',
               birth_date: memoData.birth_date || '',
               address: memoData.address || '',
-              gender: memoData.gender || 'unspecified'
+              gender: memoData.gender || 'unspecified',
+              phone_number: custData.phone_number || ''
             });
+          } else {
+            setCustomerProfile(prev => ({ ...prev, phone_number: custData.phone_number || '' }));
           }
         }
 
@@ -151,6 +155,16 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
           updated_at: new Date().toISOString()
         }, { onConflict: 'stylist_id,customer_id' });
       if (error) throw error;
+
+      // 電話番号の保存 (customersテーブル)
+      if (customerProfile.phone_number !== customer.phone_number) {
+        const { error: custError } = await supabase
+          .from('customers')
+          .update({ phone_number: customerProfile.phone_number })
+          .eq('id', customer.id);
+        if (custError) throw custError;
+        setCustomer(prev => prev ? { ...prev, phone_number: customerProfile.phone_number } : prev);
+      }
     } catch (err) {
       console.error(err);
       alert('プロフィールの保存に失敗しました。');
@@ -470,8 +484,21 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                 </select>
               </div>
 
+              {/* 電話番号 */}
+              <div className="col-span-3 sm:col-span-2">
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">電話番号</label>
+                <input
+                  type="tel"
+                  value={customerProfile.phone_number}
+                  onChange={(e) => setCustomerProfile(prev => ({...prev, phone_number: e.target.value}))}
+                  onBlur={handleSaveProfile}
+                  placeholder="090-1234-5678"
+                  className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                />
+              </div>
+
               {/* 住所 */}
-              <div className="col-span-3 sm:col-span-4">
+              <div className="col-span-3 sm:col-span-2">
                 <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">住所</label>
                 <input
                   type="text"
