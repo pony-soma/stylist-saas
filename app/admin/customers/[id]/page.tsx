@@ -425,20 +425,20 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               {/* 生年月日と年齢 */}
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">生年月日</label>
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">生年月日</label>
                   <input
                     type="date"
                     value={customerProfile.birth_date}
                     onChange={(e) => setCustomerProfile(prev => ({...prev, birth_date: e.target.value}))}
                     onBlur={handleSaveProfile}
-                    className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                    className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                   />
                 </div>
-                <div className="w-16">
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">年齢</label>
-                  <div className="w-full bg-gray-100 dark:bg-slate-800 border border-transparent rounded-xl px-3 py-2 text-sm text-gray-500 text-center font-medium">
+                <div className="w-20 shrink-0">
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 text-center">年齢</label>
+                  <div className="w-full bg-gray-100 dark:bg-slate-800 border border-transparent rounded-xl px-2 py-2.5 text-sm text-gray-500 dark:text-gray-400 text-center font-medium whitespace-nowrap">
                     {(() => {
                       if (!customerProfile.birth_date) return '-';
                       const today = new Date();
@@ -454,7 +454,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
 
               {/* 性別 */}
               <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">性別</label>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">性別</label>
                 <select
                   value={customerProfile.gender}
                   onChange={(e) => {
@@ -462,7 +462,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                     // selectはonBlurよりonChangeの直後に保存する方が確実
                   }}
                   onBlur={handleSaveProfile}
-                  className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                  className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition appearance-none"
                 >
                   <option value="unspecified">未回答</option>
                   <option value="female">女性</option>
