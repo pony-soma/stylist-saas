@@ -423,23 +423,23 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
             <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">お客様プロフィール</h3>
             
-            <div className="grid grid-cols-[minmax(0,1fr)_56px_85px] gap-2 mb-4">
+            <div className="grid grid-cols-[minmax(0,1fr)_56px_85px] sm:grid-cols-4 gap-2 sm:gap-4 mb-4">
               {/* 生年月日 */}
-              <div className="min-w-0">
+              <div className="min-w-0 sm:col-span-2">
                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 whitespace-nowrap">生年月日</label>
                 <input
                   type="date"
                   value={customerProfile.birth_date}
                   onChange={(e) => setCustomerProfile(prev => ({...prev, birth_date: e.target.value}))}
                   onBlur={handleSaveProfile}
-                  className="w-full min-w-0 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-0 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-center appearance-none"
+                  className="w-full min-w-0 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-0 sm:px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-center sm:text-left appearance-none sm:appearance-auto"
                 />
               </div>
 
               {/* 年齢 */}
-              <div className="w-[56px] shrink-0">
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 text-center">年齢</label>
-                <div className="w-full bg-gray-100 dark:bg-slate-800 border border-transparent rounded-xl px-0 py-2 text-sm text-gray-500 dark:text-gray-400 text-center font-medium whitespace-nowrap overflow-hidden tracking-tighter">
+              <div className="w-[56px] sm:w-full shrink-0 sm:col-span-1">
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 text-center sm:text-left">年齢</label>
+                <div className="w-full bg-gray-100 dark:bg-slate-800 border border-transparent rounded-xl px-0 sm:px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left font-medium whitespace-nowrap overflow-hidden tracking-tighter sm:tracking-normal">
                   {(() => {
                     if (!customerProfile.birth_date) return '-';
                     const today = new Date();
@@ -453,15 +453,15 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
               </div>
 
               {/* 性別 */}
-              <div className="w-[85px] shrink-0">
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">性別</label>
+              <div className="w-[85px] sm:w-full shrink-0 sm:col-span-1">
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 sm:text-left">性別</label>
                 <select
                   value={customerProfile.gender}
                   onChange={(e) => {
                     setCustomerProfile(prev => ({...prev, gender: e.target.value}));
                   }}
                   onBlur={handleSaveProfile}
-                  className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-1 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition appearance-none text-center"
+                  className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-1 sm:px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition appearance-none sm:appearance-auto text-center sm:text-left"
                 >
                   <option value="unspecified">未回答</option>
                   <option value="female">女性</option>
@@ -471,7 +471,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
               </div>
 
               {/* 住所 */}
-              <div className="col-span-3">
+              <div className="col-span-3 sm:col-span-4">
                 <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">住所</label>
                 <input
                   type="text"
