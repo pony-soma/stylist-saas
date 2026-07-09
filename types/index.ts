@@ -5,6 +5,8 @@ export type CustomerInfo = {
   created_at: string;
   line_user_id?: string;
   line_picture_url?: string;
+  birth_date?: string | null;
+  gender?: string;
 };
 
 export type Menu = {

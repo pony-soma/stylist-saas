@@ -40,12 +40,28 @@ export default function CustomerList() {
         .eq('stylist_id', session.user.id)
         .order('created_at', { ascending: false });
       
+      // 顧客プロフィールのメモ（生年月日、性別など）を取得
+      const { data: memos } = await supabase
+        .from('customer_memos')
+        .select('customer_id, birth_date, gender')
+        .eq('stylist_id', session.user.id);
+        
+      const memoMap = new Map();
+      if (memos) {
+        memos.forEach(m => memoMap.set(m.customer_id, m));
+      }
+
       if (bookings) {
-        // 重複を排除
+        // 重複を排除しつつメモデータをマージ
         const uniqueCustomersMap = new Map<string, CustomerInfo>();
         bookings.forEach((b: any) => {
           if (b.customers && !uniqueCustomersMap.has(b.customers.id)) {
-            uniqueCustomersMap.set(b.customers.id, b.customers);
+            const memo = memoMap.get(b.customers.id);
+            uniqueCustomersMap.set(b.customers.id, {
+              ...b.customers,
+              birth_date: memo?.birth_date || null,
+              gender: memo?.gender || 'unspecified'
+            });
           }
         });
         setCustomers(Array.from(uniqueCustomersMap.values()));
@@ -60,6 +76,23 @@ export default function CustomerList() {
     c.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.phone_number?.includes(searchTerm)
   );
+
+  const calculateAge = (birthDate: string | null | undefined) => {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+  };
+
+  const translateGender = (gender: string | undefined) => {
+    if (gender === 'male') return '男性';
+    if (gender === 'female') return '女性';
+    if (gender === 'other') return 'その他';
+    return null;
+  };
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -116,11 +149,21 @@ export default function CustomerList() {
                 <h3 className="font-bold text-gray-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
                   {customer.display_name}
                 </h3>
-                <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                <div className="flex items-center flex-wrap gap-2 mt-1.5 text-xs text-gray-500">
                   {customer.phone_number ? (
                     <span className="flex items-center gap-1"><Phone className="w-3 h-3"/> {customer.phone_number}</span>
                   ) : (
-                    <span className="text-gray-400">電話番号未登録</span>
+                    <span className="text-gray-400 flex items-center gap-1"><Phone className="w-3 h-3"/>未登録</span>
+                  )}
+                  {calculateAge(customer.birth_date) !== null && (
+                    <span className="bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300 font-medium">
+                      {calculateAge(customer.birth_date)}歳
+                    </span>
+                  )}
+                  {translateGender(customer.gender) && (
+                    <span className="bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300 font-medium">
+                      {translateGender(customer.gender)}
+                    </span>
                   )}
                 </div>
               </div>
