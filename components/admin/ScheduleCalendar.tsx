@@ -11,7 +11,7 @@ import { useAvailability } from '@/hooks/useAvailability';
 import { supabase } from '@/lib/supabase/client';
 import { Loader2, ArrowLeft, Calendar as CalendarIcon, Settings } from 'lucide-react';
 import Link from 'next/link';
-import EditBookingModal from './dashboard/EditBookingModal';
+import { useRouter } from 'next/navigation';
 import { Menu } from '@/types';
 
 const locales = {
@@ -86,7 +86,7 @@ export default function ScheduleCalendar() {
   const { blockedSlots, loading: availabilityLoading, fetchAvailability, createBlockedSlot, deleteBlockedSlot } = useAvailability(userId);
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [editingBooking, setEditingBooking] = useState<any | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -176,7 +176,7 @@ export default function ScheduleCalendar() {
       // It's a booking
       const booking = monthBookings.find(b => b.id === event.id);
       if (booking) {
-        setEditingBooking(booking);
+        router.push(`/admin/bookings/${booking.id}/edit`);
       }
     }
   };
@@ -268,24 +268,6 @@ export default function ScheduleCalendar() {
         </div>
       </div>
 
-      {/* 予約編集モーダル */}
-      <EditBookingModal 
-        isOpen={!!editingBooking} 
-        onClose={() => setEditingBooking(null)}
-        booking={editingBooking}
-        onSave={async (id: string, start: string, end: string, menuNote: string, selectedMenus: Menu[], totalPrice: number) => {
-          if (await updateBookingDetails(id, start, end, menuNote, selectedMenus, totalPrice)) {
-            fetchBookings(currentDate);
-          } else {
-            throw new Error('Update failed');
-          }
-        }}
-        onDelete={async (id: string) => {
-          await updateBookingStatus(id, 'cancelled');
-          fetchBookings(currentDate);
-        }}
-        userId={userId!}
-      />
     </div>
   );
 }

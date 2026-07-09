@@ -3,10 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, ChevronRight, ChevronLeft, Link as LinkIcon, CalendarPlus, Clock, Pencil, Settings, Menu as MenuIcon, UserCog, User } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
-import MedicalRecordView from '@/components/admin/MedicalRecord';
-import ProxyBookingModal from './dashboard/ProxyBookingModal';
-import EditBookingModal from './dashboard/EditBookingModal';
 import PendingBookingsList from './dashboard/PendingBookingsList';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useBookings } from '@/hooks/useBookings';
@@ -18,11 +16,9 @@ export default function AdminDashboard() {
   
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const [isProxyModalOpen, setIsProxyModalOpen] = useState(false);
-  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const router = useRouter();
 
-  const { pending, monthBookings, loading, fetchBookings, updateBookingStatus, updateBookingDetails } = useBookings(userId);
+  const { pending, monthBookings, loading, fetchBookings, updateBookingStatus } = useBookings(userId);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -140,7 +136,6 @@ export default function AdminDashboard() {
         pending={pending} 
         onApprove={handleApprove} 
         onReject={handleReject} 
-        onSelectCustomer={setSelectedCustomerId} 
       />
 
       <div className="grid lg:grid-cols-3 gap-8">
@@ -194,13 +189,13 @@ export default function AdminDashboard() {
               <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 shrink-0" />
               {selectedDate.getMonth() + 1}月{selectedDate.getDate()}日のスケジュール
             </h2>
-            <button 
-              onClick={() => setIsProxyModalOpen(true)}
+            <Link 
+              href={`/admin/bookings/new?date=${selectedDate.toISOString().split('T')[0]}`}
               className="whitespace-nowrap text-sm px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 font-medium rounded-lg flex items-center gap-2 transition border border-indigo-200 dark:border-indigo-800"
             >
               <CalendarPlus className="w-4 h-4" />
               代理予約
-            </button>
+            </Link>
           </div>
           <div className="p-5 relative min-h-[300px]">
             <div className="absolute left-[88px] top-5 bottom-5 w-px bg-gray-100 dark:bg-gray-800"></div>
@@ -211,7 +206,7 @@ export default function AdminDashboard() {
                   <p>この日の予約はありません。</p>
                 </div>
               ) : selectedTimeline.map((item) => (
-                <div key={item.id} onClick={() => setSelectedCustomerId(item.customer_id)} className="flex gap-6 group cursor-pointer">
+                <div key={item.id} onClick={() => router.push(`/admin/customers/${item.customer_id}`)} className="flex gap-6 group cursor-pointer">
                   <div className="w-16 text-right pt-2">
                     <span className="text-sm font-medium text-gray-500">{formatTime(item.start_time)}</span>
                   </div>
@@ -262,15 +257,13 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-2">
                           {item.status === 'confirmed' && (
                             <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingBooking(item);
-                                }}
-                                className="text-xs font-bold px-3 py-1.5 rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30 dark:hover:bg-indigo-900/40"
+                              <Link
+                                href={`/admin/bookings/${item.id}/edit`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs font-bold px-3 py-1.5 rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30 dark:hover:bg-indigo-900/40 inline-block"
                               >
-                                編集
-                              </button>
+                                詳細・編集
+                              </Link>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -295,41 +288,6 @@ export default function AdminDashboard() {
           </div>
         </section>
       </div>
-
-      {/* カルテ表示モーダル */}
-      {selectedCustomerId && (
-        <MedicalRecordView customerId={selectedCustomerId} onClose={() => setSelectedCustomerId(null)} />
-      )}
-
-      {/* 代理予約モーダル */}
-      {userId && (
-        <ProxyBookingModal 
-          isOpen={isProxyModalOpen} 
-          onClose={() => setIsProxyModalOpen(false)} 
-          userId={userId} 
-          onSuccess={() => fetchBookings(currentMonth)}
-          selectedDate={selectedDate}
-        />
-      )}
-
-      {/* 予約編集モーダル */}
-      <EditBookingModal 
-        isOpen={!!editingBooking} 
-        onClose={() => setEditingBooking(null)}
-        booking={editingBooking}
-        onSave={async (id, start, end, menuNote, selectedMenus, totalPrice) => {
-          if (await updateBookingDetails(id, start, end, menuNote, selectedMenus, totalPrice)) {
-            fetchBookings(currentMonth);
-          } else {
-            throw new Error('Update failed');
-          }
-        }}
-        onDelete={async (id) => {
-          await updateBookingStatus(id, 'cancelled');
-          fetchBookings(currentMonth);
-        }}
-        userId={userId!}
-      />
     </div>
   );
 }

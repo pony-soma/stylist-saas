@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock, User, Calendar as CalendarIcon, CheckCircle2, XCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Booking } from '@/types';
 import { formatTime, formatDate } from '@/lib/utils';
 
@@ -7,10 +8,10 @@ type Props = {
   pending: Booking[];
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
-  onSelectCustomer: (customerId: string) => void;
 };
 
-export default function PendingBookingsList({ pending, onApprove, onReject, onSelectCustomer }: Props) {
+export default function PendingBookingsList({ pending, onApprove, onReject }: Props) {
+  const router = useRouter();
   if (pending.length === 0) return null;
 
   return (
@@ -21,7 +22,7 @@ export default function PendingBookingsList({ pending, onApprove, onReject, onSe
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {pending.map((booking) => (
-          <div key={booking.id} onClick={() => onSelectCustomer(booking.customer_id)} className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:shadow-md transition">
+          <div key={booking.id} onClick={() => router.push(`/admin/customers/${booking.customer_id}`)} className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:shadow-md transition">
             <div>
               <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <User className="w-4 h-4 text-gray-400" />

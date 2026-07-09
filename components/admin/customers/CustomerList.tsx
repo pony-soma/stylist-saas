@@ -4,15 +4,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, Search, User, Phone, Calendar, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 import { CustomerInfo } from '@/types';
-import MedicalRecordView from '../MedicalRecord';
 
 export default function CustomerList() {
   const [userId, setUserId] = useState<string | null>(null);
   const [customers, setCustomers] = useState<CustomerInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchUserAndCustomers = async () => {
@@ -102,7 +102,7 @@ export default function CustomerList() {
           {filteredCustomers.map(customer => (
             <div 
               key={customer.id} 
-              onClick={() => setSelectedCustomerId(customer.id)}
+              onClick={() => router.push(`/admin/customers/${customer.id}`)}
               className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800/50 cursor-pointer transition flex items-center gap-4 group"
             >
               <div className="w-14 h-14 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-800 overflow-hidden">
@@ -129,12 +129,7 @@ export default function CustomerList() {
         </div>
       )}
 
-      {selectedCustomerId && userId && (
-        <MedicalRecordView
-          customerId={selectedCustomerId}
-          onClose={() => setSelectedCustomerId(null)}
-        />
-      )}
+
     </div>
   );
 }
