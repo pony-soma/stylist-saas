@@ -423,16 +423,16 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
             <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">お客様プロフィール</h3>
             
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex gap-2 mb-4">
               {/* 生年月日 */}
-              <div className="flex-1 min-w-[150px] max-w-[220px]">
+              <div className="flex-1 min-w-0">
                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">生年月日</label>
                 <input
                   type="date"
                   value={customerProfile.birth_date}
                   onChange={(e) => setCustomerProfile(prev => ({...prev, birth_date: e.target.value}))}
                   onBlur={handleSaveProfile}
-                  className="w-auto sm:w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-1 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-center"
+                  className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-2 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-center"
                 />
               </div>
 
