@@ -423,10 +423,10 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
             <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">お客様プロフィール</h3>
             
-            <div className="flex gap-2 mb-4">
+            <div className="flex flex-wrap gap-2 mb-4">
               {/* 生年月日 */}
-              <div className="flex-1 min-w-0">
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">生年月日</label>
+              <div className="flex-1 min-w-[140px]">
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 whitespace-nowrap">生年月日</label>
                 <input
                   type="date"
                   value={customerProfile.birth_date}
