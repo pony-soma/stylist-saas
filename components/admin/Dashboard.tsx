@@ -198,7 +198,7 @@ export default function AdminDashboard() {
             </Link>
           </div>
           <div className="p-5 relative min-h-[300px]">
-            <div className="absolute left-[88px] top-5 bottom-5 w-px bg-gray-100 dark:bg-gray-800"></div>
+            <div className="absolute left-[80px] top-5 bottom-5 w-px bg-gray-100 dark:bg-gray-800"></div>
             
             <div className="space-y-6 relative">
               {selectedTimeline.length === 0 ? (
@@ -206,12 +206,12 @@ export default function AdminDashboard() {
                   <p>この日の予約はありません。</p>
                 </div>
               ) : selectedTimeline.map((item) => (
-                <div key={item.id} onClick={() => router.push(`/admin/customers/${item.customer_id}`)} className="flex gap-6 group cursor-pointer">
-                  <div className="w-16 text-right pt-2">
+                <div key={item.id} onClick={() => router.push(`/admin/customers/${item.customer_id}`)} className="flex gap-8 group cursor-pointer">
+                  <div className="w-16 shrink-0 text-right pt-2">
                     <span className="text-sm font-medium text-gray-500">{formatTime(item.start_time)}</span>
                   </div>
-                  <div className="relative flex-1">
-                    <div className={`absolute -left-[30px] top-3 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 ${
+                  <div className="relative flex-1 min-w-0">
+                    <div className={`absolute -left-[22px] top-3 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 ${
                       item.status === 'completed' ? 'bg-gray-400' : 'bg-indigo-500'
                     }`}></div>
                     
