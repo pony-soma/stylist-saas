@@ -198,7 +198,7 @@ export default function AdminDashboard() {
             </Link>
           </div>
           <div className="p-5 relative min-h-[300px]">
-            <div className="absolute left-[80px] top-5 bottom-5 w-px bg-gray-100 dark:bg-gray-800"></div>
+            <div className="absolute left-[100px] top-5 bottom-5 w-px bg-gray-100 dark:bg-gray-800"></div>
             
             <div className="space-y-6 relative">
               {selectedTimeline.length === 0 ? (
