@@ -81,11 +81,11 @@ export default function AdminDashboard() {
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
           {userId && (
-            <div className="hidden md:block text-right mr-2">
-              <p className="text-xs text-gray-500 font-medium">あなた専用の予約URL（LINEに設定）</p>
-              <div className="mt-1 flex justify-end">
+            <div className="w-full md:w-auto text-left md:text-right order-last md:order-none mt-2 md:mt-0 mr-0 md:mr-2 p-3 md:p-0 bg-slate-50 md:bg-transparent dark:bg-slate-800/50 md:dark:bg-transparent rounded-xl md:rounded-none border md:border-none border-slate-100 dark:border-slate-800">
+              <p className="text-xs text-gray-500 font-medium mb-2 md:mb-0">あなた専用の予約URL（LINEに設定）</p>
+              <div className="md:mt-1 flex justify-center md:justify-end">
                 <button
-                  className="whitespace-nowrap text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors font-medium border border-indigo-100 dark:border-indigo-800 shadow-sm"
+                  className="w-full md:w-auto justify-center whitespace-nowrap text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 px-3 py-2 md:py-1.5 rounded-lg flex items-center gap-1.5 transition-colors font-medium border border-indigo-100 dark:border-indigo-800 shadow-sm"
                   onClick={() => {
                     const liffId = process.env.NEXT_PUBLIC_LIFF_ID || '未設定';
                     navigator.clipboard.writeText(`https://liff.line.me/${liffId}?stylist=${userId}`);
