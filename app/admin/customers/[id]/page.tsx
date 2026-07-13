@@ -492,7 +492,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{customer.display_name}</h2>
                   <div className="flex items-center gap-2 mt-1">
                     <p className="text-sm text-gray-500">顧客ID: {customer.id.substring(0,8)}</p>
-                    {customer.line_user_id ? (
+                    {customer.line_user_id && !customer.line_user_id.startsWith('manual_') ? (
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">LINE連携済</span>
                     ) : (
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-gray-400">未連携(手動)</span>

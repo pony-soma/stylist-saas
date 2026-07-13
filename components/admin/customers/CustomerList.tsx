@@ -96,16 +96,23 @@ export default function CustomerList() {
 
     try {
       // 1. customersテーブルに作成
+      // line_user_idはNOT NULL制約があるため、ダミーの一意なIDをセットする
+      const dummyLineUserId = `manual_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
       const { data: custData, error: custError } = await supabase
         .from('customers')
         .insert({
           display_name: newCustomer.display_name,
           phone_number: newCustomer.phone_number || null,
+          line_user_id: dummyLineUserId,
         })
         .select('id')
         .single();
       
-      if (custError) throw custError;
+      if (custError) {
+        console.error('Customer insert error:', custError);
+        throw custError;
+      }
 
       // 2. customer_memosに作成
       const { error: memoError } = await supabase
