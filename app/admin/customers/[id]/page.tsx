@@ -477,7 +477,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
         
         {/* ヘッダー部分 */}
         <div className="p-6 sm:p-8 z-10 shrink-0 border-b border-gray-100 dark:border-gray-800">
-          <div className="flex justify-between items-start mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div>
               <div className="flex items-center gap-3">
                 {/* アバター */}
@@ -491,7 +491,6 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{customer.display_name}</h2>
                   <div className="flex items-center gap-2 mt-1">
-                    <p className="text-sm text-gray-500">顧客ID: {customer.id.substring(0,8)}</p>
                     {customer.line_user_id && !customer.line_user_id.startsWith('manual_') ? (
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">LINE連携済</span>
                     ) : (
@@ -503,7 +502,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
             </div>
             <button 
               onClick={openMergeModal} 
-              className="text-xs font-bold px-3 py-1.5 rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30 dark:hover:bg-indigo-900/40"
+              className="w-full sm:w-auto text-center text-xs font-bold px-3 py-2 sm:py-1.5 rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30 dark:hover:bg-indigo-900/40"
             >
               別のデータと統合
             </button>
@@ -580,6 +579,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                 <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">電話番号</label>
                 <input
                   type="tel"
+                  maxLength={15}
                   value={customerProfile.phone_number}
                   onChange={(e) => setCustomerProfile(prev => ({...prev, phone_number: e.target.value}))}
                   onBlur={handleSaveProfile}

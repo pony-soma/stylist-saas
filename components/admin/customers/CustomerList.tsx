@@ -253,6 +253,7 @@ export default function CustomerList() {
                 </label>
                 <input
                   type="tel"
+                  maxLength={15}
                   value={newCustomer.phone_number}
                   onChange={(e) => setNewCustomer({...newCustomer, phone_number: e.target.value})}
                   className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
