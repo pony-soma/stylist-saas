@@ -7,17 +7,27 @@ export function useCustomers(userId: string | null) {
 
   const fetchProxyCustomers = useCallback(async () => {
     if (!userId) return;
-    const { data } = await supabase
-      .from('bookings')
-      .select('customer_id, customers(id, display_name)')
-      .eq('stylist_id', userId)
-      .order('created_at', { ascending: false });
+    // 担当している顧客のID一覧を取得（予約履歴 または メモが存在する顧客）
+    const { data: bookings } = await supabase.from('bookings').select('customer_id').eq('stylist_id', userId);
+    const { data: memos } = await supabase.from('customer_memos').select('customer_id').eq('stylist_id', userId);
     
-    if (data) {
-      const unique = Array.from(new Map(data.map((item: any) => [item.customer_id, item.customers])).values()).filter(Boolean) as unknown as {id: string, display_name: string}[];
-      setProxyCustomers(unique);
-      return unique;
+    const customerIds = new Set<string>();
+    bookings?.forEach(b => customerIds.add(b.customer_id));
+    memos?.forEach(m => customerIds.add(m.customer_id));
+
+    if (customerIds.size > 0) {
+      const { data: customersData } = await supabase
+        .from('customers')
+        .select('id, display_name')
+        .in('id', Array.from(customerIds))
+        .order('created_at', { ascending: false });
+
+      if (customersData) {
+        setProxyCustomers(customersData);
+        return customersData;
+      }
     }
+    setProxyCustomers([]);
     return [];
   }, [userId]);
 

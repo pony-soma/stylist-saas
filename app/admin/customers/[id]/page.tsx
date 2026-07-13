@@ -60,6 +60,12 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
+  // 名寄せ（統合）用State
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [mergeSourceId, setMergeSourceId] = useState<string>('');
+  const [merging, setMerging] = useState(false);
+  const [allCustomers, setAllCustomers] = useState<{id: string, display_name: string}[]>([]);
+
   // 編集用State
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -170,6 +176,78 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
       alert('プロフィールの保存に失敗しました。');
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  const openMergeModal = async () => {
+    if (!stylistId || !customer) return;
+    setShowMergeModal(true);
+    setMerging(true);
+    
+    // 担当している顧客のID一覧を取得
+    const { data: bookings } = await supabase.from('bookings').select('customer_id').eq('stylist_id', stylistId);
+    const { data: memos } = await supabase.from('customer_memos').select('customer_id').eq('stylist_id', stylistId);
+    
+    const ids = new Set<string>();
+    bookings?.forEach(b => ids.add(b.customer_id));
+    memos?.forEach(m => ids.add(m.customer_id));
+    ids.delete(customer.id); // 現在の顧客を除外
+
+    if (ids.size > 0) {
+      const { data } = await supabase.from('customers').select('id, display_name').in('id', Array.from(ids));
+      if (data) setAllCustomers(data);
+    }
+    setMerging(false);
+  };
+
+  const handleMergeCustomer = async () => {
+    if (!mergeSourceId || !stylistId || !customer) return;
+    
+    const confirmMessage = "選択した顧客の全データ（予約履歴、カルテ、メモ）を、この顧客データに統合します。\n\n統合された元の顧客データはあなたのリストから見えなくなります。\nよろしいですか？";
+    if (!confirm(confirmMessage)) return;
+
+    setMerging(true);
+    
+    try {
+      // 1. 予約の移行
+      await supabase.from('bookings').update({ customer_id: customer.id }).eq('customer_id', mergeSourceId).eq('stylist_id', stylistId);
+      
+      // 2. カルテの移行
+      await supabase.from('medical_records').update({ customer_id: customer.id }).eq('customer_id', mergeSourceId);
+      
+      // 3. メモの統合
+      const { data: sourceMemo } = await supabase.from('customer_memos').select('*').eq('customer_id', mergeSourceId).eq('stylist_id', stylistId).single();
+      
+      if (sourceMemo) {
+        let newMemoText = customerProfile.memo;
+        if (sourceMemo.memo) {
+          newMemoText = newMemoText ? `${newMemoText}\n\n--- 統合されたメモ ---\n${sourceMemo.memo}` : sourceMemo.memo;
+        }
+        
+        const newBirthDate = customerProfile.birth_date || sourceMemo.birth_date || null;
+        const newGender = customerProfile.gender !== 'unspecified' ? customerProfile.gender : (sourceMemo.gender || 'unspecified');
+        
+        await supabase.from('customer_memos').upsert({
+          stylist_id: stylistId,
+          customer_id: customer.id,
+          memo: newMemoText,
+          birth_date: newBirthDate,
+          gender: newGender,
+          address: customerProfile.address || sourceMemo.address || ''
+        }, { onConflict: 'stylist_id,customer_id' });
+        
+        // 統合元のメモを削除（一覧から非表示にするため）
+        await supabase.from('customer_memos').delete().eq('customer_id', mergeSourceId).eq('stylist_id', stylistId);
+      }
+      
+      alert('顧客データを統合しました！');
+      setShowMergeModal(false);
+      window.location.reload();
+    } catch (error) {
+      console.error(error);
+      alert('統合に失敗しました。');
+    } finally {
+      setMerging(false);
     }
   };
 
@@ -412,10 +490,23 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{customer.display_name}</h2>
-                  <p className="text-sm text-gray-500">顧客ID: {customer.id.substring(0,8)}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-sm text-gray-500">顧客ID: {customer.id.substring(0,8)}</p>
+                    {customer.line_user_id ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">LINE連携済</span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-gray-400">未連携(手動)</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
+            <button 
+              onClick={openMergeModal} 
+              className="text-xs font-bold px-3 py-1.5 rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30 dark:hover:bg-indigo-900/40"
+            >
+              別のデータと統合
+            </button>
           </div>
           
           <div className="flex gap-4">
@@ -788,6 +879,60 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
             loading="lazy"
             decoding="async"
           />
+        </div>
+      )}
+      {/* 名寄せ（データ統合）モーダル */}
+      {showMergeModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800">
+            <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">顧客データの統合（名寄せ）</h3>
+              <p className="text-xs text-gray-500 mt-1">選択した顧客の全データ（予約履歴・カルテ・メモ）を、この顧客データに統合します。</p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                  統合元の顧客（消滅するデータ）
+                </label>
+                {allCustomers.length === 0 ? (
+                  <p className="text-sm text-red-500">統合可能な他の顧客データが見つかりません。</p>
+                ) : (
+                  <select
+                    value={mergeSourceId}
+                    onChange={(e) => setMergeSourceId(e.target.value)}
+                    className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
+                  >
+                    <option value="">統合する顧客を選択してください...</option>
+                    {allCustomers.map(c => (
+                      <option key={c.id} value={c.id}>{c.display_name}</option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+                  統合先の顧客（残るデータ）： <strong>{customer.display_name}</strong>
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowMergeModal(false)}
+                  className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl transition"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  onClick={handleMergeCustomer}
+                  disabled={!mergeSourceId || merging}
+                  className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-bold rounded-xl transition flex justify-center items-center"
+                >
+                  {merging ? <Loader2 className="w-5 h-5 animate-spin" /> : '統合を実行する'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
