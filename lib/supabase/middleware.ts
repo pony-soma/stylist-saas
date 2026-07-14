@@ -68,8 +68,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // すでにログインしているユーザーが /login にアクセスした場合は /admin へリダイレクト
-  if (request.nextUrl.pathname === '/login' && user) {
+  // すでにログインしているユーザーが /login または / にアクセスした場合は /admin へリダイレクト
+  if ((request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/') && user) {
     const url = request.nextUrl.clone()
     url.pathname = '/admin'
     return NextResponse.redirect(url)
