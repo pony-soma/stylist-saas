@@ -38,17 +38,6 @@ export async function GET(request: Request) {
           id: user.id,
           name: user.user_metadata?.full_name || '美容師'
         });
-        
-        // 無料トライアル（1年間有効とする等）のサブスクリプションを自動作成
-        const start = new Date();
-        const end = new Date(start.getTime() + 365 * 24 * 60 * 60 * 1000);
-        await supabase.from('subscriptions').insert({
-          stylist_id: user.id,
-          status: 'active',
-          plan_id: 'plan_basic',
-          current_period_start: start.toISOString(),
-          current_period_end: end.toISOString()
-        });
       }
       
       return NextResponse.redirect(`${origin}/admin`)
