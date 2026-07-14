@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
-        const subscription = await stripe.subscriptions.retrieve(session.subscription);
+        const subscription: any = await stripe.subscriptions.retrieve(session.subscription);
         const stylistId = session.metadata.stylistId;
 
         // DBにサブスクリプションを記録
