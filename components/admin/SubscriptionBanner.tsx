@@ -73,6 +73,28 @@ export function SubscriptionBanner({ userId, userEmail }: { userId: string | nul
 
   if (loading || status === 'active' || !status) return null;
 
+  const handleCheckout = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId: 'price_xxxxx' }), // 仮のPrice ID。本番では環境変数等から取得
+      });
+
+      if (!res.ok) throw new Error('Failed to create checkout session');
+      
+      const { url } = await res.json();
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (err) {
+      console.error(err);
+      alert('決済画面の生成に失敗しました。');
+      setLoading(false);
+    }
+  };
+
   return (
     <div className={`w-full p-4 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-sm sm:text-base border-b z-50 relative ${
       status === 'expired' 
@@ -105,13 +127,14 @@ export function SubscriptionBanner({ userId, userEmail }: { userId: string | nul
       </div>
       
       <button 
-        onClick={() => alert('※決済機能（Stripe/PayPay等）の実装は今後のフェーズとなります。')}
+        onClick={handleCheckout}
+        disabled={loading}
         className={`shrink-0 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full font-bold text-white shadow-sm transition hover:shadow-md w-full sm:w-auto ${
           status === 'expired' ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'
-        }`}
+        } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
-        プラン詳細・お支払い
-        <ArrowRight className="w-4 h-4" />
+        {loading ? '読み込み中...' : 'プラン詳細・お支払い'}
+        {!loading && <ArrowRight className="w-4 h-4" />}
       </button>
     </div>
   );
