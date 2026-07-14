@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     // 1. スタイリスト情報の取得
     const { data: stylist, error: stylistError } = await supabase
       .from('stylists')
-      .select('payment_customer_id, display_name')
+      .select('payment_customer_id, name')
       .eq('id', userId)
       .single();
 
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: userEmail,
-        name: stylist.display_name,
+        name: stylist.name,
         metadata: {
           stylistId: userId,
         },
