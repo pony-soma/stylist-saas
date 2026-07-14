@@ -5,13 +5,20 @@ import { supabase } from '@/lib/supabase/client';
 import { AlertCircle, ArrowRight, CreditCard, Clock } from 'lucide-react';
 import Link from 'next/link';
 
-export function SubscriptionBanner({ userId }: { userId: string | null }) {
+export function SubscriptionBanner({ userId, userEmail }: { userId: string | null, userEmail?: string | null }) {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<'active' | 'trialing' | 'expired' | null>(null);
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
 
+  // 特権アカウントの判定
+  const isSuperAdmin = userEmail === 'pony.soma@gmail.com';
+
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || isSuperAdmin) {
+      if (isSuperAdmin) setStatus('active');
+      setLoading(false);
+      return;
+    }
 
     const fetchSubscriptionStatus = async () => {
       try {
@@ -20,7 +27,7 @@ export function SubscriptionBanner({ userId }: { userId: string | null }) {
           .from('subscriptions')
           .select('*')
           .eq('stylist_id', userId)
-          .single();
+          .maybeSingle();
 
         if (subData && subData.status === 'active') {
           setStatus('active');

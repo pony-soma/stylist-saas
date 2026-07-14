@@ -43,13 +43,15 @@ export default function Home() {
             LiNoは、美容師の皆様が「お客様と向き合う時間」を最大化します。
           </p>
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300">
-            <Link href="/admin" className="w-full sm:w-auto px-8 py-4 bg-gray-900 text-white rounded-full font-bold text-lg hover:bg-gray-800 transition shadow-xl hover:shadow-2xl flex items-center justify-center gap-2 group">
+            <Link href="/admin?plan=free" className="w-full sm:w-auto px-8 py-4 bg-white text-gray-900 border-2 border-gray-900 rounded-full font-bold text-lg hover:bg-gray-50 transition shadow-md flex items-center justify-center gap-2">
               14日間無料で試す
+            </Link>
+            <Link href="/admin?plan=pro" className="w-full sm:w-auto px-8 py-4 bg-gray-900 text-white rounded-full font-bold text-lg hover:bg-gray-800 transition shadow-xl hover:shadow-2xl flex items-center justify-center gap-2 group">
+              プロプランで始める
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
-            <p className="text-sm text-gray-400 sm:hidden">クレジットカード不要</p>
           </div>
-          <p className="hidden sm:block mt-4 text-sm text-gray-400 animate-in fade-in duration-700 delay-500">※クレジットカードの登録なしで14日間お試しいただけます（月額1,980円）</p>
+          <p className="mt-6 text-sm text-gray-400 animate-in fade-in duration-700 delay-500">※無料トライアルはクレジットカード登録不要です（プロプラン：月額1,980円）</p>
         </div>
       </section>
 

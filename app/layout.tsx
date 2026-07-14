@@ -17,8 +17,8 @@ export default function RootLayout({
       <body className="bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
           {children}
