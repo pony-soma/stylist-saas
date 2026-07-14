@@ -76,10 +76,18 @@ export function SubscriptionBanner({ userId, userEmail }: { userId: string | nul
   const handleCheckout = async () => {
     try {
       setLoading(true);
+      const planId = process.env.NEXT_PUBLIC_STRIPE_PRO_PLAN_ID;
+      
+      if (!planId) {
+        alert('プランIDが設定されていません。環境変数をご確認ください。');
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId: 'price_xxxxx' }), // 仮のPrice ID。本番では環境変数等から取得
+        body: JSON.stringify({ planId }),
       });
 
       if (!res.ok) throw new Error('Failed to create checkout session');
