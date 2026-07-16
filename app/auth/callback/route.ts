@@ -39,8 +39,15 @@ export async function GET(request: Request) {
           name: user.user_metadata?.full_name || '美容師'
         });
       }
+      const next = searchParams.get('next') ?? '/admin';
+      const plan = searchParams.get('plan');
       
-      return NextResponse.redirect(`${origin}/admin`)
+      let redirectUrl = `${origin}${next}`;
+      if (plan) {
+        redirectUrl += `?plan=${plan}`;
+      }
+      
+      return NextResponse.redirect(redirectUrl)
     }
     // エラー詳細をURLに含めてリダイレクト
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error?.message || 'auth failed')}`)

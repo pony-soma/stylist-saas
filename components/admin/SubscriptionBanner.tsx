@@ -4,11 +4,14 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { AlertCircle, ArrowRight, CreditCard, Clock } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 export function SubscriptionBanner({ userId, userEmail }: { userId: string | null, userEmail?: string | null }) {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<'active' | 'trialing' | 'expired' | null>(null);
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
+  const [autoCheckoutTriggered, setAutoCheckoutTriggered] = useState(false);
+  const searchParams = useSearchParams();
 
   // 特権アカウントの判定
   const isSuperAdmin = userEmail === 'pony.soma@gmail.com';
@@ -102,6 +105,13 @@ export function SubscriptionBanner({ userId, userEmail }: { userId: string | nul
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (status && status !== 'active' && !autoCheckoutTriggered && searchParams.get('plan') === 'pro') {
+      setAutoCheckoutTriggered(true);
+      handleCheckout();
+    }
+  }, [status, searchParams, autoCheckoutTriggered]);
 
   return (
     <div className={`w-full p-4 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-sm sm:text-base border-b z-50 relative ${
