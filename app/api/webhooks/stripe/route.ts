@@ -41,7 +41,7 @@ export async function POST(req: Request) {
           current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
           current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
           cancel_at_period_end: subscription.cancel_at_period_end,
-        });
+        }, { onConflict: 'stylist_id' });
         break;
       }
       
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
             current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             cancel_at_period_end: subscription.cancel_at_period_end,
-          });
+          }, { onConflict: 'stylist_id' });
         }
         break;
       }
