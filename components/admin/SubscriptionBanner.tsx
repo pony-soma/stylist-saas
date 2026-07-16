@@ -37,6 +37,12 @@ export function SubscriptionBanner({ userId, userEmail }: { userId: string | nul
           return;
         }
 
+        // キャンセル、または支払遅延の場合は無条件でexpired扱いにする
+        if (subData && (subData.status === 'canceled' || subData.status === 'past_due')) {
+          setStatus('expired');
+          return;
+        }
+
         // 2. スタイリストの登録日を取得（トライアル期間計算用）
         const { data: stylistData } = await supabase
           .from('stylists')
