@@ -38,11 +38,14 @@ export function useBookings(userId: string | null) {
   }, [userId]);
 
   const updateBookingStatus = async (id: string, status: 'confirmed' | 'cancelled') => {
-    const { error } = await supabase
-      .from('bookings')
-      .update({ status })
-      .eq('id', id);
-    return !error;
+    if (!userId) return false;
+    try {
+      const response = await fetch('/api/bookings/status', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: id, status }),
+      });
+      return response.ok;
+    } catch { return false; }
   };
 
   const updateBookingDetails = async (

@@ -150,7 +150,7 @@ export default function EditBookingPage({ params }: { params: { id: string } }) 
     }
 
     try {
-      await updateBookingDetails(booking.id, startDateTime.toISOString(), endDateTime.toISOString(), form.menuNote, selectedMenusList, totalPrice);
+      if (!await updateBookingDetails(booking.id, startDateTime.toISOString(), endDateTime.toISOString(), form.menuNote, selectedMenusList, totalPrice)) throw new Error('Booking update failed');
       alert('予約内容を更新しました！');
       router.back();
     } catch (err) {
@@ -165,8 +165,8 @@ export default function EditBookingPage({ params }: { params: { id: string } }) 
     if (confirm('この予約を削除（キャンセル）しますか？')) {
       setSaving(true);
       try {
-        await updateBookingStatus(booking.id, 'cancelled');
-        alert('予約を削除しました。');
+        if (!await updateBookingStatus(booking.id, 'cancelled')) throw new Error('Booking cancellation failed');
+        alert('予約をキャンセルしました。');
         router.back();
       } catch (err) {
         console.error(err);
