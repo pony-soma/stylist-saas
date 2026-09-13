@@ -308,7 +308,7 @@ export default function LiffBookingCalendar() {
     
     const endDateTime = new Date(startDateTime.getTime() + totalDuration * 60000);
 
-    const { error } = await supabase
+    const { data: savedBooking, error } = await supabase
       .from('bookings')
       .insert({
         customer_id: customerId,
@@ -320,34 +320,27 @@ export default function LiffBookingCalendar() {
         source: 'liff',
         selected_menus: selectedMenusList,
         total_price: totalPrice
-      });
+      })
+      .select('id')
+      .single();
 
     // エラーがなければLINEに通知を送信
     if (!error) {
       try {
-        // 美容師の line_user_id を取得
-        const { data: stylistData } = await supabase
-          .from('stylists')
-          .select('line_user_id')
-          .eq('id', stylistId)
-          .single();
-
-        if (stylistData && stylistData.line_user_id) {
-          await fetch('/api/notify/booking', {
+        const accessToken = liff.getAccessToken();
+        if (savedBooking?.id && accessToken) {
+          const response = await fetch('/api/notify/booking', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              lineUserId: stylistData.line_user_id,
-              customerName: customerName,
-              startTime: startDateTime.toISOString(),
-              menuNames: selectedMenusList.map(m => m.name).join(', '),
-              totalPrice,
-              menuNote
-            })
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ bookingId: savedBooking.id }),
           });
+          if (!response.ok) console.warn('予約は保存済みですが、LINE通知を送信できませんでした。');
         }
       } catch (err) {
-        console.error('Failed to send LINE notification:', err);
+        console.error('Failed to send LINE notification');
       }
     }
 

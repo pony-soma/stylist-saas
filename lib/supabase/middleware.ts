@@ -56,12 +56,11 @@ export async function updateSession(request: NextRequest) {
 
   // セッションをリフレッシュする
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  const user = session?.user
+    data: { user },
+  } = await supabase.auth.getUser()
 
   // /admin 配下のルートに対する保護ロジック
-  if (request.nextUrl.pathname.startsWith('/admin') && !user) {
+  if ((request.nextUrl.pathname.startsWith('/admin') || request.nextUrl.pathname === '/billing') && !user) {
     // ログインしていない場合は /login にリダイレクト
     const url = request.nextUrl.clone()
     url.pathname = '/login'
