@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Booking, Menu } from '@/types';
 
@@ -6,6 +6,7 @@ export function useBookings(userId: string | null) {
   const [pending, setPending] = useState<Booking[]>([]);
   const [monthBookings, setMonthBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(false);
+  const pendingCreate = useRef<{ payload: string; requestId: string } | null>(null);
 
   const fetchBookings = useCallback(async (targetMonth: Date) => {
     if (!userId) return;
@@ -49,55 +50,39 @@ export function useBookings(userId: string | null) {
   };
 
   const updateBookingDetails = async (
-    id: string, 
-    startTime: string, 
-    endTime: string, 
-    menuNote: string,
-    selectedMenus: Menu[] = [],
-    totalPrice: number = 0
+    id: string, startTime: string, endTime: string, menuNote: string,
+    selectedMenus: Menu[] = [], _totalPrice: number = 0, expectedUpdatedAt?: string
   ) => {
-    if (!userId) return false;
-    const { error } = await supabase
-      .from('bookings')
-      .update({
-        start_time: startTime,
-        end_time: endTime,
-        menu_note: menuNote,
-        selected_menus: selectedMenus,
-        total_price: totalPrice
-      })
-      .eq('id', id);
-    return !error;
+    if (!userId || !expectedUpdatedAt) return false;
+    try {
+      const response = await fetch('/api/bookings/save', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: id, startTime, endTime, menuNote,
+          menuIds: selectedMenus.map(menu => menu.id), expectedUpdatedAt }),
+      });
+      return response.ok;
+    } catch { return false; }
   };
 
   const createProxyBooking = async (
-    customerId: string, 
-    date: string, 
-    startTime: string, 
-    endTime: string, 
-    menu: string,
-    selectedMenus: Menu[] = [],
-    totalPrice: number = 0
+    customerId: string, date: string, startTime: string, endTime: string, menu: string,
+    selectedMenus: Menu[] = [], _totalPrice: number = 0
   ) => {
     if (!userId) throw new Error('User not authenticated');
-    const startDateTime = new Date(`${date}T${startTime}:00`);
-    const endDateTime = new Date(`${date}T${endTime}:00`);
-    
-    const { error } = await supabase
-      .from('bookings')
-      .insert({
-        customer_id: customerId,
-        stylist_id: userId,
-        start_time: startDateTime.toISOString(),
-        end_time: endDateTime.toISOString(),
-        menu_note: menu,
-        status: 'confirmed',
-        source: 'proxy',
-        selected_menus: selectedMenus,
-        total_price: totalPrice
-      });
-      
-    if (error) throw error;
+    const details = { customerId, startTime: new Date(`${date}T${startTime}:00+09:00`).toISOString(),
+      endTime: new Date(`${date}T${endTime}:00+09:00`).toISOString(), menuNote: menu,
+      menuIds: selectedMenus.map(item => item.id).sort() };
+    const payload = JSON.stringify({ userId, ...details });
+    if (pendingCreate.current?.payload !== payload) {
+      pendingCreate.current = { payload, requestId: crypto.randomUUID() };
+    }
+    // Keep the same key after a lost response; the server replays the original result.
+    const response = await fetch('/api/bookings/save', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...details, requestId: pendingCreate.current.requestId }),
+    });
+    if (!response.ok) throw new Error('予約を保存できませんでした。利用期限・営業時間・予約不可枠を確認してください。');
+    pendingCreate.current = null;
   };
 
   return {

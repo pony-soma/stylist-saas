@@ -20,6 +20,7 @@ export type Menu = {
 
 export type Booking = {
   id: string;
+  updated_at?: string;
   start_time: string;
   end_time: string;
   menu_note: string;

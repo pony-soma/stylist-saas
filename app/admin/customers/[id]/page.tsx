@@ -451,10 +451,8 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
     }
   };
 
-  const getPhotoUrl = (path: string) => {
-    const { data } = supabase.storage.from('record-photos').getPublicUrl(path);
-    return data.publicUrl;
-  };
+  // Same-origin authenticated endpoint; never expose a public Storage URL.
+  const getPhotoUrl = (id: string) => `/api/record-photos/${encodeURIComponent(id)}`;
 
   if (loading || !customer) {
     return (
@@ -728,12 +726,13 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                           {record.record_photos.map((photo, i) => (
                             <div key={photo.id} className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0 bg-gray-100 dark:bg-gray-800">
                               <Image 
-                                src={getPhotoUrl(photo.storage_path)} 
+                                unoptimized
+                                src={getPhotoUrl(photo.id)}
                                 alt={`保存済み写真 ${i+1}`} 
                                 width={64}
                                 height={64}
                                 className="w-16 h-16 object-cover cursor-pointer" 
-                                onClick={() => setPreviewPhotoUrl(getPhotoUrl(photo.storage_path))}
+                                onClick={() => setPreviewPhotoUrl(getPhotoUrl(photo.id))}
                               />
                               <button 
                                 onClick={(e) => {
@@ -837,11 +836,12 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                         {record.record_photos.map((photo, i) => (
                           <div 
                             key={i} 
-                            onClick={() => setPreviewPhotoUrl(getPhotoUrl(photo.storage_path))}
+                            onClick={() => setPreviewPhotoUrl(getPhotoUrl(photo.id))}
                             className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer flex-shrink-0 bg-gray-100 dark:bg-gray-800"
                           >
                             <Image 
-                              src={getPhotoUrl(photo.storage_path)} 
+                              unoptimized
+                                src={getPhotoUrl(photo.id)}
                               alt={`施術写真 ${i+1}`} 
                               width={96}
                               height={96}

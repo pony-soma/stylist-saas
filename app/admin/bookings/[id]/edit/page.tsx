@@ -60,19 +60,19 @@ export default function EditBookingPage({ params }: { params: { id: string } }) 
 
       setBooking(data);
 
-      const startDate = new Date(data.start_time);
-      const endDate = new Date(data.end_time);
+      const startDate = new Date(new Date(data.start_time).getTime() + 9 * 60 * 60 * 1000);
+      const endDate = new Date(new Date(data.end_time).getTime() + 9 * 60 * 60 * 1000);
 
-      const yyyy = startDate.getFullYear();
-      const mm = String(startDate.getMonth() + 1).padStart(2, '0');
-      const dd = String(startDate.getDate()).padStart(2, '0');
+      const yyyy = startDate.getUTCFullYear();
+      const mm = String(startDate.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(startDate.getUTCDate()).padStart(2, '0');
 
       setForm({
         date: `${yyyy}-${mm}-${dd}`,
-        startHour: String(startDate.getHours()).padStart(2, '0'),
-        startMinute: String(startDate.getMinutes()).padStart(2, '0'),
-        endHour: String(endDate.getHours()).padStart(2, '0'),
-        endMinute: String(endDate.getMinutes()).padStart(2, '0'),
+        startHour: String(startDate.getUTCHours()).padStart(2, '0'),
+        startMinute: String(startDate.getUTCMinutes()).padStart(2, '0'),
+        endHour: String(endDate.getUTCHours()).padStart(2, '0'),
+        endMinute: String(endDate.getUTCMinutes()).padStart(2, '0'),
         menuNote: data.menu_note || ''
       });
 
@@ -102,13 +102,13 @@ export default function EditBookingPage({ params }: { params: { id: string } }) 
     
     if (totalDuration === 0) return;
 
-    const startDateTime = new Date(`${form.date}T${form.startHour}:${form.startMinute}:00`);
-    const endDateTime = new Date(startDateTime.getTime() + totalDuration * 60000);
+    const startDateTime = new Date(`${form.date}T${form.startHour}:${form.startMinute}:00+09:00`);
+    const endDateTime = new Date(startDateTime.getTime() + totalDuration * 60000 + 9 * 60 * 60 * 1000);
     
     setForm(prev => ({
       ...prev,
-      endHour: String(endDateTime.getHours()).padStart(2, '0'),
-      endMinute: String(endDateTime.getMinutes()).padStart(2, '0')
+      endHour: String(endDateTime.getUTCHours()).padStart(2, '0'),
+      endMinute: String(endDateTime.getUTCMinutes()).padStart(2, '0')
     }));
   };
 
@@ -127,8 +127,8 @@ export default function EditBookingPage({ params }: { params: { id: string } }) 
       return;
     }
 
-    const startDateTime = new Date(`${form.date}T${startTimeStr}:00`);
-    const endDateTime = new Date(`${form.date}T${endTimeStr}:00`);
+    const startDateTime = new Date(`${form.date}T${startTimeStr}:00+09:00`);
+    const endDateTime = new Date(`${form.date}T${endTimeStr}:00+09:00`);
 
     const selectedMenusList = menus.filter(m => selectedMenuIds.has(m.id));
     const totalPrice = selectedMenusList.reduce((acc, curr) => acc + curr.price, 0);
@@ -150,7 +150,7 @@ export default function EditBookingPage({ params }: { params: { id: string } }) 
     }
 
     try {
-      if (!await updateBookingDetails(booking.id, startDateTime.toISOString(), endDateTime.toISOString(), form.menuNote, selectedMenusList, totalPrice)) throw new Error('Booking update failed');
+      if (!await updateBookingDetails(booking.id, startDateTime.toISOString(), endDateTime.toISOString(), form.menuNote, selectedMenusList, totalPrice, booking.updated_at)) throw new Error('Booking update failed');
       alert('予約内容を更新しました！');
       router.back();
     } catch (err) {
