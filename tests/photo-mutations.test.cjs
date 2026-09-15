@@ -35,7 +35,12 @@ function fixture(o = {}) {
     '@/lib/billing': {
       assertBillingOrigin(request) { if (request.headers.get('origin') !== 'https://example.test') throw Error(); },
       getBillingStatus: async () => ({ status: ++billingCalls > 1 && o.expireLater ? 'expired' : o.status ?? 'active' }),
-      billingAdmin: () => ({ from: table => query(table, true), storage: { getBucket: async () => ({ data: { public: o.publicBucket ?? false }, error: o.bucketError }), from: () => storage } }),
+      billingAdmin: () => ({ rpc: async (name, args) => {
+        calls.push(['rpc', name, args]);
+        if (name === 'complete_photo_deletion') return { data: o.finishFalse ? false : true, error: o.finishError };
+        const error = o.rpcError ?? (o.foreign ? { code: 'P0002' } : o.status === 'expired' && !o.existingJob ? { code: '42501' } : o.references === 2 ? { code: '40001' } : null);
+        return { data: error ? null : { photo_id: id, stylist_id: owner, storage_path: photo.storage_path, completed_at: o.completed ? '2026-09-15' : null }, error };
+      }, from: table => query(table, true), storage: { getBucket: async () => ({ data: { public: o.publicBucket ?? false }, error: o.bucketError }), from: () => storage } }),
     },
   };
   const exports = {};
@@ -48,7 +53,7 @@ function form(bytes = [255, 216, 255, 0], mime = 'image/jpeg') {
 }
 test('photo writes require Origin, authentication and unexpired billing', async () => {
   for (const [o, status] of [[{ noAuth: true }, 401], [{ status: 'expired' }, 403]]) {
-    for (const action of ['upload', 'delete']) { const f = fixture(o); assert.equal((await f[action]()).status, status); assert.equal(f.calls.length, 0); }
+    for (const action of ['upload', 'delete']) { const f = fixture(o); assert.equal((await f[action]()).status, status); assert.ok(!f.calls.some(c => ['upload','remove'].includes(c[0]))); }
   }
   const f = fixture(); assert.equal((await f.upload(f.req(form(), 'https://evil.test'))).status, 403); assert.equal((await f.delete('https://evil.test')).status, 403); assert.equal(f.calls.length, 0);
 });
@@ -72,9 +77,9 @@ test('chunked bodies exceeding 4 MiB rejected without relying on Content-Length'
   assert.equal((await f.upload(request)).status, 413); assert.ok(!f.calls.some(c => c[0] === 'upload'));
 });
 test('public/inaccessible buckets and storage errors fail closed', async () => {
-  for (const o of [{ publicBucket: true }, { bucketError: {} }]) for (const action of ['upload', 'delete']) { const f = fixture(o); assert.equal((await f[action]()).status, 503); assert.ok(!f.calls.some(c => ['upload', 'remove'].includes(c[0]))); }
+  for (const o of [{ publicBucket: true }, { bucketError: {} }]) for (const action of ['upload', 'delete']) { const f = fixture(o); assert.equal((await f[action]()).status, action === 'delete' ? 202 : 503); assert.ok(!f.calls.some(c => ['upload', 'remove'].includes(c[0]))); }
   const u = fixture({ uploadError: {} }); assert.equal((await u.upload()).status, 503); assert.ok(!u.calls.some(c => c[0] === 'insert'));
-  const d = fixture({ removeError: {} }); assert.equal((await d.delete()).status, 503); assert.ok(!d.calls.some(c => c[0] === 'delete'));
+  const d = fixture({ removeError: {} }); assert.equal((await d.delete()).status, 202); assert.ok(!d.calls.some(c => c[0] === 'delete'));
 });
 test('insert lost acknowledgement recovered only for exact id, parent and path', async () => {
   const good = fixture({ insertError: {}, committed: true }); assert.equal((await good.upload()).status, 201); assert.ok(!good.calls.some(c => c[0] === 'remove'));
@@ -84,9 +89,20 @@ test('insert lost acknowledgement recovered only for exact id, parent and path',
 test('expiry during transfer prevents metadata write and compensates object when absent', async () => {
   const f = fixture({ expireLater: true, lookupMissing: true }); assert.equal((await f.upload()).status, 403); assert.ok(!f.calls.some(c => c[0] === 'insert')); assert.ok(f.calls.some(c => c[0] === 'remove'));
 });
-test('delete requires unique object reference and confirmed deletion or proven absence', async () => {
-  const shared = fixture({ references: 2 }); assert.equal((await shared.delete()).status, 503); assert.ok(!shared.calls.some(c => c[0] === 'remove'));
-  const good = fixture(); assert.equal((await good.delete()).status, 200);
-  for (const o of [{ zeroDelete: true }, { zeroDelete: true, lookupError: {} }, { deleteError: {} }]) { const f = fixture(o); assert.equal((await f.delete()).status, 503); }
-  for (const o of [{ zeroDelete: true }, { deleteError: {} }]) { const f = fixture({ ...o, lookupMissing: true }); assert.equal((await f.delete()).status, 200); }
+test('deletion requires unshared path and performs durable intent before object cleanup', async () => {
+  const shared = fixture({ references: 2 }); assert.equal((await shared.delete()).status, 409); assert.ok(!shared.calls.some(c => c[0] === 'remove'));
+  const good = fixture(); const response = await good.delete(); assert.equal(response.status, 200); assert.deepEqual(await response.json(), { deleted: true, cleanupPending: false });
+  assert.deepEqual(good.calls.filter(c => ['rpc','remove'].includes(c[0])).map(c => c[0] === 'rpc' ? c[1] : c[0]), ['request_photo_deletion','remove','complete_photo_deletion']);
+});
+test('Storage and completion failures stay pending with retryable photo ID', async () => {
+  for (const o of [{ removeError: {} }, { finishError: {} }, { finishFalse: true }]) {
+    const f = fixture(o); const r = await f.delete(); assert.equal(r.status, 202); assert.deepEqual(await r.json(), { deleted: true, cleanupPending: true, photoId: id });
+    assert.equal(r.headers.get('cache-control'), 'private, no-store');
+    if (o.removeError) assert.ok(!f.calls.some(c => c[1] === 'complete_photo_deletion'));
+  }
+});
+test('authorized cleanup can retry after expiry, completed requests skip Storage', async () => {
+  const retry = fixture({ status: 'expired', existingJob: true }); assert.equal((await retry.delete()).status, 200); assert.ok(retry.calls.some(c => c[0] === 'remove'));
+  const done = fixture({ status: 'expired', existingJob: true, completed: true }); assert.equal((await done.delete()).status, 200); assert.ok(!done.calls.some(c => c[0] === 'remove'));
+  const lost = fixture({ rpcError: { code: 'XX000' } }); assert.equal((await lost.delete()).status, 503); assert.ok(!lost.calls.some(c => c[0] === 'remove'));
 });

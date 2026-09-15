@@ -60,6 +60,18 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
   const [uploading, setUploading] = useState(false);
   const createAttempt = useRef<{ id: string; payload: string } | null>(null);
   const recordSaveBusy = useRef(false);
+  const [pendingPhotoDeletes, setPendingPhotoDeletes] = useState<string[]>([]);
+  const [retryingPhotoDeletes, setRetryingPhotoDeletes] = useState(false);
+
+  const loadPendingPhotoDeletes = async () => {
+    const response = await fetch('/api/record-photos/deletions', { cache: 'no-store' });
+    if (!response.ok) throw new Error('Deletion status unavailable');
+    const body = await response.json();
+    setPendingPhotoDeletes(body.photoIds);
+  };
+  useEffect(() => {
+    if (stylistId) void loadPendingPhotoDeletes().catch(() => { /* Retain last known queue on network error. */ });
+  }, [stylistId]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // 名寄せ（統合）用State
@@ -363,6 +375,8 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
     try {
       const response = await fetch(`/api/record-photos/${photoId}/delete`, { method: 'DELETE' });
       if (!response.ok) throw new Error('Photo deletion failed');
+      const result = await response.json();
+      if (result.cleanupPending) setPendingPhotoDeletes(current => Array.from(new Set([...current, photoId])));
 
       setRecords(current => current.map(r => {
         if (r.id === recordId) {
@@ -375,8 +389,23 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
       }));
     } catch (error) {
       console.error('Failed to delete photo:', error);
-      alert('写真の削除に失敗しました。');
+      alert('削除結果を確認できませんでした。画面を再読み込みして確認してください。');
+      void loadPendingPhotoDeletes().catch(() => {});
     }
+  };
+
+  const retryPendingPhotoDeletes = async () => {
+    if (retryingPhotoDeletes) return;
+    setRetryingPhotoDeletes(true);
+    try {
+      for (const id of pendingPhotoDeletes) {
+        const response = await fetch(`/api/record-photos/${id}/delete`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Retry failed');
+      }
+      await loadPendingPhotoDeletes();
+    } catch {
+      alert('まだ削除を完了できていない写真があります。時間をおいて再試行してください。');
+    } finally { setRetryingPhotoDeletes(false); }
   };
 
   // Same-origin authenticated endpoint; never expose a public Storage URL.
@@ -399,6 +428,14 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
           戻る
         </button>
       </div>
+      {pendingPhotoDeletes.length > 0 && (
+        <div role="status" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          <p>写真の削除処理が{pendingPhotoDeletes.length}件残っています。対象の写真はカルテから非表示になっています。</p>
+          <button onClick={retryPendingPhotoDeletes} disabled={retryingPhotoDeletes} className="mt-2 underline disabled:opacity-50">
+            {retryingPhotoDeletes ? '削除を確認中…' : '削除を再試行する'}
+          </button>
+        </div>
+      )}
       <div className="w-full bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col overflow-hidden">
         
         {/* ヘッダー部分 */}

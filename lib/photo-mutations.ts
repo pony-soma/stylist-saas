@@ -12,12 +12,12 @@ const fail = (status: number) => NextResponse.json({ error: 'Photo operation una
 async function active(userId: string) {
   if (!['master', 'active', 'trialing'].includes((await getBillingStatus(userId)).status)) throw new PhotoError(403);
 }
-async function authenticate(request: Request) {
+async function authenticate(request: Request, requireActive = true) {
   try { assertBillingOrigin(request); } catch { throw new PhotoError(403); }
   const client = createClient();
   const { data: { user }, error } = await client.auth.getUser();
   if (error || !user) throw new PhotoError(401);
-  await active(user.id);
+  if (requireActive) await active(user.id);
   return { client, user };
 }
 async function parent(client: ReturnType<typeof createClient>, recordId: string, userId: string) {
@@ -109,36 +109,26 @@ export async function uploadPhoto(request: Request) {
 
 export async function deletePhoto(request: Request, id: string) {
   try {
-    const { client, user } = await authenticate(request);
+    // An existing deletion intent remains authorized after access expires. Only the
+    // transactional RPC may distinguish that retry from a new, billable mutation.
+    const { user } = await authenticate(request, false);
     if (!UUID.test(id)) throw new PhotoError(400);
-    const { data: photo, error } = await client.from('record_photos')
-      .select('id, record_id, storage_path, medical_records!inner(stylist_id)')
-      .eq('id', id).eq('medical_records.stylist_id', user.id).maybeSingle();
-    if (error) throw new PhotoError(503);
-    const owner = Array.isArray(photo?.medical_records) ? photo.medical_records[0] : photo?.medical_records;
-    if (!photo || owner?.stylist_id !== user.id || !validPath(photo.storage_path)) throw new PhotoError(404);
-    const admin = billingAdmin(); const storage = await privateStorage(admin);
-    // Legacy paths are supported only if no other photo references the same object.
-    const { count, error: referencesError } = await admin.from('record_photos')
-      .select('id', { count: 'exact', head: true }).eq('storage_path', photo.storage_path);
-    if (referencesError || count !== 1) throw new PhotoError(503);
-    await parent(client, photo.record_id, user.id);
-    await active(user.id);
-    // Storage deletion is idempotent. Keep the DB reference on Storage failure so retry
-    // still authorizes the same object; never claim cross-service atomicity.
-    const { error: storageError } = await storage.remove([photo.storage_path]);
-    if (storageError) throw new PhotoError(503);
-    await parent(client, photo.record_id, user.id);
-    await active(user.id);
-    const { data: deleted, error: deleteError } = await admin.from('record_photos').delete()
-      .eq('id', id).eq('record_id', photo.record_id).eq('storage_path', photo.storage_path).select('id');
-    if (deleteError || !deleted?.some(row => row.id === id)) {
-      // A lost response or concurrent deletion is successful only after proving absence.
-      const { data: remaining, error: lookupError } = await admin.from('record_photos')
-        .select('id').eq('id', id).maybeSingle();
-      if (lookupError || remaining) throw new PhotoError(503);
-    }
-    return NextResponse.json({ deleted: true }, { headers });
+    const admin = billingAdmin();
+    const { data: job, error } = await admin.rpc('request_photo_deletion', { p_stylist_id: user.id, p_photo_id: id });
+    if (error) throw new PhotoError(error.code === '42501' ? 403 : error.code === 'P0002' ? 404 : error.code === '40001' ? 409 : 503);
+    if (!job || job.photo_id !== id || job.stylist_id !== user.id || !validPath(job.storage_path)) throw new PhotoError(503);
+    if (job.completed_at) return NextResponse.json({ deleted: true, cleanupPending: false }, { headers });
+    // The DB row has already been removed atomically with its durable cleanup job.
+    // Every subsequent failure is pending, never a falsely completed deletion.
+    const pending = () => NextResponse.json({ deleted: true, cleanupPending: true, photoId: id }, { status: 202, headers });
+    try {
+      const storage = await privateStorage(admin);
+      const { error: storageError } = await storage.remove([job.storage_path]);
+      if (storageError) return pending();
+      const { data: done, error: finishError } = await admin.rpc('complete_photo_deletion', { p_stylist_id: user.id, p_photo_id: id });
+      if (finishError || done !== true) return pending();
+    } catch { return pending(); }
+    return NextResponse.json({ deleted: true, cleanupPending: false }, { headers });
   } catch (error) {
     return fail(error instanceof PhotoError ? error.status : 503);
   }
