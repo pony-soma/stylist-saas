@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import imageCompression from 'browser-image-compression';
 import { User, Phone, MessageCircle, UploadCloud, Plus, Loader2, Edit2, Trash2, XCircle, ArrowLeft } from 'lucide-react';
@@ -58,6 +58,8 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [stylistId, setStylistId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const createAttempt = useRef<{ id: string; payload: string } | null>(null);
+  const recordSaveBusy = useRef(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // 名寄せ（統合）用State
@@ -119,7 +121,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
         // その顧客のカルテを取得
         const { data: recData } = await supabase
           .from('medical_records')
-          .select('id, visit_date, treatment_menu, chemicals_used, notes, record_photos(id, storage_path)')
+          .select('id, revision, visit_date, treatment_menu, chemicals_used, notes, record_photos(id, storage_path)')
           .eq('customer_id', custData.id)
           .order('visit_date', { ascending: false });
           
@@ -255,162 +257,90 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
     setEditSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSaveRecord = async () => {
+  const refreshRecords = async () => {
     if (!customer) return;
-    if (!visitDate || !menu.trim()) {
-      alert('来店日とメニューは必須項目です。');
-      return;
+    const { data, error } = await supabase.from('medical_records')
+      .select('id, revision, visit_date, treatment_menu, chemicals_used, notes, record_photos(id, storage_path)')
+      .eq('customer_id', customer.id).order('visit_date', { ascending: false });
+    if (error) throw new Error('一覧の再取得に失敗しました。画面を再読み込みしてください。');
+    setRecords((data ?? []) as unknown as MedicalRecord[]);
+  };
+
+  const saveRecord = async (body: Record<string, unknown>) => {
+    const response = await fetch('/api/medical-records/save', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(response.status === 409
+      ? '別の更新が行われています。画面を再読み込みして内容を確認してください。'
+      : response.status === 403 ? '現在のプランではカルテを変更できません。' : 'カルテの保存に失敗しました。');
+  };
+
+  const uploadRecordPhotos = async (recordId: string, files: File[]) => {
+    for (const file of files) {
+      const compressed = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1200, useWebWorker: true });
+      const form = new FormData(); form.set('recordId', recordId); form.set('file', compressed);
+      const response = await fetch('/api/record-photos', { method: 'POST', body: form });
+      if (!response.ok) throw new Error('写真の保存を完了できませんでした。保存済みの写真を確認し、不足分だけ追加してください。');
     }
+  };
+
+  const handleSaveRecord = async () => {
+    if (!customer || recordSaveBusy.current) return;
+    if (!visitDate || !menu.trim()) { alert('来店日とメニューは必須項目です。'); return; }
+    recordSaveBusy.current = true;
     setUploading(true);
+    let recordSaved = false;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // 1. カルテデータの保存
-      const { data: recordData, error: recordError } = await supabase
-        .from('medical_records')
-        .insert({
-          customer_id: customer.id,
-          visit_date: visitDate,
-          treatment_menu: menu,
-          chemicals_used: chemicals,
-          notes: notes,
-        })
-        .select()
-        .single();
-
-      if (recordError || !recordData) throw recordError;
-
-      // 2. 画像のアップロード
-      for (const file of selectedFiles) {
-        // 画像をクライアント側で圧縮する
-        const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1200,
-          useWebWorker: true,
-        };
-        const compressedFile = await imageCompression(file, options);
-        
-        const fileExt = compressedFile.name.split('.').pop() || 'jpg';
-        const fileName = `${recordData.id}-${Math.random()}.${fileExt}`;
-        const filePath = `records/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('record-photos')
-          .upload(filePath, compressedFile);
-
-        if (uploadError) {
-          console.error('Storage upload error:', uploadError);
-          throw uploadError;
-        }
-
-        // 3. 写真パスをDBに保存
-        const { error: insertError } = await supabase
-          .from('record_photos')
-          .insert({
-            record_id: recordData.id,
-            storage_path: filePath
-          });
-
-        if (insertError) {
-          console.error('Record_photos insert error:', insertError);
-          throw insertError;
-        }
+      const fields = { customerId: customer.id, visit_date: visitDate, treatment_menu: menu.trim(), chemicals_used: chemicals, notes };
+      const payload = JSON.stringify(fields);
+      // Preserve the same create ID on an uncertain response within this mounted form.
+      if (!createAttempt.current || createAttempt.current.payload !== payload) {
+        createAttempt.current = { id: crypto.randomUUID(), payload };
       }
-
-      // リセットと再取得
+      const id = createAttempt.current.id;
+      await saveRecord({ action: 'create', id, ...fields });
+      recordSaved = true;
+      createAttempt.current = null;
       setIsCreating(false);
       setVisitDate(new Date().toISOString().split('T')[0]);
       setMenu(''); setChemicals(''); setNotes(''); setSelectedFiles([]);
-      
-      // レコード一覧の更新処理
-      const { data: newData } = await supabase
-        .from('medical_records')
-        .select('id, visit_date, treatment_menu, chemicals_used, notes, record_photos(id, storage_path)')
-        .eq('customer_id', customer.id)
-        .order('visit_date', { ascending: false });
-      
-      if (newData) setRecords(newData as unknown as MedicalRecord[]);
-
+      await uploadRecordPhotos(id, selectedFiles);
+      await refreshRecords();
     } catch (error) {
-      console.error('Failed to save record:', error);
-      alert('カルテの保存に失敗しました。');
+      alert(recordSaved
+        ? 'カルテ本文は保存済みです。写真または一覧更新を完了できませんでした。一覧を確認して、不足する写真だけ追加してください。'
+        : error instanceof TypeError ? '保存結果を確認できません。内容を変えずに再試行してください。'
+        : error instanceof Error ? error.message : 'カルテの保存結果を確認できません。内容を変えずに再試行してください。');
+      if (recordSaved) { try { await refreshRecords(); } catch { /* The alert instructs a reload. */ } }
     } finally {
+      recordSaveBusy.current = false;
       setUploading(false);
     }
   };
 
   const handleSaveEdit = async (recordId: string) => {
-    if (!customer) return;
-    if (!editForm.visit_date || !editForm.treatment_menu.trim()) {
-      alert('来店日とメニューは必須項目です。');
-      return;
-    }
+    if (!customer || recordSaveBusy.current) return;
+    if (!editForm.visit_date || !editForm.treatment_menu.trim()) { alert('来店日とメニューは必須項目です。'); return; }
+    const record = records.find(value => value.id === recordId);
+    if (!record || !Number.isSafeInteger(record.revision)) { alert('画面を再読み込みしてください。'); return; }
+    recordSaveBusy.current = true;
     setSavingEdit(true);
+    let recordSaved = false;
     try {
-      const { error } = await supabase
-        .from('medical_records')
-        .update({
-          visit_date: editForm.visit_date,
-          treatment_menu: editForm.treatment_menu,
-          chemicals_used: editForm.chemicals_used,
-          notes: editForm.notes,
-        })
-        .eq('id', recordId);
-
-      if (error) throw error;
-
-      // 写真の追加アップロード
-      if (editSelectedFiles.length > 0) {
-        for (const file of editSelectedFiles) {
-          const options = {
-            maxSizeMB: 1,
-            maxWidthOrHeight: 1200,
-            useWebWorker: true,
-          };
-          const compressedFile = await imageCompression(file, options);
-          
-          const fileExt = compressedFile.name.split('.').pop() || 'jpg';
-          const fileName = `${recordId}-${Math.random()}.${fileExt}`;
-          const filePath = `records/${fileName}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from('record-photos')
-            .upload(filePath, compressedFile);
-
-          if (uploadError) {
-            console.error('Storage upload error (edit):', uploadError);
-            throw uploadError;
-          }
-
-          const { error: insertError } = await supabase
-            .from('record_photos')
-            .insert({
-              record_id: recordId,
-              storage_path: filePath
-            });
-
-          if (insertError) {
-            console.error('Record_photos insert error (edit):', insertError);
-            throw insertError;
-          }
-        }
-      }
-
-      // データの再取得
-      const { data: newData } = await supabase
-        .from('medical_records')
-        .select('id, visit_date, treatment_menu, chemicals_used, notes, record_photos(id, storage_path)')
-        .eq('customer_id', customer.id)
-        .order('visit_date', { ascending: false });
-      
-      if (newData) setRecords(newData as unknown as MedicalRecord[]);
-      
-      setEditingRecordId(null);
-      setEditSelectedFiles([]);
+      await saveRecord({ action: 'update', id: recordId, expectedRevision: record.revision, ...editForm });
+      recordSaved = true;
+      // Once text is saved, close the editor so a partial photo failure never silently
+      // repeats the text update or uploads all successful files a second time.
+      setEditingRecordId(null); setEditSelectedFiles([]);
+      await uploadRecordPhotos(recordId, editSelectedFiles);
+      await refreshRecords();
     } catch (error) {
-      console.error('Failed to update record:', error);
-      alert('カルテの更新に失敗しました。');
+      alert(recordSaved
+        ? 'カルテ本文は更新済みです。写真または一覧更新を完了できませんでした。一覧を確認して、不足する写真だけ追加してください。'
+        : error instanceof Error ? error.message : '更新結果を確認できません。画面を再読み込みしてください。');
+      if (recordSaved) { try { await refreshRecords(); } catch { /* Reload is available. */ } }
     } finally {
+      recordSaveBusy.current = false;
       setSavingEdit(false);
     }
   };
@@ -418,8 +348,8 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
   const handleDeleteRecord = async (recordId: string) => {
     if (!confirm('本当にこのカルテを削除しますか？\n紐づく写真も表示されなくなります！')) return;
     try {
-      const { error } = await supabase.from('medical_records').delete().eq('id', recordId);
-      if (error) throw error;
+      const { data, error } = await supabase.from('medical_records').delete().eq('id', recordId).select('id');
+      if (error || data?.length !== 1) throw new Error('Record deletion unavailable');
       setRecords(records.filter(r => r.id !== recordId));
     } catch (error) {
       console.error('Failed to delete record:', error);
@@ -427,16 +357,14 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
     }
   };
 
-  const handleDeletePhoto = async (photoId: string, storagePath: string, recordId: string) => {
+  const handleDeletePhoto = async (photoId: string, recordId: string) => {
     if (!confirm('この写真を削除してもよろしいですか？')) return;
     
     try {
-      const { error: dbError } = await supabase.from('record_photos').delete().eq('id', photoId);
-      if (dbError) throw dbError;
-      
-      await supabase.storage.from('record-photos').remove([storagePath]);
+      const response = await fetch(`/api/record-photos/${photoId}/delete`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Photo deletion failed');
 
-      setRecords(records.map(r => {
+      setRecords(current => current.map(r => {
         if (r.id === recordId) {
           return {
             ...r,
@@ -737,7 +665,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                               <button 
                                 onClick={(e) => {
                                   e.preventDefault();
-                                  handleDeletePhoto(photo.id, photo.storage_path, record.id);
+                                  handleDeletePhoto(photo.id, record.id);
                                 }} 
                                 className="absolute top-1 right-1 bg-black/50 hover:bg-red-500 text-white rounded-full p-1 transition opacity-0 group-hover:opacity-100 z-20"
                               >

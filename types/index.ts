@@ -39,6 +39,7 @@ export type RecordPhoto = {
 
 export type MedicalRecord = {
   id: string;
+  revision?: number;
   visit_date: string;
   treatment_menu: string;
   chemicals_used: string;
