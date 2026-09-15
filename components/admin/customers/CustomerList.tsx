@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Search, User, Phone, Calendar, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
@@ -32,13 +32,12 @@ export default function CustomerList() {
       }
       setUserId(session.user.id);
       
-      // 担当している顧客のID一覧を取得（予約履歴 または メモが存在する顧客）
-      const { data: bookings } = await supabase.from('bookings').select('customer_id').eq('stylist_id', session.user.id);
+      // 担当関係を基準に、予約前の新規顧客も取得する。
+      const { data: relationships } = await supabase.from('stylist_customers').select('customer_id').eq('stylist_id', session.user.id);
       const { data: memos } = await supabase.from('customer_memos').select('customer_id, birth_date, gender').eq('stylist_id', session.user.id);
       
       const customerIds = new Set<string>();
-      bookings?.forEach(b => customerIds.add(b.customer_id));
-      memos?.forEach(m => customerIds.add(m.customer_id));
+      relationships?.forEach(r => customerIds.add(r.customer_id));
 
       if (customerIds.size > 0) {
         const { data: customersData } = await supabase
@@ -91,41 +90,19 @@ export default function CustomerList() {
 
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId || !newCustomer.display_name.trim()) return;
+    if (isCreating || !userId || !newCustomer.display_name.trim()) return;
     setIsCreating(true);
 
     try {
-      // 1. customersテーブルに作成
-      // line_user_idはNOT NULL制約があるため、ダミーの一意なIDをセットする
-      const dummyLineUserId = `manual_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      
-      const { data: custData, error: custError } = await supabase
-        .from('customers')
-        .insert({
-          display_name: newCustomer.display_name,
-          phone_number: newCustomer.phone_number || null,
-          line_user_id: dummyLineUserId,
-        })
-        .select('id')
-        .single();
-      
-      if (custError) {
-        console.error('Customer insert error:', custError);
-        throw custError;
+      const response = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCustomer),
+      });
+      if (!response.ok) {
+        alert(response.status === 403 ? '顧客の登録には有効なプランが必要です。' : '顧客の登録に失敗しました。入力内容を確認してください。');
+        return;
       }
-
-      // 2. customer_memosに作成
-      const { error: memoError } = await supabase
-        .from('customer_memos')
-        .insert({
-          customer_id: custData.id,
-          stylist_id: userId,
-          memo: newCustomer.memo || null,
-          birth_date: newCustomer.birth_date || null,
-          gender: newCustomer.gender,
-        });
-
-      if (memoError) throw memoError;
 
       setShowNewCustomerModal(false);
       setNewCustomer({ display_name: '', phone_number: '', birth_date: '', gender: 'unspecified', memo: '' });
@@ -240,6 +217,7 @@ export default function CustomerList() {
                 <input
                   type="text"
                   required
+                  maxLength={50}
                   value={newCustomer.display_name}
                   onChange={(e) => setNewCustomer({...newCustomer, display_name: e.target.value})}
                   className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -291,6 +269,7 @@ export default function CustomerList() {
                   専用メモ
                 </label>
                 <textarea
+                  maxLength={5000}
                   value={newCustomer.memo}
                   onChange={(e) => setNewCustomer({...newCustomer, memo: e.target.value})}
                   className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[80px]"

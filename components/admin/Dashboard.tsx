@@ -43,6 +43,8 @@ export default function AdminDashboard() {
   const handleReject = async (id: string) => {
     if (await updateBookingStatus(id, 'cancelled')) {
       fetchBookings(currentMonth);
+    } else {
+      alert('キャンセルに失敗しました。予約状態を再確認してください。');
     }
   };
 
@@ -277,7 +279,7 @@ export default function AdminDashboard() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (confirm(`${item.customers?.display_name}様の予約をキャンセルしますか？`)) {
-                                    updateBookingStatus(item.id, 'cancelled').then(() => fetchBookings(currentMonth));
+                                    void handleReject(item.id);
                                   }
                                 }}
                                 className="flex-1 sm:flex-none text-center text-xs font-bold px-2 sm:px-3 py-2 sm:py-1.5 whitespace-nowrap rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition border border-red-100 dark:bg-red-900/20 dark:border-red-900/30 dark:hover:bg-red-900/40"

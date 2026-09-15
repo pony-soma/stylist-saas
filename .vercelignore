@@ -1,0 +1,7 @@
+node_modules
+.next
+.git
+.env*
+*.ps1
+README-STAGING.md
+tests

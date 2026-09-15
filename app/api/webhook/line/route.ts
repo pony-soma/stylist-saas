@@ -1,78 +1,64 @@
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
-import { createClient } from '@supabase/supabase-js';
+import { createHmac, timingSafeEqual } from 'crypto';
+import { billingAdmin } from '@/lib/billing';
 
-// Supabase Service Role Client (RLSをバイパスしてシステム権限で更新するため)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET!;
-const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN!;
-
+// Signature proves LINE sent the event; the customer lookup separately proves
+// the sender owns the booking. A valid postback is not authorization by itself.
 export async function POST(req: Request) {
+  // Enable only after customer identities and booking ownership are protected
+  // by the reservation API/RLS. Legacy permissive tables are not trusted.
+  if (process.env.LINE_BOOKING_CANCELLATION_ENABLED !== 'true') return NextResponse.json({ error: 'LINE cancellation unavailable' }, { status: 503 });
+  const secret = process.env.LINE_CHANNEL_SECRET;
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  if (!secret || !token) return NextResponse.json({ error: 'LINE configuration missing' }, { status: 503 });
   try {
     const text = await req.text();
     const signature = req.headers.get('x-line-signature') || '';
-
-    // 1. LINE署名の検証
-    const hash = crypto
-      .createHmac('SHA256', LINE_CHANNEL_SECRET)
-      .update(text)
-      .digest('base64');
-    
-    if (hash !== signature) {
-      console.error('Signature validation failed');
+    const expected = createHmac('sha256', secret).update(text).digest('base64');
+    const supplied = Buffer.from(signature);
+    const wanted = Buffer.from(expected);
+    if (supplied.length !== wanted.length || !timingSafeEqual(supplied, wanted)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const body = JSON.parse(text);
-    const events = body.events;
-
-    for (const event of events) {
-      // 2. Postbackイベントの処理 (予約キャンセル等のボタンアクション)
-      if (event.type === 'postback') {
-        const data = new URLSearchParams(event.postback.data);
-        const action = data.get('action');
-        const bookingId = data.get('bookingId');
-
-        if (action === 'cancel' && bookingId) {
-          // Supabaseの予約ステータスを'cancelled'に更新
-          const { error } = await supabase
-            .from('bookings')
-            .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-            .eq('id', bookingId)
-            .eq('status', 'confirmed'); // 確定済みのみキャンセル可能とするなどのガード
-
-          if (error) {
-            console.error('Failed to update booking:', error);
-            continue;
-          }
-
-          // 3. キャンセル完了メッセージの自動返信
-          await fetch('https://api.line.me/v2/bot/message/reply', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}`,
-            },
-            body: JSON.stringify({
-              replyToken: event.replyToken,
-              messages: [
-                {
-                  type: 'text',
-                  text: 'ご予約のキャンセルを受け付けました。またのご来店をお待ちしております。',
-                },
-              ],
-            }),
-          });
-        }
+    let body;
+    try { body = JSON.parse(text); } catch { return NextResponse.json({ error: 'Invalid event' }, { status: 400 }); }
+    if (!body || !Array.isArray(body.events)) return NextResponse.json({ error: 'Invalid events' }, { status: 400 });
+    for (const event of body.events) {
+      // Only a direct user conversation has the intended cancellation contract.
+      if (event?.type !== 'postback' || event.source?.type !== 'user' || typeof event.source.userId !== 'string' || !/^U[0-9a-f]{32}$/i.test(event.source.userId) || typeof event.postback?.data !== 'string') continue;
+      const params = new URLSearchParams(event.postback.data);
+      const bookingId = params.get('bookingId');
+      if (params.get('action') !== 'cancel' || !bookingId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookingId)) continue;
+      const db = billingAdmin();
+      const { data: customer, error: customerError } = await db.from('customers').select('id').eq('line_user_id', event.source.userId).maybeSingle();
+      if (customerError) throw new Error('Customer read failed');
+      if (!customer) continue;
+      // Scope both read and mutation. Never reveal whether another user's ID exists.
+      const { data: booking, error: bookingError } = await db.from('bookings').select('id,status').eq('id', bookingId).eq('customer_id', customer.id).maybeSingle();
+      if (bookingError) throw new Error('Booking read failed');
+      if (!booking || !['confirmed', 'cancelled'].includes(booking.status)) continue;
+      if (booking.status === 'confirmed') {
+        const { data: changed, error } = await db.from('bookings')
+          .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+          .eq('id', bookingId).eq('customer_id', customer.id).eq('status', 'confirmed')
+          .select('id').maybeSingle();
+        if (error) throw new Error('Cancellation failed');
+        if (!changed) continue;
       }
+      if (typeof event.replyToken !== 'string' || !event.replyToken) continue;
+      // Cancellation is committed independently of best-effort reply delivery.
+      // Do not send a second paid push or undo a cancellation if LINE reply fails.
+      try {
+        const reply = await fetch('https://api.line.me/v2/bot/message/reply', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ replyToken: event.replyToken, messages: [{ type: 'text', text: 'ご予約のキャンセルを受け付けました。またのご来店をお待ちしております。' }] }),
+        });
+        if (!reply.ok) console.error('LINE cancellation reply failed');
+      } catch { console.error('LINE cancellation reply unavailable'); }
     }
-
-    return NextResponse.json({ status: 'success' }, { status: 200 });
-  } catch (error) {
-    console.error('Error handling webhook:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ status: 'success' });
+  } catch {
+    console.error('LINE cancellation persistence failed');
+    return NextResponse.json({ error: 'Processing failed; retry' }, { status: 503 });
   }
 }

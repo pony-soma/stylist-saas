@@ -20,6 +20,7 @@ export type Menu = {
 
 export type Booking = {
   id: string;
+  updated_at?: string;
   start_time: string;
   end_time: string;
   menu_note: string;
@@ -38,6 +39,7 @@ export type RecordPhoto = {
 
 export type MedicalRecord = {
   id: string;
+  revision?: number;
   visit_date: string;
   treatment_menu: string;
   chemicals_used: string;

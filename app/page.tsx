@@ -15,11 +15,11 @@ export default function Home() {
               <span className="font-bold text-xl tracking-tight text-gray-900">LiNo</span>
             </div>
             <div>
-              <Link href="/admin" className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition mr-6">
+              <Link href="/login?next=/billing" className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition mr-6">
                 ログイン
               </Link>
-              <Link href="/admin" className="text-sm font-bold bg-indigo-600 text-white px-5 py-2.5 rounded-full hover:bg-indigo-700 transition shadow-md hover:shadow-lg">
-                無料で始める
+              <Link href="/login?next=/billing" className="text-sm font-bold bg-indigo-600 text-white px-5 py-2.5 rounded-full hover:bg-indigo-700 transition shadow-md hover:shadow-lg">
+                14日間無料で試す
               </Link>
             </div>
           </div>
@@ -43,15 +43,15 @@ export default function Home() {
             LiNoは、美容師の皆様が「お客様と向き合う時間」を最大化します。
           </p>
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300">
-            <Link href="/admin?plan=free" className="w-full sm:w-auto px-8 py-4 bg-white text-gray-900 border-2 border-gray-900 rounded-full font-bold text-lg hover:bg-gray-50 transition shadow-md flex items-center justify-center gap-2">
+            <Link href="/login?next=/billing" className="w-full sm:w-auto px-8 py-4 bg-white text-gray-900 border-2 border-gray-900 rounded-full font-bold text-lg hover:bg-gray-50 transition shadow-md flex items-center justify-center gap-2">
               14日間無料で試す
             </Link>
-            <Link href="/admin?plan=pro" className="w-full sm:w-auto px-8 py-4 bg-gray-900 text-white rounded-full font-bold text-lg hover:bg-gray-800 transition shadow-xl hover:shadow-2xl flex items-center justify-center gap-2 group">
-              プロプランで始める
+            <Link href="/login?next=/billing" className="w-full sm:w-auto px-8 py-4 bg-gray-900 text-white rounded-full font-bold text-lg hover:bg-gray-800 transition shadow-xl hover:shadow-2xl flex items-center justify-center gap-2 group">
+              月額1,980円のプランを確認
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
-          <p className="mt-6 text-sm text-gray-400 animate-in fade-in duration-700 delay-500">※無料トライアルはクレジットカード登録不要です（プロプラン：月額1,980円）</p>
+          <p className="mt-6 text-sm text-gray-400 animate-in fade-in duration-700 delay-500">初回14日間無料・カード登録必須。体験終了前に解約しない場合、月額1,980円で自動更新します。</p>
         </div>
       </section>
 
