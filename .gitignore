@@ -33,3 +33,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Disposable browser tests; never commit test sessions or reports
+/playwright-report/
+/test-results/
+/tests/e2e/supabase/.temp/
+/tests/e2e/supabase/.branches/

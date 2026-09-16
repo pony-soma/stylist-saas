@@ -1,0 +1,40 @@
+# Disposable CI only; never link this project to a hosted Supabase project.
+project_id = "lino-e2e"
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+[db.seed]
+enabled = false
+[realtime]
+enabled = false
+[studio]
+enabled = false
+[local_smtp]
+enabled = false
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+[storage.vector]
+enabled = false
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/callback"]
+jwt_expiry = 3600
+enable_signup = false
+[auth.email]
+enable_signup = false
+enable_confirmations = false
+[auth.rate_limit]
+sign_in_sign_ups = 100
+[edge_runtime]
+enabled = false
+[analytics]
+enabled = false
