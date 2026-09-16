@@ -16,6 +16,8 @@ for migration in supabase/migrations/*.sql; do
     psql_local < "$migration"
   fi
 done
+# Rehearse the legacy-to-current cutover with synthetic data; always rolls back.
+node scripts/release/build-cutover-rehearsal.cjs | psql_local
 for check in supabase/tests/*.rollback.sql; do
   echo "Checking $(basename "$check")"
   psql_local < "$check"
