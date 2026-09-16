@@ -53,3 +53,31 @@ changes. Do not run against production. No production customer data is used.
 - Do not revert to the old app or permissive policies as an assumed safe rollback.
 - Check production account approval/status separately. No real payment is made by
   these tools or tests.
+
+## Public legal pages: release review still required
+
+Draft pages `/terms`, `/privacy`, `/commercial-disclosure` are reachable before
+login, and linked from the homepage, login and billing screens. Seller name and
+support email were explicitly confirmed by the owner. No street address or phone
+number is stored in this repository.
+
+Before production approval:
+- Confirm the operator can promptly disclose the real business address and phone
+  by email upon request, before an applicant decides to subscribe. Omitting the
+  website listing does NOT mean refusing disclosure. Establish a monitored inbox
+  and keep the reply details privately; do not commit those details.
+- Confirm the proposed no-prorated-refund rule and handling of duplicate charges,
+  defects and statutory remedies. This is a draft policy, not an approved change.
+- Review the privacy text against actual processors, transfers and retention
+  operations. Do not assert legal compliance solely because pages exist.
+- Verify public page access and links on staging; set the approved URLs in Stripe
+  Checkout/Portal where applicable during the separately approved release.
+- Check the Stripe final confirmation screen's price, trial end, renewal and
+  cancellation terms; publishing these pages alone does not complete checkout
+  disclosure or change consent-version enforcement.
+
+Official basis checked 2026-09-16:
+https://www.no-trouble.caa.go.jp/what/mailorder/
+The CAA permits omission of certain advertising particulars only when prompt
+provision on request is both stated and operationally possible. A business-use
+contract may be outside statutory scope; this does not waive Stripe requirements.

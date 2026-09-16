@@ -1,5 +1,6 @@
 'use client';
 
+import LegalLinks from '@/components/LegalLinks';
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Scissors, Loader2 } from 'lucide-react';
@@ -70,8 +71,9 @@ export default function LoginPage() {
 
           <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">初回はログイン後にカードをご登録いただくと、14日間の無料体験が始まります。体験終了前に解約しない場合、月額1,980円（税込）で自動更新します。</p>
           <p className="mt-8 text-center text-xs text-gray-500 dark:text-gray-400">
-            ログインすることで、<a href="#" className="underline hover:text-indigo-500">利用規約</a>と<a href="#" className="underline hover:text-indigo-500">プライバシーポリシー</a>に同意したものとみなされます。
+            ログインすることで、<a href="/terms" className="underline hover:text-indigo-500">利用規約</a>と<a href="/privacy" className="underline hover:text-indigo-500">プライバシーポリシー</a>に同意したものとみなされます。
           </p>
+          <LegalLinks />
         </div>
       </div>
     </div>

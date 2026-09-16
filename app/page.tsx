@@ -1,3 +1,4 @@
+import LegalLinks from '@/components/LegalLinks';
 import Link from 'next/link';
 import { ArrowRight, Scissors, CalendarCheck, MessageCircle, Star } from 'lucide-react';
 
@@ -94,7 +95,8 @@ export default function Home() {
             <Scissors className="w-4 h-4" />
             <span className="font-bold">LiNo</span>
           </div>
-          <p>&copy; {new Date().getFullYear()} LiNo. All rights reserved.</p>
+          <LegalLinks />
+          <p className="mt-6">&copy; {new Date().getFullYear()} LiNo. All rights reserved.</p>
         </div>
       </footer>
     </div>

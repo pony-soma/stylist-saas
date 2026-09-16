@@ -1,5 +1,6 @@
 'use client';
 
+import LegalLinks from '@/components/LegalLinks';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 
@@ -124,6 +125,7 @@ export default function BillingPage() {
             {(status === 'active' || status === 'trialing' || status === 'expired') && <button onClick={() => void openPayment(true)} disabled={busy || loading} className="w-full rounded-xl border border-indigo-600 px-4 py-3 font-bold text-indigo-700 disabled:opacity-50">{busy ? '移動中…' : 'お支払い情報・解約を管理'}</button>}
             {billing.canCheckout && <div className="space-y-4 border-t pt-4">
               <p className="text-sm text-slate-600">{billing.trialEligible ? 'カード登録が必要です。初回の無料体験終了後は月額1,980円（税込）で自動更新します。課金開始前に解約すれば料金は発生しません。' : '再契約は無料体験なしで、月額1,980円（税込）の課金が始まります。'}有料期間中に解約した場合は、その期間の終了まで利用できます。解約はこの画面の「お支払い情報・解約を管理」から行えます。</p>
+              <p className="text-sm">お申込み前に、<Link href="/terms" className="underline">利用規約</Link>、<Link href="/privacy" className="underline">プライバシーポリシー</Link>および<Link href="/commercial-disclosure" className="underline">販売条件</Link>をご確認ください。お客様都合の日割り返金は原則行いません。重複請求・不具合等は個別に対応し、法令上必要な返金等は行います。</p>
               <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} className="mt-1 h-4 w-4 shrink-0" />無料体験が初回のみであること、月額1,980円（税込）の自動更新と解約条件を確認し、同意します。</label>
               <button onClick={() => void openPayment(false)} disabled={!consent || busy || loading || returned} className="w-full rounded-xl bg-indigo-600 px-4 py-3 font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">{busy ? '移動中…' : !billing.trialEligible ? '再契約の条件を確認する' : 'カード登録へ進む'}</button>
             </div>}
@@ -133,6 +135,7 @@ export default function BillingPage() {
           <button onClick={() => void refresh()} disabled={loading || busy} className="underline text-slate-600 disabled:opacity-50">契約状態を再確認</button>
           {billing && status !== 'pending' && <Link href="/admin" className="font-bold text-indigo-600">管理画面へ</Link>}
         </div>
+        <LegalLinks />
       </div>
     </main>
   );
