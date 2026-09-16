@@ -120,3 +120,30 @@ Initial cutover order to include in the final owner approval:
 
 The API/code setup is not proof that Stripe has completed account review. Do not
 mark a release ready just because a live Price exists or CI passes.
+
+## Maintenance traffic gate
+
+`LINO_MAINTENANCE_MODE=true` enables a 503 response before application routing.
+All application pages and APIs, including OAuth callbacks and Stripe/LINE
+webhooks, are blocked. Static Next assets and the three public legal pages remain
+available. Responses are no-store with Retry-After; there is no browser bypass.
+Unset/false keeps normal routing. Existing route authentication and database RLS
+remain responsible for security: this gate is not a database write lock.
+
+On Vercel, treat flag changes as requiring a new deployment. Enable the flag on
+a compatible deployment BEFORE applying the DB cutover, and verify 503 from the
+actual domain and direct deployment URLs. Updating an environment variable alone
+must not be counted as active maintenance. Old deployment URLs and already-open
+clients can still bypass a new deployment's gate; close those paths / restrict
+DB writes separately and drain in-flight work before a consistent backup.
+Never use `NEXT_PUBLIC_` for this flag or a secret query-string bypass.
+
+Stripe events receive 503 during maintenance (not false success). Track pending
+and failed deliveries and reconcile/replay them after reopening; this gate does
+not stop Stripe's own billing schedule. Do not claim maintenance pauses charges.
+The final restart sequence must account for webhook catch-up and late requests.
+
+CI runs `node tests/maintenance-http.cjs` against a built local server with the
+flag enabled, then the ordinary database/browser job checks the default-off flow.
+Hosted deployment flag enable/disable and route/bypass verification are additional
+operator acceptance checks before production. No production flag is enabled by CI.
