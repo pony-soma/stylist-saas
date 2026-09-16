@@ -79,12 +79,14 @@ export default function MenuManager() {
                     </div>
                     <div className="flex gap-2">
                       <Link
+                        aria-label={`${menu.name}を編集`}
                         href={`/admin/menus/${menu.id}/edit`}
                         className="p-2.5 text-gray-500 hover:text-indigo-600 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm transition inline-flex items-center justify-center"
                       >
                         <Edit2 className="w-4 h-4" />
                       </Link>
                       <button
+                        aria-label={`${menu.name}を削除`}
                         onClick={() => handleDelete(menu)}
                         className="p-2.5 text-gray-500 hover:text-red-600 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm transition"
                       >
@@ -115,13 +117,15 @@ export default function MenuManager() {
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
                         <Link
-                          href={`/admin/menus/${menu.id}/edit`}
+                          aria-label={`${menu.name}を編集`}
+                        href={`/admin/menus/${menu.id}/edit`}
                           className="p-1.5 text-gray-400 hover:text-indigo-600 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded transition inline-flex items-center justify-center"
                         >
                           <Edit2 className="w-4 h-4" />
                         </Link>
                         <button
-                          onClick={() => handleDelete(menu)}
+                          aria-label={`${menu.name}を削除`}
+                        onClick={() => handleDelete(menu)}
                           className="p-1.5 text-gray-400 hover:text-red-600 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded transition"
                         >
                           <Trash2 className="w-4 h-4" />

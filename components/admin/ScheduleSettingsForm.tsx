@@ -19,7 +19,7 @@ const DAYS_OF_WEEK = [
 
 export default function ScheduleSettingsForm() {
   const [userId, setUserId] = useState<string | null>(null);
-  const { settings, loading, fetchAvailability, upsertSetting, deleteSetting } = useAvailability(userId);
+  const { settings, loading, fetchAvailability, upsertSetting, saveSettings, deleteSetting } = useAvailability(userId);
   const [saving, setSaving] = useState(false);
 
   // Local state for regular week settings
@@ -83,6 +83,7 @@ export default function ScheduleSettingsForm() {
         };
       });
       setWeekSettings(week);
+      setSpecificSettings([]);
     }
   }, [settings]);
 
@@ -98,18 +99,13 @@ export default function ScheduleSettingsForm() {
 
   const handleSaveAll = async () => {
     setSaving(true);
-    let success = true;
-    for (const dayId of Object.keys(weekSettings)) {
-      const setting = weekSettings[Number(dayId)];
-      const res = await upsertSetting(setting);
-      if (!res) success = false;
-    }
-    
+    const success = await saveSettings(Object.values(weekSettings));
+
     if (success) {
       alert('保存しました！');
       fetchAvailability();
     } else {
-      alert('一部の保存に失敗しました。');
+      alert('保存できませんでした。営業時間と契約状態を確認し、再度お試しください。');
     }
     setSaving(false);
   };
@@ -137,6 +133,7 @@ export default function ScheduleSettingsForm() {
     if (confirm('この特定日設定を削除しますか？')) {
       const success = await deleteSetting(id);
       if (success) fetchAvailability();
+      else alert('削除できませんでした。契約状態を確認し、再度お試しください。');
     }
   };
 
@@ -190,7 +187,8 @@ export default function ScheduleSettingsForm() {
                   <div className="flex items-center gap-3 flex-1 justify-between sm:justify-end">
                     <label className="flex items-center gap-2 cursor-pointer shrink-0">
                       <input 
-                        type="checkbox" 
+                        type="checkbox"
+                        aria-label={`${day.name}を定休日にする`}
                         className="rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
                         checked={isOff}
                         onChange={(e) => handleWeekChange(day.id, 'is_day_off', e.target.checked)}
@@ -203,6 +201,7 @@ export default function ScheduleSettingsForm() {
                         <input 
                           type="time" 
                           className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-slate-800"
+                          aria-label={`${day.name}の開始時刻`}
                           value={current.start_time?.substring(0, 5) || '09:00'}
                           onChange={(e) => handleWeekChange(day.id, 'start_time', `${e.target.value}:00`)}
                         />
@@ -210,6 +209,7 @@ export default function ScheduleSettingsForm() {
                         <input 
                           type="time" 
                           className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-slate-800"
+                          aria-label={`${day.name}の終了時刻`}
                           value={current.end_time?.substring(0, 5) || '21:00'}
                           onChange={(e) => handleWeekChange(day.id, 'end_time', `${e.target.value}:00`)}
                         />
@@ -235,7 +235,8 @@ export default function ScheduleSettingsForm() {
           <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/30">
             <div className="flex flex-col gap-3">
               <input 
-                type="date" 
+                type="date"
+                aria-label="特定日"
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-slate-800"
                 value={newDate}
                 onChange={(e) => setNewDate(e.target.value)}
@@ -268,6 +269,7 @@ export default function ScheduleSettingsForm() {
                   <input 
                     type="time" 
                     className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-slate-800"
+                    aria-label="特定日の開始時刻"
                     value={newDateStart}
                     onChange={(e) => setNewDateStart(e.target.value)}
                   />
@@ -275,6 +277,7 @@ export default function ScheduleSettingsForm() {
                   <input 
                     type="time" 
                     className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-slate-800"
+                    aria-label="特定日の終了時刻"
                     value={newDateEnd}
                     onChange={(e) => setNewDateEnd(e.target.value)}
                   />
@@ -315,6 +318,8 @@ export default function ScheduleSettingsForm() {
                       )}
                     </div>
                     <button 
+                      aria-label={`${s.specific_date}の設定を削除`}
+                      disabled={saving}
                       onClick={() => handleDeleteSpecificDate(s.id)}
                       className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
                     >
