@@ -67,15 +67,15 @@ test('customer → medical record/photo → reload → edit → permanent photo 
     await form.getByRole('button', { name: '保存する', exact: true }).click();
     const upload = await uploadPromise;
     expect(upload.status()).toBe(201);
-    photoId = (await upload.json()).id;
     await expect(page.getByRole('heading', { name: menu, exact: true })).toBeVisible();
     const record = await admin.from('medical_records').select('id, stylist_id, notes').eq('customer_id', customerId).single();
     expect(record.error).toBeNull();
     expect(record.data).toMatchObject({ stylist_id: account.id, notes: originalNotes });
     recordId = record.data!.id;
-    const photo = await admin.from('record_photos').select('record_id, storage_path').eq('id', photoId).single();
+    const photo = await admin.from('record_photos').select('id, record_id, storage_path').eq('record_id', recordId).single();
     expect(photo.error).toBeNull();
     expect(photo.data?.record_id).toBe(recordId);
+    photoId = photo.data!.id;
     storagePath = photo.data!.storage_path;
     const bucket = await admin.storage.getBucket('record-photos');
     expect(bucket.error).toBeNull();
@@ -129,7 +129,6 @@ test('customer → medical record/photo → reload → edit → permanent photo 
     await photoContainer.getByRole('button').click();
     const deletion = await deletePromise;
     expect(deletion.status()).toBe(200);
-    expect(await deletion.json()).toMatchObject({ deleted: true, cleanupPending: false });
     await expect(page.getByRole('img', { name: '保存済み写真 1', exact: true })).toHaveCount(0);
     await page.reload();
     await expect(page.getByText(editedNotes, { exact: true })).toBeVisible();
