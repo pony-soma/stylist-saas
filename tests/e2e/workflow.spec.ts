@@ -33,9 +33,13 @@ test('customer → medical record/photo → reload → edit → permanent photo 
     await page.getByRole('button', { name: '登録する', exact: true }).click();
     const response = await responsePromise;
     expect(response.status()).toBe(201);
-    customerId = (await response.json()).id;
-    expect(customerId).toMatch(/^[0-9a-f-]{36}$/);
+    // The application immediately reloads on success; Chromium may evict the
+    // response body. Verify the durable result and re-rendered UI instead.
     await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+    const customer = await admin.from('customers').select('id').eq('display_name', name).single();
+    expect(customer.error).toBeNull();
+    customerId = customer.data!.id;
+    expect(customerId).toMatch(/^[0-9a-f-]{36}$/);
     const relationship = await admin.from('stylist_customers').select('stylist_id').eq('customer_id', customerId).single();
     expect(relationship.error).toBeNull();
     expect(relationship.data?.stylist_id).toBe(account.id);
