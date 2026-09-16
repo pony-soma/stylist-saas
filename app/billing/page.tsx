@@ -116,15 +116,15 @@ export default function BillingPage() {
         {billing && <section className="mt-6 space-y-4">
           <h2 className="text-lg font-semibold">{labels[billing.status]}</h2>
           {status === 'master' ? <p>このアカウントは期限なく無料で利用できます。カード登録は不要です。</p> : <>
-            <p className="text-2xl font-bold">月額1,980円</p>
+            <p className="text-2xl font-bold">月額1,980円（税込）</p>
             {status === 'trialing' && <p>無料体験終了：{end || '確認中'}。{billing.cancelAtPeriodEnd ? '解約予約済みです。体験終了後の課金はありません。' : '終了前に解約しない場合、終了後に月額料金が自動で請求されます。'}</p>}
             {status === 'active' && <p>{billing.cancelAtPeriodEnd ? '解約予約済みです。ご利用期限：' : '現在のご利用期間の終了：'}{end || '確認中'}</p>}
-            {status === 'pending' && <p>{billing.trialEligible ? 'カード登録完了後、14日間無料でお試しいただけます。無料体験は初回のみです。' : '以前にご利用いただいているため、無料体験の追加はありません。月額1,980円で再開できます。'}</p>}
+            {status === 'pending' && <p>{billing.trialEligible ? 'カード登録完了後、14日間無料でお試しいただけます。無料体験は初回のみです。' : '以前にご利用いただいているため、無料体験の追加はありません。月額1,980円（税込）で再開できます。'}</p>}
             {status === 'expired' && <p>継続利用には、お支払い情報の更新または再契約が必要です。再契約で無料体験は追加されません。</p>}
             {(status === 'active' || status === 'trialing' || status === 'expired') && <button onClick={() => void openPayment(true)} disabled={busy || loading} className="w-full rounded-xl border border-indigo-600 px-4 py-3 font-bold text-indigo-700 disabled:opacity-50">{busy ? '移動中…' : 'お支払い情報・解約を管理'}</button>}
             {billing.canCheckout && <div className="space-y-4 border-t pt-4">
-              <p className="text-sm text-slate-600">{billing.trialEligible ? 'カード登録が必要です。初回の無料体験終了後は月額1,980円で自動更新します。課金開始前に解約すれば料金は発生しません。' : '再契約は無料体験なしで、月額1,980円の課金が始まります。'}有料期間中に解約した場合は、その期間の終了まで利用できます。解約はこの画面の「お支払い情報・解約を管理」から行えます。</p>
-              <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} className="mt-1 h-4 w-4 shrink-0" />無料体験が初回のみであること、月額1,980円の自動更新と解約条件を確認し、同意します。</label>
+              <p className="text-sm text-slate-600">{billing.trialEligible ? 'カード登録が必要です。初回の無料体験終了後は月額1,980円（税込）で自動更新します。課金開始前に解約すれば料金は発生しません。' : '再契約は無料体験なしで、月額1,980円（税込）の課金が始まります。'}有料期間中に解約した場合は、その期間の終了まで利用できます。解約はこの画面の「お支払い情報・解約を管理」から行えます。</p>
+              <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} className="mt-1 h-4 w-4 shrink-0" />無料体験が初回のみであること、月額1,980円（税込）の自動更新と解約条件を確認し、同意します。</label>
               <button onClick={() => void openPayment(false)} disabled={!consent || busy || loading || returned} className="w-full rounded-xl bg-indigo-600 px-4 py-3 font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">{busy ? '移動中…' : !billing.trialEligible ? '再契約の条件を確認する' : 'カード登録へ進む'}</button>
             </div>}
           </>}

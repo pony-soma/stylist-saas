@@ -68,7 +68,7 @@ export default function LoginPage() {
             {loading ? 'リダイレクト中...' : 'Google アカウントでログイン'}
           </button>
 
-          <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">初回はログイン後にカードをご登録いただくと、14日間の無料体験が始まります。体験終了前に解約しない場合、月額1,980円で自動更新します。</p>
+          <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">初回はログイン後にカードをご登録いただくと、14日間の無料体験が始まります。体験終了前に解約しない場合、月額1,980円（税込）で自動更新します。</p>
           <p className="mt-8 text-center text-xs text-gray-500 dark:text-gray-400">
             ログインすることで、<a href="#" className="underline hover:text-indigo-500">利用規約</a>と<a href="#" className="underline hover:text-indigo-500">プライバシーポリシー</a>に同意したものとみなされます。
           </p>

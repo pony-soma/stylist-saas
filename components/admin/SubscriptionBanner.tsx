@@ -34,7 +34,7 @@ export function SubscriptionBanner() {
     : billing?.status === 'pending' ? 'カード登録を完了すると、ご利用を開始できます。'
     : billing?.status === 'expired' ? 'ご利用期間が終了しているか、お支払いの確認が必要です。'
     : billing?.cancelAtPeriodEnd ? `解約予約済みです。${end ? `${end}までご利用いただけます。` : ''}`
-    : `14日間の無料体験中です。${end ? `${end}に終了し、解約しない場合は月額1,980円の自動課金が始まります。` : ''}`;
+    : `14日間の無料体験中です。${end ? `${end}に終了し、解約しない場合は月額1,980円（税込）の自動課金が始まります。` : ''}`;
 
   return (
     <div role="status" className="relative border-b border-orange-200 bg-orange-50 p-4 text-sm text-orange-950 flex flex-col sm:flex-row items-center justify-center gap-3">

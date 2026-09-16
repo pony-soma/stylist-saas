@@ -47,11 +47,11 @@ export default function Home() {
               14日間無料で試す
             </Link>
             <Link href="/login?next=/billing" className="w-full sm:w-auto px-8 py-4 bg-gray-900 text-white rounded-full font-bold text-lg hover:bg-gray-800 transition shadow-xl hover:shadow-2xl flex items-center justify-center gap-2 group">
-              月額1,980円のプランを確認
+              月額1,980円（税込）のプランを確認
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
-          <p className="mt-6 text-sm text-gray-400 animate-in fade-in duration-700 delay-500">初回14日間無料・カード登録必須。体験終了前に解約しない場合、月額1,980円で自動更新します。</p>
+          <p className="mt-6 text-sm text-gray-400 animate-in fade-in duration-700 delay-500">初回14日間無料・カード登録必須。体験終了前に解約しない場合、月額1,980円（税込）で自動更新します。</p>
         </div>
       </section>
 
