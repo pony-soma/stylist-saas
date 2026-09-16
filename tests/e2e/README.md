@@ -6,11 +6,12 @@ Every run creates a disposable local Supabase (Postgres, Auth and private Storag
 
 Coverage:
 
-- Customer registration through the UI and DB ownership.
+- Customer registration during a synthetic 14-day trial through the UI and DB ownership.
 - Medical record creation and a real generated PNG upload.
 - Reload persistence, authenticated image display and denied anonymous/public access.
 - Record edit and persisted revision.
 - Photo deletion, completed recovery ledger, absent DB reference and absent Storage object.
+- Anonymous/expired customer registration denied without DB inserts; master access cannot read or modify another stylist’s record.
 - Existing rollback SQL checks for ownership, billing expiry and server-side mutations.
 
 The HTML report and failure screenshots are available as the `browser-e2e-report` artifact for seven days. Open its `index.html` after downloading, or run `npx playwright show-report` locally. Credentials, session files, video and network traces are not recorded. Any assertion failure makes the check fail; there are no automatic retries hiding failures.

@@ -30,7 +30,9 @@ additional_redirect_urls = ["http://localhost:3000/auth/callback"]
 jwt_expiry = 3600
 enable_signup = false
 [auth.email]
-enable_signup = false
+# Enable the email/password provider for disposable admin-created accounts.
+# Public signup remains disabled by auth.enable_signup above.
+enable_signup = true
 enable_confirmations = false
 [auth.rate_limit]
 sign_in_sign_ups = 100

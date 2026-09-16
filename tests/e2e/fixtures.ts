@@ -33,7 +33,11 @@ export async function createTestAccount(admin: SupabaseClient): Promise<Account>
   const id = data.user.id;
   const stylist = await admin.from('stylists').upsert({ id, name: '自動検証用スタイリスト' });
   if (stylist.error) throw new Error(`Could not seed stylist: ${stylist.error.message}`);
-  const billing = await admin.from('billing_accounts').upsert({ stylist_id: id, is_master: true });
+  const billing = await admin.from('billing_accounts').upsert({
+    stylist_id: id, is_master: false, stripe_status: 'trialing',
+    trial_started_at: new Date().toISOString(),
+    period_end: new Date(Date.now() + 14 * 86400_000).toISOString(),
+  });
   if (billing.error) throw new Error(`Could not seed billing: ${billing.error.message}`);
   return { id, email, password };
 }
@@ -61,7 +65,7 @@ export const test = base.extend<Fixtures>({
       },
     });
     const { error } = await auth.auth.signInWithPassword({ email: account.email, password: account.password });
-    if (error) throw new Error('Could not sign in disposable Auth user');
+    if (error) throw new Error(`Could not sign in disposable Auth user (status=${error.status}, code=${error.code})`);
     await context.addCookies(Array.from(cookies.entries()).map(([name, value]) => ({
       name, value, url: appURL, sameSite: 'Lax' as const,
     })));
