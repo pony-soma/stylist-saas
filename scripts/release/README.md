@@ -81,3 +81,42 @@ https://www.no-trouble.caa.go.jp/what/mailorder/
 The CAA permits omission of certain advertising particulars only when prompt
 provision on request is both stated and operationally possible. A business-use
 contract may be outside statutory scope; this does not waive Stripe requirements.
+
+## Read-only preflight and cutover order
+
+Run `preflight.sql` against the explicitly identified legacy target. It opens a
+read-only transaction, returns only counts/structure, then rolls back. Review all
+result sets (some connectors return only the final one). Zero findings are needed
+for orphan stylists, duplicated/invalid availability, invalid menu values and
+invalid blocked intervals. Historical medical/photo/subscription counts are
+preservation evidence, not rows to delete. This does not validate the entire
+schema, backup availability, account identity or deploy authorization.
+
+Initial cutover order to include in the final owner approval:
+1. Confirm the exact release commit, approved legal/support/refund operations,
+   target project IDs, verified master Auth UUID and live Stripe account status.
+2. Confirm a recoverable backup and restore procedure covering PostgreSQL/Auth
+   AND Storage objects; schema-only exports and a Vercel rollback are not backups.
+3. Re-run schema/data preflight; stop for unreviewed drift. Capture current app,
+   environment-variable names/targets and infrastructure configuration securely.
+4. Close general access for the cutover window and hold new checkout creation.
+   The current legacy app is not compatible with the new write restrictions.
+   A maintenance mechanism still needs implementation/testing before release.
+5. Prepare live Stripe price (JPY1980/month, explicit inclusive tax treatment),
+   portal (period-end cancellation, payment updates, invoice history, approved
+   policy links), webhook and matching production secrets. Never copy test IDs.
+6. Harden the production photo bucket through the API, verify it is private,
+   then apply the approved generated DB transaction (which requires privacy).
+   Keep the migration's old-data preservation assertions enabled.
+7. Build the approved app with PRODUCTION-specific environment values and deploy
+   it to stylist-saas. Do not promote a staging artifact with baked-in public keys.
+8. Verify master identity, anonymous/foreign-user denial, photo HTTP rejection,
+   live webhook delivery and final checkout amounts/terms before opening access.
+   A real charge is not an implicit part of this approval; agree a separate test
+   payment/refund procedure if needed.
+9. If a gate fails, keep access closed and reconcile database/deployment state.
+   After new writes, do not blindly restore a backup or revert to old permissive
+   RLS. Use a reviewed fix-forward or recover under an explicit recovery plan.
+
+The API/code setup is not proof that Stripe has completed account review. Do not
+mark a release ready just because a live Price exists or CI passes.
