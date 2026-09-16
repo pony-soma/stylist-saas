@@ -73,6 +73,8 @@ jobs:
         run: bash tests/e2e/prepare-db.sh
       - name: Configure local-only application
         run: node tests/e2e/export-env.mjs
+      - name: Rehearse isolated database and file recovery
+        run: node tests/e2e/recovery-rehearsal.mjs
       - name: Build application against local Supabase
         run: npm run build
       - name: Verify desktop and mobile browser flows

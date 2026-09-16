@@ -110,3 +110,14 @@ Instant Rollbackは以前のビルドへドメインを戻す操作で、外部D
 [Vercel: Environment variables](https://vercel.com/docs/environment-variables)
 
 公式資料確認日: 2026-09-16。操作当日は対象アカウントの権限・設定・復元範囲を再確認。
+
+## 自動リハーサルの範囲
+
+CIの `tests/e2e/recovery-rehearsal.mjs` は固定のローカルSupabaseのみで動く。
+合成データの専用DBをpg_dumpし別DBへpg_restoreした後、行内容・SELECT権限・
+所有者RLSを検証する。専用の非公開StorageバケットでダミーPNGの取得・削除・
+再アップロード・SHA256一致と公開URLからの取得拒否も確認し、専用資源を削除する。
+
+これはバックアップ・復元手段の基本確認であり、LiNo全スキーマ、Authログイン、
+本番Storageメタデータとの整合性、暗号化保管、別プロジェクトへの復旧を証明しない。
+本番バックアップ権限と復元リハーサルの未完了ゲートは引き続き残す。
