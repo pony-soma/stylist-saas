@@ -36,9 +36,20 @@ changes. Do not run against production. No production customer data is used.
   downtime/compatibility, backup/restore rehearsal, private Storage configuration
   and policies, live Stripe Portal/Webhook/keys, public legal pages and release
   acceptance checks remain separate gates.
-- Storage is NOT changed by this SQL. Use the Storage API to configure a private
-  bucket and confirm anonymous object URLs and client Storage access are denied
-  before opening traffic. Old public URLs/cache behavior require separate checks.
+- Bucket settings are NOT changed by SQL. First use the explicit `--harden`
+  option in `scripts/setup-private-photo-storage.cjs` with the approved target ref
+  and `LINO_STORAGE_RELEASE_APPROVAL` set to that same ref. This operator mistake
+  guard does not replace user approval. It makes the bucket private, caps files at
+  10 MiB, restricts MIME types to JPEG/PNG/WebP, then reads the configuration back.
+- Cutover SQL now requires the bucket already to be private and installs a
+  RESTRICTIVE policy denying anon/authenticated direct access to record-photos.
+  Existing permissive rules cannot override this policy. Other buckets retain
+  their existing rules. Server-side ownership-checked APIs use service_role.
+- The rehearsal models legacy permissive Storage policies in its own table and
+  verifies SELECT/INSERT/UPDATE/DELETE denial plus unaffected other buckets.
+  Actual HTTP object serving, old public URLs, CDN/browser caches and revocation
+  of existing signed URLs still require separate release checks. Previously
+  downloaded copies cannot be recalled by this change.
 - Do not revert to the old app or permissive policies as an assumed safe rollback.
 - Check production account approval/status separately. No real payment is made by
   these tools or tests.

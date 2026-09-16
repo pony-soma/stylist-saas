@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const {photoPolicy} = require('./photo-policy.cjs');
 const root = path.resolve(__dirname, '../..');
 const tables = ['availability_settings','blocked_time_slots','bookings','customer_memos','customers','medical_records','menus','record_photos','stylists','subscriptions'];
 const migrationNames = [
@@ -77,8 +78,8 @@ do $$ begin
  or photos<>(select count(*) from public.record_photos) or customers<>(select count(*) from public.customers)
  or subscriptions<>(select count(*) from public.subscriptions)) then raise exception 'Legacy row counts changed'; end if;
 end $$;
--- STORAGE IS A SEPARATE RELEASE GATE: make record-photos private using Storage API,
--- review its policies and prove anonymous URLs are denied before opening traffic.
+${photoPolicy}
+-- Before opening traffic, verify Storage HTTP access and old public URL caching separately.
 notify pgrst, 'reload schema';
 commit;
 `;
