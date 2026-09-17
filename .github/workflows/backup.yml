@@ -1,0 +1,66 @@
+name: LiNo encrypted backup (disabled until configured)
+
+# Deliberately no schedule until credentials, recovery and storage are verified.
+on:
+  workflow_dispatch:
+    inputs:
+      project_ref:
+        description: 'Exact approved Supabase project ref'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lino-offsite-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    if: github.ref == 'refs/heads/main' && vars.LINO_BACKUP_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: lino-backup
+    container: postgres:17.6-bookworm
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Verify configured target
+        env:
+          REQUESTED_REF: ${{ inputs.project_ref }}
+          EXPECTED_REF: ${{ vars.LINO_BACKUP_PROJECT_REF }}
+        run: |
+          test -n "$EXPECTED_REF"
+          test "$REQUESTED_REF" = "$EXPECTED_REF"
+      - name: Install backup tools
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends python3 python3-venv age ca-certificates
+          python3 -m venv /tmp/lino-backup-tools
+          /tmp/lino-backup-tools/bin/pip install --disable-pip-version-check -r scripts/backup/requirements.txt
+          pg_dump --version
+          age --version
+      - name: Encrypt and upload backup
+        env:
+          LINO_BACKUP_ENABLED: 'true'
+          LINO_BACKUP_PROJECT_REF: ${{ vars.LINO_BACKUP_PROJECT_REF }}
+          SUPABASE_URL: ${{ vars.LINO_BACKUP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.LINO_BACKUP_STORAGE_KEY }}
+          PGHOST: ${{ secrets.LINO_BACKUP_PGHOST }}
+          PGPORT: '5432'
+          PGDATABASE: postgres
+          PGUSER: ${{ secrets.LINO_BACKUP_PGUSER }}
+          PGPASSWORD: ${{ secrets.LINO_BACKUP_PGPASSWORD }}
+          PGSSLMODE: require
+          AGE_RECIPIENT: ${{ vars.LINO_BACKUP_AGE_RECIPIENT }}
+          R2_ENDPOINT_URL: ${{ vars.LINO_BACKUP_R2_ENDPOINT }}
+          R2_BUCKET: ${{ vars.LINO_BACKUP_R2_BUCKET }}
+          R2_ACCESS_KEY_ID: ${{ secrets.LINO_BACKUP_R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.LINO_BACKUP_R2_SECRET_ACCESS_KEY }}
+          LINO_BACKUP_MAX_BYTES: '104857600'
+          LINO_BACKUP_MAX_PHOTOS: '1000'
+          LINO_BACKUP_MAX_STORED_BYTES: '8589934592'
+        run: /tmp/lino-backup-tools/bin/python scripts/backup/backup.py
+      # No upload-artifact: never persist plaintext dumps/photos or keys in CI artifacts.

@@ -39,3 +39,7 @@ next-env.d.ts
 /test-results/
 /tests/e2e/supabase/.temp/
 /tests/e2e/supabase/.branches/
+
+# Python backup tooling
+__pycache__/
+*.pyc
