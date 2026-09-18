@@ -43,15 +43,26 @@ const compareCatalog=(actual,expected,label)=>{
  const a=JSON.parse(actual),b=JSON.parse(expected);
  for(const section of ['columns','relations','constraints','indexes','policies','functions']){
   stage='catalog comparison: '+label+' '+section;
-  assert.ok(JSON.stringify(a[section])===JSON.stringify(b[section]),'schema catalog mismatch');
+  if(JSON.stringify(a[section])!==JSON.stringify(b[section])){
+   // Catalog definitions only: never rows, passwords, tokens or Auth hashes.
+   const actualRows=a[section]??[],expectedRows=b[section]??[];
+   const at=Math.max(0,Array.from({length:Math.max(actualRows.length,expectedRows.length)},(_,i)=>i).find(i=>JSON.stringify(actualRows[i])!==JSON.stringify(expectedRows[i]))??0);
+   const actualRow=actualRows[at]??{},expectedRow=expectedRows[at]??{};
+   const fields=[...new Set([...Object.keys(actualRow),...Object.keys(expectedRow)])].filter(k=>JSON.stringify(actualRow[k])!==JSON.stringify(expectedRow[k]));
+   const identity=Object.fromEntries(['schema','table_schema','schemaname','table_name','tablename','name','column_name','policyname','indexname'].filter(k=>expectedRow[k]!==undefined).map(k=>[k,expectedRow[k]]));
+   const changes=fields.slice(0,3).map(field=>({field,expected:JSON.stringify(expectedRow[field])?.slice(0,700),actual:JSON.stringify(actualRow[field])?.slice(0,700)}));
+   console.error('Schema-only difference: '+JSON.stringify({label,section,entry:at,identity,expectedCount:expectedRows.length,actualCount:actualRows.length,changes}));
+   assert.fail('schema catalog mismatch');
+  }
  }
 };
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN1cAAAAASUVORK5CYII=','base64');
 const options={auth:{persistSession:false,autoRefreshToken:false}};
 const services=['auth','rest','storage'].map(x=>'supabase_'+x+'_lino-recovery-target');
+// Dropped columns leave physical attnum gaps; preserve logical order, not gaps.
 const catalog=schemas=>`SELECT json_build_object(
- 'columns',(SELECT json_agg(t ORDER BY table_schema,table_name,ordinal_position) FROM (SELECT table_schema,table_name,column_name,ordinal_position,data_type,udt_schema,udt_name,is_nullable,column_default FROM information_schema.columns WHERE table_schema IN (${schemas})) t),
+ 'columns',(SELECT json_agg(t ORDER BY table_schema,table_name,ordinal_position) FROM (SELECT table_schema,table_name,column_name,row_number() OVER (PARTITION BY table_schema,table_name ORDER BY ordinal_position) AS ordinal_position,data_type,udt_schema,udt_name,is_nullable,column_default FROM information_schema.columns WHERE table_schema IN (${schemas})) t),
  'relations',(SELECT json_agg(t ORDER BY schema,name) FROM (SELECT n.nspname AS schema,c.relname AS name,c.relkind,c.relrowsecurity,c.relforcerowsecurity,c.relacl::text,pg_get_userbyid(c.relowner) AS owner FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN (${schemas}) AND c.relkind IN ('r','p','v','m','S')) t),
  'constraints',(SELECT json_agg(t ORDER BY schema,table_name,name) FROM (SELECT n.nspname AS schema,c.relname AS table_name,con.conname AS name,con.convalidated,pg_get_constraintdef(con.oid) AS definition FROM pg_constraint con JOIN pg_class c ON c.oid=con.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN (${schemas})) t),
  'indexes',(SELECT json_agg(t ORDER BY schemaname,tablename,indexname) FROM (SELECT schemaname,tablename,indexname,indexdef FROM pg_indexes WHERE schemaname IN (${schemas})) t),
