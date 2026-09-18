@@ -107,8 +107,13 @@ def plan(inventory, manifests, project_ref, now):
         return key
     for raw in manifests:
         manifest = unique_json(raw)
-        require(isinstance(manifest, dict) and set(manifest) == {'format','run_id','project_ref','atomic_snapshot','photos','database','plaintext_bytes_downloaded'})
-        require(type(manifest['format']) is int and manifest['format'] == 1 and manifest['project_ref'] == project_ref)
+        require(isinstance(manifest, dict))
+        fields = {'format','run_id','project_ref','atomic_snapshot','photos','database','plaintext_bytes_downloaded'}
+        require(type(manifest.get('format')) is int and manifest['format'] in (1,2))
+        if manifest['format'] == 2:
+            fields.add('database_format')
+            require(manifest.get('database_format') == 'supabase-cli-platform-v1')
+        require(set(manifest) == fields and manifest['project_ref'] == project_ref)
         require(manifest['atomic_snapshot'] is False)
         require(type(manifest['plaintext_bytes_downloaded']) is int and manifest['plaintext_bytes_downloaded'] > 0)
         run = manifest['run_id']

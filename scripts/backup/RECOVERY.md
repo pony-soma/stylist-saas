@@ -54,7 +54,8 @@ recovery; this is not a permanent statement about the production configuration.
    roles/schema/data export route and explicitly account for custom auth/storage
    definitions, migration history and Vault/root-key dependencies. Inventory
    compatibility and required settings must be confirmed before capture. The
-   current raw pg_dump runner does not yet emit this multi-file package. Do not
+   default runner now emits this filtered package (see PLATFORM-EXPORT.md), but
+   the hosted-specific gates remain unresolved. Do not
    silently skip failed objects or label its local-admin restore as hosted proof.
 5. **Restore into the closed target.** Review exact SQL and permitted ownership,
    restore with stop-on-error, and keep failure atomic where supported. Preserve
@@ -79,7 +80,8 @@ recovery; this is not a permanent statement about the production configuration.
 
 - Real hosted restore target, cost check and approved target access are unresolved.
 - Vault usage/root-key dependency and Auth provider/SMTP settings remain unverified.
-- Export conversion and restore with hosted managed permissions is untested.
+- Filtered export and ordinary-role local restore have a dedicated CI rehearsal;
+  hosted managed-permission restoration remains untested.
 - Owner public-key roundtrip, writer freeze and DB/photo consistency are untested.
 - Retention and health helpers are offline review tools; live deletion, scheduled
   collection, independent missed-run monitoring and external alerts are not active.

@@ -50,7 +50,8 @@ Exact schema is in the module docstring. This input differs from retention input
 health needs collection time, used bytes, observed completion markers, run history,
 explicit enabled state/baseline and optional externally supplied restore receipt.
 Use a trusted current clock. Unknown/duplicate fields and future evidence are
-rejected. No cloud collector is implemented by this helper.
+rejected. The separate collector.py can build this evidence from read-only R2/GitHub
+metadata; it is not activated. See PLATFORM-EXPORT.md.
 
 | Condition | Result |
 | --- | --- |
@@ -72,9 +73,9 @@ read `state`. Warning/critical exit 1; invalid/unconfigured exit 2.
 
 Run-history collection must distinguish deliberately expired retention points from
 missing recent markers; the evaluator fails closed if a supplied successful run
-has no corresponding marker. Collection, correlation of GitHub attempts with
-backup run IDs, independent scheduling/monitoring of missed runs, and notification
-delivery remain to be connected and tested. No notification destination is set.
+has no corresponding marker. The read-only collector and exact attempt correlation are implemented but live
+collection remains untested. Independent scheduling/monitoring of missed runs and
+notification delivery remain to be connected and tested. No notification destination is set.
 
 ## Current operation
 

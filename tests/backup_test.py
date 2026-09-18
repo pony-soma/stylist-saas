@@ -9,7 +9,7 @@ spec = importlib.util.spec_from_file_location('backup', Path(__file__).resolve()
 b = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(b)
 REF = 'a' * 20
-ENV = {'LINO_BACKUP_ENABLED': 'true', 'LINO_BACKUP_PROJECT_REF': REF, 'SUPABASE_URL': 'https://' + REF + '.supabase.co', 'PGHOST': 'db.' + REF + '.supabase.co', 'PGUSER': 'postgres', 'PGDATABASE': 'postgres', 'PGPASSWORD': 'dummy', 'PGSSLMODE': 'require', 'SUPABASE_SERVICE_ROLE_KEY': 'dummy', 'R2_ENDPOINT_URL': 'https://' + 'a' * 32 + '.r2.cloudflarestorage.com', 'R2_BUCKET': 'test-private', 'R2_ACCESS_KEY_ID': 'dummy', 'R2_SECRET_ACCESS_KEY': 'dummy', 'AGE_RECIPIENT': 'age1' + 'a' * 58}
+ENV = {'LINO_BACKUP_DATABASE_FORMAT':'pg-custom-v1', 'LINO_BACKUP_ENABLED': 'true', 'LINO_BACKUP_PROJECT_REF': REF, 'SUPABASE_URL': 'https://' + REF + '.supabase.co', 'PGHOST': 'db.' + REF + '.supabase.co', 'PGUSER': 'postgres', 'PGDATABASE': 'postgres', 'PGPASSWORD': 'dummy', 'PGSSLMODE': 'require', 'SUPABASE_SERVICE_ROLE_KEY': 'dummy', 'R2_ENDPOINT_URL': 'https://' + 'a' * 32 + '.r2.cloudflarestorage.com', 'R2_BUCKET': 'test-private', 'R2_ACCESS_KEY_ID': 'dummy', 'R2_SECRET_ACCESS_KEY': 'dummy', 'AGE_RECIPIENT': 'age1' + 'a' * 58}
 class Missing(Exception):
     response = {'Error': {'Code': '404'}}
 class S3:
@@ -47,6 +47,40 @@ def fake_encrypt(source, destination, recipient):
     source.unlink()
 
 class BackupTests(unittest.TestCase):
+    def test_provenance_refuses_partial_or_unsafe_ids(self):
+        self.assertEqual(b.github_provenance({}), {})
+        self.assertEqual(b.github_provenance({'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'2'}), {'github-run-id':'123','github-run-attempt':'2'})
+        for value in ('0','-1','text','123\n',None):
+            with self.subTest(value=value), self.assertRaises(b.BackupError):
+                b.github_provenance({'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':value})
+        with self.assertRaises(b.BackupError): b.github_provenance({'GITHUB_RUN_ID':'123'})
+
+    @patch.object(b, 'dump_database', fake_dump)
+    @patch.object(b, 'encrypt', fake_encrypt)
+    def test_completion_is_correlated_but_photos_are_not(self):
+        s3=S3()
+        with patch.dict(os.environ, {'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'2'}), patch('sys.stdout', new_callable=io.StringIO):
+            b.run(b.config(ENV),s3,Storage())
+        for key,obj in s3.objects.items():
+            if key.endswith('/complete.manifest.age'):
+                self.assertEqual(obj['metadata']['github-run-id'],'123')
+                self.assertEqual(obj['metadata']['github-run-attempt'],'2')
+            else:
+                self.assertNotIn('github-run-id', obj['metadata'])
+
+    @patch.object(b, 'dump_platform_database', fake_dump)
+    @patch.object(b, 'encrypt', fake_encrypt)
+    def test_platform_package_has_explicit_manifest_format(self):
+        import json
+        s3=S3()
+        cfg=b.config(dict(ENV,LINO_BACKUP_DATABASE_FORMAT='supabase-cli-platform-v1'))
+        with patch('sys.stdout', new_callable=io.StringIO): b.run(cfg,s3,Storage())
+        raw=next(v['bytes'] for k,v in s3.objects.items() if k.endswith('/complete.manifest.age'))
+        manifest=json.loads(raw.split(b'\n',1)[1])
+        self.assertEqual(manifest['format'],2)
+        self.assertEqual(manifest['database_format'],'supabase-cli-platform-v1')
+        self.assertFalse(manifest['atomic_snapshot'])
+
     def test_config(self):
         b.config(ENV)
         for key,value in [('LINO_BACKUP_ENABLED','false'),('PGHOST','evil.test'),('PGUSER','postgres.wrong'),('PGPORT','6543'),('PGSSLMODE','disable'),('SUPABASE_URL','https://evil.test'),('R2_ENDPOINT_URL','https://evil.test'),('AGE_RECIPIENT',''),('LINO_BACKUP_MAX_BYTES','0')]:

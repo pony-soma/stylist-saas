@@ -34,6 +34,17 @@ class Fixture:
     def plan(self):return r.plan(self.inventory,self.manifests,REF,NOW)
 
 class RetentionTests(unittest.TestCase):
+    def test_platform_v2_manifest_and_unknown_format(self):
+        f=Fixture();f.snapshot(0)
+        document=json.loads(f.manifests[0]);document.update(format=2,database_format='supabase-cli-platform-v1')
+        f.manifests[0]=json.dumps(document).encode()
+        f.inventory['objects'][-1]['plain_sha256']=hashlib.sha256(f.manifests[0]).hexdigest()
+        self.assertFalse(f.plan()['deletion_enabled'])
+        document['database_format']='unknown'
+        f.manifests[0]=json.dumps(document).encode()
+        f.inventory['objects'][-1]['plain_sha256']=hashlib.sha256(f.manifests[0]).hexdigest()
+        with self.assertRaises(r.Refused): f.plan()
+
     def test_old_shared_photo_and_private_data(self):
         f=Fixture();photo=f.photo(1,120);f.snapshot(0,[photo])
         result=f.plan()

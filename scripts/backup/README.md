@@ -10,7 +10,8 @@ the application: do not merge this PR just to enable the backup workflow.
 ## Data path
 
 1. Validate project/DB endpoint, SSL, R2 endpoint, age public recipient and limits.
-2. Export the DB with `pg_dump` custom format into a private temporary directory.
+2. Export filtered Supabase roles/schema/data/history into a private tar package
+   using the pinned CLI. See PLATFORM-EXPORT.md; hosted recovery gates remain.
 3. Encrypt the archive with age before uploading it to a dedicated private R2
    Standard bucket. Only the age PUBLIC recipient goes in GitHub configuration.
 4. Read `record-photos` metadata and download new/changed files. Encrypt every
@@ -27,7 +28,7 @@ inside encrypted manifests, not in R2 keys or workflow logs.
 
 ## Important limits before enabling
 
-- Generic `pg_dump` is a candidate DB archive, NOT a tested Supabase migration
+- Legacy generic `pg_dump` is a candidate DB archive, NOT a tested Supabase migration
   procedure. Managed roles, extensions, grants, migration history and custom
   auth/storage policies must be rehearsed against the chosen restore target.
   A dump does not include cluster-global roles/passwords, Auth provider settings,
@@ -148,3 +149,6 @@ See [REVIEW-TOOLS.md](REVIEW-TOOLS.md) for the offline retention/health helpers,
 [RECOVERY.md](RECOVERY.md) for the production-specific candidate runbook and
 [OPERATIONS.md](OPERATIONS.md) for activation gates. No automatic deletion or
 live monitoring is enabled by these additions.
+
+The filtered default export and read-only monitoring collector are documented in
+[PLATFORM-EXPORT.md](PLATFORM-EXPORT.md). Their workflows remain disabled.

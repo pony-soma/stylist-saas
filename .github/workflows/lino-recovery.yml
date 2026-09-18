@@ -8,6 +8,7 @@ on:
       - tests/e2e/**
       - supabase/**
       - package-lock.json
+      - scripts/backup/platform_export.py
 
 permissions:
   contents: read
@@ -18,7 +19,11 @@ concurrency:
 
 jobs:
   recovery:
-    name: Restore synthetic LiNo into a second local Supabase
+    name: Restore synthetic LiNo (${{ matrix.script }})
+    strategy:
+      fail-fast: false
+      matrix:
+        script: [lino-recovery, platform-recovery]
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -36,6 +41,11 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install PostgreSQL client for filtered export
+        if: matrix.script == 'platform-recovery'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
       - name: Start disposable source Supabase
         run: npx --no-install supabase start --workdir tests/e2e > /dev/null
       - name: Prepare actual LiNo schema on source
@@ -45,7 +55,7 @@ jobs:
       - name: Start separate disposable restore target
         run: npx --no-install supabase start --workdir tests/e2e/recovery-target > /dev/null
       - name: Restore and verify schema Auth ownership and photos
-        run: node tests/e2e/lino-recovery.mjs
+        run: node tests/e2e/${{ matrix.script }}.mjs
       - name: Remove disposable target
         if: always()
         run: npx --no-install supabase stop --workdir tests/e2e/recovery-target --no-backup

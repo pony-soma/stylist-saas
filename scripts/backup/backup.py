@@ -36,6 +36,8 @@ def positive(value):
 
 def config(env):
     require(env.get('LINO_BACKUP_ENABLED') == 'true')
+    database_format = env.get('LINO_BACKUP_DATABASE_FORMAT', 'supabase-cli-platform-v1')
+    require(database_format in ('pg-custom-v1', 'supabase-cli-platform-v1'))
     ref = env.get('LINO_BACKUP_PROJECT_REF', '')
     require(bool(re.fullmatch(r'[a-z]{20}', ref)))
     require(env.get('SUPABASE_URL') == 'https://' + ref + '.supabase.co')
@@ -51,7 +53,7 @@ def config(env):
     require(bool(re.fullmatch(r'age1[0-9a-z]{58}', env.get('AGE_RECIPIENT', ''))))
     for key in ('PGPASSWORD', 'SUPABASE_SERVICE_ROLE_KEY', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'):
         require(bool(env.get(key)))
-    return {'ref': ref, 'url': env['SUPABASE_URL'], 'token': env['SUPABASE_SERVICE_ROLE_KEY'],
+    return {'database_format': database_format, 'ref': ref, 'url': env['SUPABASE_URL'], 'token': env['SUPABASE_SERVICE_ROLE_KEY'],
             'bucket': env['R2_BUCKET'], 'recipient': env['AGE_RECIPIENT'],
             'limit': positive(env.get('LINO_BACKUP_MAX_BYTES', '104857600')),
             'stored_limit': positive(env.get('LINO_BACKUP_MAX_STORED_BYTES', '8589934592')),
@@ -164,6 +166,13 @@ def dump_database(target, limit):
     return total
 
 
+def dump_platform_database(target, limit):
+    from platform_export import export_platform
+    export_platform(target, limit, env=os.environ)
+    require(target.is_file() and 0 < target.stat().st_size <= limit)
+    return target.stat().st_size
+
+
 def head_optional(s3, bucket, key):
     try:
         return s3.head_object(Bucket=bucket, Key=key)
@@ -173,11 +182,24 @@ def head_optional(s3, bucket, key):
         raise
 
 
-def upload(s3, bucket, key, path, plain_sha, budget):
+def github_provenance(env):
+    keys = ('GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT')
+    values = [env.get(key) for key in keys]
+    if not any(value is not None for value in values):
+        return {}
+    require(all(isinstance(value, str) and re.fullmatch(r'[1-9][0-9]{0,19}', value) for value in values))
+    return dict(zip(('github-run-id', 'github-run-attempt'), values))
+
+
+def upload(s3, bucket, key, path, plain_sha, budget, extra_metadata=None):
     require(budget['used'] + path.stat().st_size <= budget['limit'])
     budget['used'] += path.stat().st_size
     cipher_sha = digest(path)
     metadata = {'cipher-sha256': cipher_sha, 'plain-sha256': plain_sha}
+    if extra_metadata:
+        require(set(extra_metadata) == {'github-run-id', 'github-run-attempt'})
+        require(all(isinstance(value, str) and re.fullmatch(r'[1-9][0-9]{0,19}', value) for value in extra_metadata.values()))
+        metadata.update(extra_metadata)
     s3.upload_file(str(path), bucket, key, ExtraArgs={'ContentType': 'application/octet-stream', 'Metadata': metadata})
     head = s3.head_object(Bucket=bucket, Key=key)
     require(head.get('ContentLength') == path.stat().st_size and head.get('Metadata') == metadata)
@@ -186,6 +208,7 @@ def upload(s3, bucket, key, path, plain_sha, budget):
 
 def run(cfg, s3, storage):
     os.umask(0o077)
+    provenance = github_provenance(os.environ)
     run_id = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex
     prefix = 'lino-backup/v1/' + cfg['ref'] + '/'
     budget = {'used': 0, 'limit': cfg['stored_limit']}
@@ -194,11 +217,14 @@ def run(cfg, s3, storage):
             budget['used'] += obj['Size']
             require(budget['used'] <= budget['limit'])
     before = storage.listing()
-    manifest = {'format': 1, 'run_id': run_id, 'project_ref': cfg['ref'], 'atomic_snapshot': False, 'photos': []}
+    platform = cfg['database_format'] == 'supabase-cli-platform-v1'
+    manifest = {'format': 2 if platform else 1, 'run_id': run_id, 'project_ref': cfg['ref'], 'atomic_snapshot': False, 'photos': []}
+    if platform:
+        manifest['database_format'] = cfg['database_format']
     with tempfile.TemporaryDirectory(prefix='lino-backup-') as temp:
         folder = Path(temp)
         plain, encrypted = folder / 'database.dump', folder / 'database.age'
-        transferred = dump_database(plain, cfg['limit'])
+        transferred = (dump_platform_database if platform else dump_database)(plain, cfg['limit'])
         db_hash = digest(plain)
         encrypt(plain, encrypted, cfg['recipient'])
         manifest['database'] = upload(s3, cfg['bucket'], prefix + 'runs/' + run_id + '/database.age', encrypted, db_hash, budget)
@@ -227,14 +253,15 @@ def run(cfg, s3, storage):
         manifest_hash = digest(plain)
         encrypt(plain, encrypted, cfg['recipient'])
         # The only completion marker is encrypted and uploaded after all checks.
-        upload(s3, cfg['bucket'], prefix + 'runs/' + run_id + '/complete.manifest.age', encrypted, manifest_hash, budget)
+        upload(s3, cfg['bucket'], prefix + 'runs/' + run_id + '/complete.manifest.age', encrypted, manifest_hash, budget, provenance)
     print(json.dumps({'status': 'complete', 'photos': len(before), 'plaintext_bytes_downloaded': transferred}))
 
 
 def main():
     try:
         cfg = config(os.environ)
-        require(shutil.which('age') and shutil.which('pg_dump'))
+        commands = ('age', 'npx', 'psql') if cfg['database_format'] == 'supabase-cli-platform-v1' else ('age', 'pg_dump')
+        require(all(shutil.which(command) for command in commands))
         import boto3
         from botocore.config import Config
         s3 = boto3.client('s3', endpoint_url=os.environ['R2_ENDPOINT_URL'], aws_access_key_id=os.environ['R2_ACCESS_KEY_ID'], aws_secret_access_key=os.environ['R2_SECRET_ACCESS_KEY'], region_name='auto', config=Config(retries={'max_attempts': 3}, connect_timeout=15, read_timeout=60, s3={'addressing_style': 'path'}))

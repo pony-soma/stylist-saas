@@ -18,8 +18,9 @@ that recurring backups or production recovery have been enabled.
 ## Offline review helpers (implemented, not connected)
 
 `retention.py` produces reference-aware dry-run candidates only; `health.py`
-evaluates supplied freshness/failure/capacity/restore evidence. No cloud collector,
-scheduler, live deletion or external alert is active. See `REVIEW-TOOLS.md`.
+evaluates supplied freshness/failure/capacity/restore evidence. A read-only metadata
+collector is implemented but not activated. No scheduler, live deletion or external
+alert is active. See PLATFORM-EXPORT.md for candidate export/collection details. See `REVIEW-TOOLS.md`.
 The catalog-only production survey and hosted recovery gaps are in `RECOVERY.md`.
 
 ## Before the first production snapshot
