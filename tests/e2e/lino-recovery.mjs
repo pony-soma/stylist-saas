@@ -5,6 +5,10 @@ import { createHash, randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
 const SRC='supabase_db_lino-e2e', DST='supabase_db_lino-recovery-target';
+// The Docker image's built-in superuser is intentionally confined to these two
+// disposable containers. Hosted `postgres` cannot own/drop managed auth objects;
+// this rehearsal does NOT prove hosted restore permissions or a hosted runbook.
+const LOCAL_RESTORE_ROLE='supabase_admin';
 const sourceURL='http://127.0.0.1:54321', targetURL='http://127.0.0.1:54331';
 const cleanEnv=Object.fromEntries(['PATH','HOME','LANG'].filter(k=>process.env[k]).map(k=>[k,process.env[k]]));
 const run=(cmd,args,extra={})=>{
@@ -21,10 +25,27 @@ const run=(cmd,args,extra={})=>{
 };
 const sql=(container,query)=>{
  assert.ok([SRC,DST].includes(container));
- return run('docker',['exec','-i',container,'psql','-X','-v','ON_ERROR_STOP=1','-At','-U','postgres','-d','postgres'],{input:query}).toString().trim();
+ return run('docker',['exec','-i',container,'psql','-X','-v','ON_ERROR_STOP=1','-At','-U',LOCAL_RESTORE_ROLE,'-d','postgres'],{input:query}).toString().trim();
 };
 const status=workdir=>JSON.parse(run('npx',['--no-install','supabase','status','--workdir',workdir,'--output','json']).toString());
-const check=r=>{if(r.error)throw Error('local API operation failed');return r.data;};
+let stage='preflight', apiDiagnostic='';
+const progress=message=>{stage=message; console.log(message);};
+const check=r=>{
+ if(r.error){
+  const code=String(r.error.code??'');
+  const status=String(r.error.status??r.status??'');
+  apiDiagnostic=[/^[A-Z0-9_]{1,40}$/i.test(code)?'code='+code:'',/^[0-9]{3}$/.test(status)?'status='+status:''].filter(Boolean).join(' ');
+  throw Error('local API operation failed');
+ }
+ return r.data;
+};
+const compareCatalog=(actual,expected,label)=>{
+ const a=JSON.parse(actual),b=JSON.parse(expected);
+ for(const section of ['columns','relations','constraints','indexes','policies','functions']){
+  stage='catalog comparison: '+label+' '+section;
+  assert.ok(JSON.stringify(a[section])===JSON.stringify(b[section]),'schema catalog mismatch');
+ }
+};
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN1cAAAAASUVORK5CYII=','base64');
 const options={auth:{persistSession:false,autoRefreshToken:false}};
@@ -45,6 +66,9 @@ async function main(){
  assert.equal(sourceStatus.API_URL,sourceURL); assert.equal(targetStatus.API_URL,targetURL);
  assert.equal(process.env.SUPABASE_SERVICE_ROLE_KEY,sourceStatus.SERVICE_ROLE_KEY);
  assert.equal(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,sourceStatus.ANON_KEY);
+ for(const container of [SRC,DST]){
+  assert.equal(sql(container,"SELECT current_user='supabase_admin' AND rolsuper FROM pg_roles WHERE rolname=current_user"),'t','built-in disposable local superuser required');
+ }
  assert.equal(sql(SRC,'SELECT count(*) FROM auth.users'),'0','fresh source Auth required');
  assert.equal(sql(SRC,'SELECT count(*) FROM public.stylists'),'0','fresh source LiNo required');
  assert.equal(sql(DST,'SELECT count(*) FROM auth.users'),'0','fresh target Auth required');
@@ -55,7 +79,7 @@ async function main(){
  const path=`recovery-${randomUUID()}/synthetic.png`;
  let customerCreated=false,sourcePhoto=false,targetPhoto=false,targetStopped=false;
  try{
-  console.log('LiNo recovery: seed synthetic Auth, billing, customer, record and photo');
+  progress('LiNo recovery: seed synthetic Auth, billing, customer, record and photo');
   for(const label of ['owner','stranger']){
    const email=`lino-recovery-${randomUUID()}@example.test`,password=randomUUID()+randomUUID();
    const user=check(await source.auth.admin.createUser({email,password,email_confirm:true})).user;
@@ -75,15 +99,15 @@ async function main(){
   assert.equal(hash(backupPhoto),hash(png));
   const beforeCatalog=sql(SRC,catalog("'public','auth'"));
   const managedStorage=sql(DST,catalog("'storage'"));
-  console.log('LiNo recovery: dump actual local public + auth schemas and restore independent target');
-  const archive=run('docker',['exec',SRC,'pg_dump','-U','postgres','-d','postgres','-Fc','--schema=public','--schema=auth']);
+  progress('LiNo recovery: dump actual local public + auth schemas and restore independent target');
+  const archive=run('docker',['exec',SRC,'pg_dump','-U',LOCAL_RESTORE_ROLE,'-d','postgres','-Fc','--schema=public','--schema=auth']);
   assert.ok(archive.length>0&&archive.length<32*1024*1024);
   // Fixed disposable target only. Pause services so Auth cannot migrate mid-restore.
   targetStopped=true; run('docker',['stop',...services]);
   sql(DST,'DROP SCHEMA public CASCADE; DROP SCHEMA auth CASCADE;');
-  run('docker',['exec','-i',DST,'pg_restore','-U','postgres','-d','postgres','--exit-on-error'],{input:archive});
-  assert.deepEqual(JSON.parse(sql(DST,catalog("'public','auth'"))),JSON.parse(beforeCatalog),'schema/RLS/functions/grants must survive');
-  assert.deepEqual(JSON.parse(sql(DST,catalog("'storage'"))),JSON.parse(managedStorage),'managed Storage definitions must survive schema replacement');
+  run('docker',['exec','-i',DST,'pg_restore','-U',LOCAL_RESTORE_ROLE,'-d','postgres','--exit-on-error'],{input:archive});
+  compareCatalog(sql(DST,catalog("'public','auth'")),beforeCatalog,'public/auth');
+  compareCatalog(sql(DST,catalog("'storage'")),managedStorage,'managed storage');
   run('docker',['start',...services]); targetStopped=false;
   let ready=false;
   for(let i=0;i<60;i++){
@@ -91,7 +115,7 @@ async function main(){
    await new Promise(r=>setTimeout(r,1000));
   }
   assert.ok(ready,'target API readiness');
-  console.log('LiNo recovery: authenticate restored identities and verify owner isolation');
+  progress('LiNo recovery: authenticate restored identities and verify owner isolation');
   const clients=[];
   for(const user of users){
    const client=createClient(targetURL,targetStatus.ANON_KEY,options);
@@ -106,7 +130,7 @@ async function main(){
   assert.equal(billing.is_master,false);assert.equal(billing.stripe_status,'trialing');
   const restoredRecord=check(await target.from('medical_records').select('customer_id,stylist_id').eq('id',record).single());
   assert.equal(restoredRecord.customer_id,customer);assert.equal(restoredRecord.stylist_id,users[0].id);
-  console.log('LiNo recovery: restore photo bytes through target Storage API');
+  progress('LiNo recovery: restore photo bytes through target Storage API');
   check(await target.storage.createBucket('record-photos',{public:false,fileSizeLimit:10485760,allowedMimeTypes:['image/png','image/jpeg','image/webp']}));
   check(await target.storage.from('record-photos').upload(path,backupPhoto,{contentType:'image/png'})); targetPhoto=true;
   const restored=Buffer.from(await check(await target.storage.from('record-photos').download(path)).arrayBuffer());
@@ -119,8 +143,9 @@ async function main(){
   assert.ok((await clients[0].storage.from('record-photos').download(path)).error);
   assert.ok((await clients[1].storage.from('record-photos').download(path)).error);
   for(const client of clients)check(await client.auth.signOut());
-  console.log('PASS: independent local LiNo DB/Auth/Storage recovery; real login, ownership, catalog, byte hashes and privacy verified');
+  console.log('PASS: independent local LiNo DB/Auth/Storage recovery using local built-in admin; login, ownership, catalog, hashes and privacy verified; hosted restore permissions NOT tested');
  }finally{
+  const operationStage=stage;
   console.log('LiNo recovery: remove synthetic source fixtures and uploaded objects');
   let cleanupFailed=false;
   const cleanup=async fn=>{try{await fn();}catch{cleanupFailed=true;}};
@@ -143,6 +168,7 @@ async function main(){
   assert.equal(check(await source.from('record_photos').select('id').eq('id',photo)).length,0);
   if(sourcePhoto)assert.ok((await source.storage.from('record-photos').download(path)).error);
   if(targetPhoto)assert.ok((await target.storage.from('record-photos').download(path)).error);
+  stage=operationStage;
  }
 }
-main().catch(()=>{console.error('LiNo local recovery FAILED; see last named stage. No hosted endpoint used.');process.exitCode=1;});
+main().catch(()=>{console.error('LiNo local recovery FAILED at '+stage+(apiDiagnostic?' ('+apiDiagnostic+')':'')+'; no hosted endpoint used.');process.exitCode=1;});
