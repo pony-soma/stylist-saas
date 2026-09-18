@@ -29,12 +29,24 @@ const status=workdir=>JSON.parse(run('npx',['--no-install','supabase','status','
 const check=result=>{if(result.error)throw Error('synthetic API check failed');return result.data;};
 const compareCatalog=(actual,expected,label)=>{
  const a=JSON.parse(actual),b=JSON.parse(expected);
+ let mismatch=false;
  for(const section of Object.keys(b)){
   if(JSON.stringify(a[section])!==JSON.stringify(b[section])){
-   console.error('Catalog mismatch: '+label+' '+section);
-   throw Error('catalog mismatch');
+   mismatch=true;
+   // Catalog metadata only: no user/Auth rows, tokens, passwords or SQL dumps.
+   const actualRows=a[section]??[],expectedRows=b[section]??[];
+   const at=Array.from({length:Math.max(actualRows.length,expectedRows.length)},(_,i)=>i)
+    .find(i=>JSON.stringify(actualRows[i])!==JSON.stringify(expectedRows[i]))??0;
+   const actualRow=actualRows[at]??{},expectedRow=expectedRows[at]??{};
+   const fields=[...new Set([...Object.keys(actualRow),...Object.keys(expectedRow)])]
+    .filter(key=>JSON.stringify(actualRow[key])!==JSON.stringify(expectedRow[key]));
+   const identity=Object.fromEntries(['schema','table_schema','schemaname','table_name','tablename','name','column_name','policyname','indexname']
+    .filter(key=>expectedRow[key]!==undefined).map(key=>[key,String(expectedRow[key]).slice(0,120)]));
+   const changes=fields.slice(0,3).map(field=>({field,expected:JSON.stringify(expectedRow[field])?.slice(0,700),actual:JSON.stringify(actualRow[field])?.slice(0,700)}));
+   console.error('Schema-only difference: '+JSON.stringify({label,section,entry:at,identity,expectedCount:expectedRows.length,actualCount:actualRows.length,changes}));
   }
  }
+ if(mismatch)throw Error('catalog mismatch');
 };
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const options={auth:{persistSession:false,autoRefreshToken:false}};
@@ -44,9 +56,10 @@ const progress=value=>{stage=value;console.log(value);};
 const catalog=schemas=>`SELECT json_build_object(
  'tables',(SELECT json_agg(t ORDER BY schema,name) FROM (SELECT n.nspname AS schema,c.relname AS name,c.relkind,c.relrowsecurity,c.relforcerowsecurity,pg_get_userbyid(c.relowner) AS owner,(SELECT array_agg(a::text ORDER BY a::text) FROM unnest(c.relacl) a) AS acl FROM pg_class c JOIN pg_namespace n ON c.relnamespace=n.oid WHERE n.nspname IN (${schemas}) AND c.relkind IN ('r','p','v','m','S')) t),
  'columns',(SELECT json_agg(t ORDER BY table_schema,table_name,ordinal_position) FROM (SELECT table_schema,table_name,column_name,row_number() OVER (PARTITION BY table_schema,table_name ORDER BY ordinal_position) AS ordinal_position,data_type,udt_name,is_nullable,column_default FROM information_schema.columns WHERE table_schema IN (${schemas})) t),
+ 'indexes',(SELECT json_agg(t ORDER BY schemaname,tablename,indexname) FROM (SELECT schemaname,tablename,indexname,indexdef FROM pg_indexes WHERE schemaname IN (${schemas})) t),
  'policies',(SELECT json_agg(t ORDER BY schemaname,tablename,policyname) FROM (SELECT * FROM pg_policies WHERE schemaname IN (${schemas})) t),
  'constraints',(SELECT json_agg(t ORDER BY schema,table_name,name) FROM (SELECT n.nspname AS schema,c.relname AS table_name,k.conname AS name,pg_get_constraintdef(k.oid) AS definition FROM pg_constraint k JOIN pg_class c ON k.conrelid=c.oid JOIN pg_namespace n ON c.relnamespace=n.oid WHERE n.nspname IN (${schemas})) t),
- 'functions',(SELECT json_agg(t ORDER BY schema,name,args) FROM (SELECT n.nspname AS schema,p.proname AS name,pg_get_function_identity_arguments(p.oid) AS args,pg_get_functiondef(p.oid) AS definition FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN (${schemas}) AND p.prokind IN ('f','p')) t),
+ 'functions',(SELECT json_agg(t ORDER BY schema,name,args) FROM (SELECT n.nspname AS schema,p.proname AS name,pg_get_function_identity_arguments(p.oid) AS args,pg_get_functiondef(p.oid) AS definition,pg_get_userbyid(p.proowner) AS owner,(SELECT array_agg(a::text ORDER BY a::text) FROM unnest(p.proacl) a) AS acl FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN (${schemas}) AND p.prokind IN ('f','p')) t),
  'triggers',(SELECT json_agg(t ORDER BY schema,table_name,name) FROM (SELECT n.nspname AS schema,c.relname AS table_name,t.tgname AS name,pg_get_triggerdef(t.oid) AS definition FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN (${schemas}) AND NOT t.tgisinternal) t)
 )::text;`;
 
