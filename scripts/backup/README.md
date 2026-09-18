@@ -70,10 +70,11 @@ inside encrypted manifests, not in R2 keys or workflow logs.
    place it only in the protected backup environment; never expose it to PR jobs.
 5. Configure the protected `lino-backup` GitHub environment and trusted branch
    rules. Only reviewed main may access its secrets; retain the main release gate.
-6. Confirm PostgreSQL client 17 is compatible with the source server. The initial
-   workflow uses `postgres:17.6-bookworm` and installs age from Debian. Pin the
-   image digest/package provenance in the operational rollout review, and keep
-   clients patched. Dependency pins are in requirements.txt.
+6. Confirm the pinned Supabase CLI's dump client is compatible with the source
+   server. The workflow runs on Ubuntu with Docker, installs psql and age, and
+   uses the locked CLI from package-lock.json. Review image/package provenance
+   in the operational rollout review and keep clients patched. Python dependency
+   pins are in requirements.txt.
 7. Run dummy end-to-end backup and restore, finalize reference-aware retention and
    failure/missed-run monitoring. Only then enable real exports and scheduling.
 

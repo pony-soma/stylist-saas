@@ -15,8 +15,9 @@ Schemas: auth, extensions, graphql, graphql_public, public, realtime, storage,
 vault. No supabase_migrations schema appeared in this inventory.
 
 `postgres` is not a superuser; the platform's `supabase_admin` is reserved.
-The successful CI used its own local Docker administrator. Do **not** transfer
-that schema-drop procedure to hosted Supabase or attempt to obtain its admin key.
+The legacy archive CI used its own local Docker administrator. The separate
+filtered-export CI uses ordinary postgres. Do **not** transfer the legacy
+schema-drop procedure to hosted Supabase or attempt to obtain its admin key.
 
 Current production Storage policies still include `Public Access` for SELECT on
 record-photos and authenticated-role INSERT/UPDATE/DELETE without owner checks.
@@ -37,8 +38,9 @@ recovery; this is not a permanent statement about the production configuration.
 
 1. **Identify the recovery point.** Record source project, immutable code commit,
    migration version, run ID, UTC capture window, writer-freeze evidence and chosen
-   restore target. Current generic archive is a candidate, not a platform-ready
-   restore package. The encrypted manifest's atomic_snapshot=false remains true.
+   restore target. Both the filtered package and legacy generic archive remain
+   recovery candidates until the target-specific gates pass. The encrypted
+   manifest's atomic_snapshot=false remains true.
 2. **Close the target.** Use a separate approved target with no users, outbound
    mail/LINE calls, live Stripe writes or publicly exposed app traffic. Never copy
    production records into normal staging. Choose matching Postgres/service

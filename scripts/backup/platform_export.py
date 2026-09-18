@@ -20,6 +20,70 @@ from urllib.parse import quote
 
 FORMAT = 'supabase-cli-platform-v1'
 CLI_VERSION = '2.117.0'
+# pg_dump ACL commands assume built-in PostgreSQL defaults. Supabase's target
+# public defaults would otherwise add grants before source ACLs are applied.
+# This is an explicit, fail-closed step for a fresh target, never source execution.
+PRE_RESTORE_SQL = """-- Run after roles.sql and before schema.sql in the same restore transaction.
+DO $lino_restore_defaults$
+DECLARE
+    entry record;
+    object_kind text;
+    grantee_name text;
+BEGIN
+    IF current_user <> 'postgres' OR EXISTS (
+        SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=current_user AND rolsuper
+    ) THEN
+        RAISE EXCEPTION 'Platform restore requires ordinary postgres';
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','S','f')
+    ) OR EXISTS (
+        SELECT 1 FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+        WHERE n.nspname='public' AND NOT EXISTS (
+            SELECT 1 FROM pg_catalog.pg_depend d WHERE d.classid='pg_catalog.pg_proc'::regclass
+            AND d.objid=p.oid AND d.deptype='e'
+        )
+    ) OR EXISTS (
+        SELECT 1 FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON n.oid=t.typnamespace
+        WHERE n.nspname='public' AND t.typtype IN ('c','d','e','r','m') AND NOT EXISTS (
+            SELECT 1 FROM pg_catalog.pg_depend d WHERE d.classid='pg_catalog.pg_type'::regclass
+            AND d.objid=t.oid AND d.deptype='e'
+        )
+    ) THEN
+        RAISE EXCEPTION 'Platform restore requires fresh public schema';
+    END IF;
+    -- Per-schema REVOKE cannot remove global default grants. Do not guess.
+    IF EXISTS (
+        SELECT 1 FROM pg_catalog.pg_default_acl
+        WHERE defaclrole='postgres'::regrole AND defaclnamespace=0
+    ) THEN
+        RAISE EXCEPTION 'Review global postgres default privileges before restore';
+    END IF;
+    FOR entry IN
+        SELECT DISTINCT d.defaclobjtype,a.grantee
+        FROM pg_catalog.pg_default_acl d
+        CROSS JOIN LATERAL pg_catalog.aclexplode(d.defaclacl) a
+        WHERE d.defaclrole='postgres'::regrole
+          AND d.defaclnamespace='public'::regnamespace
+    LOOP
+        object_kind := CASE entry.defaclobjtype
+            WHEN 'r' THEN 'TABLES' WHEN 'S' THEN 'SEQUENCES'
+            WHEN 'f' THEN 'FUNCTIONS' WHEN 'T' THEN 'TYPES' ELSE NULL END;
+        IF object_kind IS NULL THEN
+            RAISE EXCEPTION 'Unsupported public default privilege object type';
+        END IF;
+        grantee_name := CASE WHEN entry.grantee=0 THEN 'PUBLIC'
+            ELSE pg_catalog.quote_ident(pg_catalog.pg_get_userbyid(entry.grantee)) END;
+        EXECUTE pg_catalog.format(
+            'ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON %s FROM %s',
+            object_kind,grantee_name
+        );
+    END LOOP;
+END;
+$lino_restore_defaults$;
+"""
+
 RESTORE_GATES = [
     'Review and separately restore custom auth/storage definitions against a pristine same-version target; default CLI schema export excludes them.',
     'Resolve Vault/pgsodium/column encryption and encryption root keys before restoring; encrypted SQL rows alone are insufficient.',
@@ -112,7 +176,18 @@ def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supaba
             if inventory['history']:
                 specs.extend([('history_schema.sql', ['--schema', 'supabase_migrations']),
                               ('history_data.sql', ['--schema', 'supabase_migrations', '--data-only', '--use-copy'])])
-            size = 0
+            preparation = folder / 'pre_restore.sql'
+            preparation.write_text(PRE_RESTORE_SQL, encoding='utf-8')
+            preparation.chmod(0o600)
+            size = preparation.stat().st_size
+            require(size < limit)
+            report['files']['pre_restore.sql'] = {'bytes': size, 'sha256': hashlib.sha256(preparation.read_bytes()).hexdigest()}
+            report['restore_order'] = ['roles.sql', 'pre_restore.sql', 'schema.sql']
+            if inventory['history']:
+                report['restore_order'].append('history_schema.sql')
+            report['restore_order'].append('data.sql')
+            if inventory['history']:
+                report['restore_order'].append('history_data.sql')
             for name, flags in specs:
                 path = folder / name
                 _run([*cli, 'db', 'dump', '--db-url', url, '--file', str(path), *flags], child, limit - size)
@@ -129,7 +204,7 @@ def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supaba
                 created = True
                 target.chmod(0o600)
                 with tarfile.open(fileobj=stream, mode='w') as archive:
-                    for name in [*(name for name, _ in specs), 'package.json']:
+                    for name in [*report['restore_order'], 'package.json']:
                         archive.add(folder / name, arcname=name, recursive=False)
                 require(stream.tell() <= limit)
         return report

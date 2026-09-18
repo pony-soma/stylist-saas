@@ -54,6 +54,7 @@ let stage='guards';
 const progress=value=>{stage=value;console.log(value);};
 // Definitions only; no auth rows or secrets are included in this comparison.
 const catalog=schemas=>`SELECT json_build_object(
+ 'default_privileges',(SELECT json_agg(t ORDER BY schema,owner,object_type) FROM (SELECT n.nspname AS schema,pg_get_userbyid(d.defaclrole) AS owner,d.defaclobjtype AS object_type,(SELECT array_agg(a::text ORDER BY a::text) FROM unnest(d.defaclacl) a) AS acl FROM pg_default_acl d JOIN pg_namespace n ON n.oid=d.defaclnamespace WHERE n.nspname IN (${schemas})) t),
  'tables',(SELECT json_agg(t ORDER BY schema,name) FROM (SELECT n.nspname AS schema,c.relname AS name,c.relkind,c.relrowsecurity,c.relforcerowsecurity,pg_get_userbyid(c.relowner) AS owner,(SELECT array_agg(a::text ORDER BY a::text) FROM unnest(c.relacl) a) AS acl FROM pg_class c JOIN pg_namespace n ON c.relnamespace=n.oid WHERE n.nspname IN (${schemas}) AND c.relkind IN ('r','p','v','m','S')) t),
  'columns',(SELECT json_agg(t ORDER BY table_schema,table_name,ordinal_position) FROM (SELECT table_schema,table_name,column_name,row_number() OVER (PARTITION BY table_schema,table_name ORDER BY ordinal_position) AS ordinal_position,data_type,udt_name,is_nullable,column_default FROM information_schema.columns WHERE table_schema IN (${schemas})) t),
  'indexes',(SELECT json_agg(t ORDER BY schemaname,tablename,indexname) FROM (SELECT schemaname,tablename,indexname,indexdef FROM pg_indexes WHERE schemaname IN (${schemas})) t),
@@ -109,15 +110,16 @@ async function main(){
   assert.equal(report.hosted_restore_verified,false);assert.ok(report.restore_gates.length>=5);
   const files={};
   for(const [name,metadata] of Object.entries(report.files)){
-   assert.ok(['roles.sql','schema.sql','data.sql','history_schema.sql','history_data.sql'].includes(name));
+   assert.ok(['roles.sql','pre_restore.sql','schema.sql','data.sql','history_schema.sql','history_data.sql'].includes(name));
    files[name]=readFileSync(join(folder,name));
    assert.equal(files[name].length,metadata.bytes);assert.equal(hash(files[name]),metadata.sha256);
   }
-  for(const name of ['roles.sql','schema.sql','data.sql'])assert.ok(files[name]);
+  for(const name of ['roles.sql','pre_restore.sql','schema.sql','data.sql'])assert.ok(files[name]);
   // Never transform SQL, suppress errors, drop managed schemas, or use an admin role.
   progress('Platform candidate: restore filtered roles/schema/data with ordinary postgres');
   stopped=true;run('docker',['stop',...services]);
-  const chunks=[files['roles.sql'],files['schema.sql']];
+  assert.deepEqual(report.restore_order.slice(0,3),['roles.sql','pre_restore.sql','schema.sql']);
+  const chunks=[files['roles.sql'],files['pre_restore.sql'],files['schema.sql']];
   if(files['history_schema.sql'])chunks.push(files['history_schema.sql']);
   chunks.push(Buffer.from('SET session_replication_role = replica;\n'),files['data.sql']);
   if(files['history_data.sql'])chunks.push(files['history_data.sql']);

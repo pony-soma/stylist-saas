@@ -66,8 +66,10 @@ class PlatformExportTests(unittest.TestCase):
             self.assertEqual(len(report['restore_gates']), 5)
             self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
             with tarfile.open(target) as archive:
-                self.assertEqual(set(archive.getnames()), {'roles.sql','schema.sql','data.sql','history_schema.sql','history_data.sql','package.json'})
+                self.assertEqual(set(archive.getnames()), {'roles.sql','pre_restore.sql','schema.sql','data.sql','history_schema.sql','history_data.sql','package.json'})
                 self.assertEqual(json.load(archive.extractfile('package.json')), report)
+                self.assertEqual(archive.extractfile('pre_restore.sql').read().decode(), p.PRE_RESTORE_SQL)
+                self.assertEqual(report['restore_order'], ['roles.sql','pre_restore.sql','schema.sql','history_schema.sql','data.sql','history_data.sql'])
                 for name, meta in report['files'].items():
                     data = archive.extractfile(name).read()
                     self.assertEqual(meta['bytes'], len(data))
@@ -86,6 +88,7 @@ class PlatformExportTests(unittest.TestCase):
             report = p.export_platform(Path(folder) / 'database.tar', 1024*1024, ENV)
             self.assertEqual(report['migration_history'], 'absent')
             self.assertNotIn('history_data.sql', report['files'])
+            self.assertEqual(report['restore_order'], ['roles.sql','pre_restore.sql','schema.sql','data.sql'])
 
     def test_failed_export_removes_plaintext_and_redacts_exception(self):
         with tempfile.TemporaryDirectory() as folder, patch.object(p, '_run', self.fake_runner(fail='data.sql')):
