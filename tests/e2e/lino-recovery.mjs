@@ -141,6 +141,13 @@ async function main(){
   assert.equal(billing.is_master,false);assert.equal(billing.stripe_status,'trialing');
   const restoredRecord=check(await target.from('medical_records').select('customer_id,stylist_id').eq('id',record).single());
   assert.equal(restoredRecord.customer_id,customer);assert.equal(restoredRecord.stylist_id,users[0].id);
+  progress('LiNo recovery: wait for restarted target Storage API');
+  let storageReady=false;
+  for(let i=0;i<60;i++){
+   try{const result=await target.storage.listBuckets();if(!result.error){storageReady=true;break;}}catch{}
+   await new Promise(resolve=>setTimeout(resolve,1000));
+  }
+  assert.ok(storageReady,'target Storage API readiness');
   progress('LiNo recovery: restore photo bytes through target Storage API');
   check(await target.storage.createBucket('record-photos',{public:false,fileSizeLimit:10485760,allowedMimeTypes:['image/png','image/jpeg','image/webp']}));
   check(await target.storage.from('record-photos').upload(path,backupPhoto,{contentType:'image/png'})); targetPhoto=true;
