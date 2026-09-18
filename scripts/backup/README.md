@@ -47,7 +47,7 @@ inside encrypted manifests, not in R2 keys or workflow logs.
   operations count toward provider free tiers; monitor Supabase egress as well.
 - HTTP metadata/HEAD verification is not a full download/decrypt/restore test.
   Before first production export, rehearse the complete pipeline with dummy data
-  in a separate private test bucket, including a failed run and missing object.
+  in a private test bucket or a strictly isolated, unique rehearsal prefix containing only fabricated data, including a failed run and missing object.
 - Only bounded SDK retries are enabled. No retention deletes, schedule, external notification or
   missed-run monitor is activated. Configure these after the recovery test.
 
@@ -115,3 +115,29 @@ Official references checked 2026-09-17:
 - https://developers.cloudflare.com/r2/api/tokens/
 - https://developers.cloudflare.com/r2/pricing/
 - https://github.com/FiloSottile/age
+
+## Dummy encrypted recovery rehearsal (2026-09-18 candidate)
+
+`.github/workflows/backup-rehearsal.yml` exercises a disposable PostgreSQL database
+and a fabricated PNG, never the production Supabase database or Storage. The
+secret-free job first runs the full local roundtrip. The push-only R2 job receives
+only the R2 access key pair and endpoint/bucket configuration; it receives neither
+production DB/Storage credentials nor the owner's age private key. Both jobs use
+a temporary age identity generated inside the job.
+
+The R2 rehearsal uses `lino-backups` only under a fresh `lino-rehearsal/v1/UUID/`
+prefix. The ordinary backup prefix is never read or changed. It uploads a tiny
+encrypted archive, fabricated photo and encrypted manifest, downloads and
+verifies them, restores into a second disposable DB, verifies rows/grants/RLS,
+and deletes only the exact keys created by that attempt. Cleanup failures fail
+the test rather than silently reporting success. Forced runner termination can
+leave encrypted dummy objects; inspect that run's prefix before removing them.
+
+This is a transfer/crypto/synthetic-restore test, not proof that the complete
+LiNo Supabase schema, Auth identities or production photo references restore.
+It also does not test the owner's production decryption key. Real backup,
+retention and scheduling remain disabled. The `lino-backup` environment is
+normally main-only: allow the reviewed release-preparation branch temporarily
+only for the concrete test, then remove the temporary rule. Never merge main
+just to run this test. Local CI results and actual R2 results are recorded
+separately in the handover.

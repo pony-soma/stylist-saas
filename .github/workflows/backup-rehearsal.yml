@@ -1,0 +1,79 @@
+name: LiNo dummy encrypted recovery rehearsal
+
+on:
+  push:
+    branches: [codex/release-preparation]
+    paths:
+      - .github/workflows/backup-rehearsal.yml
+      - scripts/backup/rehearse.py
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/backup-rehearsal.yml
+      - scripts/backup/rehearse.py
+      - scripts/backup/backup.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lino-dummy-rehearsal-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  local:
+    name: Synthetic recovery without external credentials
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    container: postgres:17.6-bookworm
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Install tools and start disposable local PostgreSQL
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends python3 python3-venv age ca-certificates
+          python3 -m venv /tmp/lino-rehearsal-tools
+          /tmp/lino-rehearsal-tools/bin/pip install --disable-pip-version-check -r scripts/backup/requirements.txt
+          install -d -o postgres -g postgres /tmp/lino-rehearsal-db
+          gosu postgres initdb -D /tmp/lino-rehearsal-db --auth=trust > /dev/null
+          gosu postgres pg_ctl -D /tmp/lino-rehearsal-db -l /tmp/lino-rehearsal-db/server.log -o '-h 127.0.0.1 -p 5432' -w start > /dev/null
+      - name: Verify complete local rehearsal
+        env:
+          CI: 'true'
+          LINO_REHEARSAL_ENABLED: 'true'
+        run: /tmp/lino-rehearsal-tools/bin/python scripts/backup/rehearse.py --local-only
+
+  r2:
+    name: Encrypted dummy objects in R2
+    needs: local
+    if: github.event_name == 'push' && github.repository == 'pony-soma/stylist-saas' && github.ref == 'refs/heads/codex/release-preparation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: lino-backup
+    container: postgres:17.6-bookworm
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Install tools and start disposable local PostgreSQL
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends python3 python3-venv age ca-certificates
+          python3 -m venv /tmp/lino-rehearsal-tools
+          /tmp/lino-rehearsal-tools/bin/pip install --disable-pip-version-check -r scripts/backup/requirements.txt
+          install -d -o postgres -g postgres /tmp/lino-rehearsal-db
+          gosu postgres initdb -D /tmp/lino-rehearsal-db --auth=trust > /dev/null
+          gosu postgres pg_ctl -D /tmp/lino-rehearsal-db -l /tmp/lino-rehearsal-db/server.log -o '-h 127.0.0.1 -p 5432' -w start > /dev/null
+      - name: Save retrieve decrypt restore and clean up dummy objects
+        env:
+          CI: 'true'
+          LINO_REHEARSAL_ENABLED: 'true'
+          R2_ENDPOINT_URL: ${{ vars.LINO_BACKUP_R2_ENDPOINT }}
+          R2_BUCKET: ${{ vars.LINO_BACKUP_R2_BUCKET }}
+          R2_ACCESS_KEY_ID: ${{ secrets.LINO_BACKUP_R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.LINO_BACKUP_R2_SECRET_ACCESS_KEY }}
+        run: /tmp/lino-rehearsal-tools/bin/python scripts/backup/rehearse.py
+      # No production DB/Storage credentials or owner private key are passed.
+      # No upload-artifact. Synthetic recovery files and temporary keys die with the job.
