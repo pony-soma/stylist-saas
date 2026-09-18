@@ -141,3 +141,10 @@ normally main-only: allow the reviewed release-preparation branch temporarily
 only for the concrete test, then remove the temporary rule. Never merge main
 just to run this test. Local CI results and actual R2 results are recorded
 separately in the handover.
+
+## Operational review and recovery
+
+See [REVIEW-TOOLS.md](REVIEW-TOOLS.md) for the offline retention/health helpers,
+[RECOVERY.md](RECOVERY.md) for the production-specific candidate runbook and
+[OPERATIONS.md](OPERATIONS.md) for activation gates. No automatic deletion or
+live monitoring is enabled by these additions.
