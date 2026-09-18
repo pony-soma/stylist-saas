@@ -1,0 +1,55 @@
+name: LiNo schema Auth and photo recovery
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/lino-recovery.yml
+      - tests/e2e/**
+      - supabase/**
+      - package-lock.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lino-schema-recovery-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  recovery:
+    name: Restore synthetic LiNo into a second local Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      LINO_E2E_LOCAL: '1'
+      NEXT_PUBLIC_BASE_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Start disposable source Supabase
+        run: npx --no-install supabase start --workdir tests/e2e > /dev/null
+      - name: Prepare actual LiNo schema on source
+        run: bash tests/e2e/prepare-db.sh
+      - name: Configure source local-only keys
+        run: node tests/e2e/export-env.mjs
+      - name: Start separate disposable restore target
+        run: npx --no-install supabase start --workdir tests/e2e/recovery-target > /dev/null
+      - name: Restore and verify schema Auth ownership and photos
+        run: node tests/e2e/lino-recovery.mjs
+      - name: Remove disposable target
+        if: always()
+        run: npx --no-install supabase stop --workdir tests/e2e/recovery-target --no-backup
+      - name: Remove disposable source
+        if: always()
+        run: npx --no-install supabase stop --workdir tests/e2e --no-backup
+      # No environment, hosted secrets, deployment, or backup artifacts.
