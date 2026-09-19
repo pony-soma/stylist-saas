@@ -89,6 +89,8 @@ export default function MenuForm({ menuId }: Props) {
           <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">メニュー名 <span className="text-red-500">*</span></label>
           <input
             type="text"
+            aria-label="メニュー名"
+            maxLength={100}
             value={form.name}
             onChange={e => setForm({...form, name: e.target.value})}
             className="w-full rounded-xl border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
@@ -100,11 +102,12 @@ export default function MenuForm({ menuId }: Props) {
           <div>
             <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">所要時間 (分)</label>
             <select
+              aria-label="所要時間 (分)"
               value={form.duration}
               onChange={e => setForm({...form, duration: parseInt(e.target.value)})}
               className="w-full rounded-xl border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
             >
-              {Array.from({ length: 21 }, (_, i) => i * 15).map(m => (
+              {Array.from({ length: 20 }, (_, i) => (i + 1) * 15).map(m => (
                 <option key={m} value={m}>{m}分</option>
               ))}
             </select>
@@ -113,6 +116,8 @@ export default function MenuForm({ menuId }: Props) {
             <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">料金 (円)</label>
             <input
               type="number"
+              aria-label="料金 (円)"
+              min="0"
               step="100"
               value={form.price}
               onChange={e => setForm({...form, price: parseInt(e.target.value) || 0})}

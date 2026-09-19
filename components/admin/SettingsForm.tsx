@@ -156,15 +156,15 @@ function SettingsContent() {
             <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 leading-relaxed">
               この連携ボタンを押してあなたのLINEを紐付けたあと、通知の送信元となる<strong>公式アカウントを「友だち追加」</strong>しておく必要があります。友だち追加されていないと、システムからメッセージを送信できません。
             </p>
-            <a
-              href="https://lin.ee/PLovQIR"
+            {process.env.NEXT_PUBLIC_LINE_FRIEND_URL ? <a
+              href={process.env.NEXT_PUBLIC_LINE_FRIEND_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#06C755] hover:bg-[#05b34c] text-white rounded-lg text-sm font-bold transition shadow-sm"
             >
               <MessageCircle className="w-4 h-4" />
               通知用LINEを友だち追加する
-            </a>
+            </a> : <p className="text-sm text-gray-600">LINE通知は現在準備中です。</p>}
           </div>
         </div>
       </div>

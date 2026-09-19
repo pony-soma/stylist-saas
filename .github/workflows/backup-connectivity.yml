@@ -1,0 +1,99 @@
+name: LiNo backup connectivity (read only)
+
+on:
+  push:
+    branches: [codex/release-preparation]
+    paths: [.github/workflows/backup-connectivity.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  connectivity:
+    if: github.repository == 'pony-soma/stylist-saas' && github.ref == 'refs/heads/codex/release-preparation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: lino-backup
+    container: postgres:17.6-bookworm
+    steps:
+      - name: Install pinned client dependencies without credentials
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends python3 python3-venv ca-certificates
+          python3 -m venv /tmp/lino-connectivity
+          /tmp/lino-connectivity/bin/pip install --disable-pip-version-check boto3==1.40.0 botocore==1.40.0 jmespath==1.0.1 s3transfer==0.13.1 python-dateutil==2.9.0.post0 six==1.17.0 urllib3==2.5.0
+      - name: Check exact configured targets without exporting data
+        env:
+          PROJECT_REF: ${{ vars.LINO_BACKUP_PROJECT_REF }}
+          SUPABASE_URL: ${{ vars.LINO_BACKUP_SUPABASE_URL }}
+          STORAGE_KEY: ${{ secrets.LINO_BACKUP_STORAGE_KEY }}
+          PGHOST: ${{ secrets.LINO_BACKUP_PGHOST }}
+          PGUSER: ${{ secrets.LINO_BACKUP_PGUSER }}
+          PGPASSWORD: ${{ secrets.LINO_BACKUP_PGPASSWORD }}
+          R2_ENDPOINT: ${{ vars.LINO_BACKUP_R2_ENDPOINT }}
+          R2_BUCKET: ${{ vars.LINO_BACKUP_R2_BUCKET }}
+          R2_ACCESS_KEY: ${{ secrets.LINO_BACKUP_R2_ACCESS_KEY_ID }}
+          R2_SECRET_KEY: ${{ secrets.LINO_BACKUP_R2_SECRET_ACCESS_KEY }}
+        run: |
+          /tmp/lino-connectivity/bin/python - <<'PYCODE'
+          import json, os, subprocess, sys, urllib.request
+          import boto3
+          from botocore.config import Config
+
+          stage = 'configuration'
+          try:
+              expected = {
+                  'PROJECT_REF': 'pprlqowossudjvtgkfir',
+                  'SUPABASE_URL': 'https://pprlqowossudjvtgkfir.supabase.co',
+                  'PGHOST': 'aws-1-ap-northeast-1.pooler.supabase.com',
+                  'PGUSER': 'postgres.pprlqowossudjvtgkfir',
+                  'R2_ENDPOINT': 'https://6d2ceabc3375e61e0bf33705367f9dff.r2.cloudflarestorage.com',
+                  'R2_BUCKET': 'lino-backups',
+              }
+              for name, value in expected.items():
+                  if os.environ.get(name) != value:
+                      raise ValueError('target mismatch')
+              for name in ['PGPASSWORD', 'STORAGE_KEY', 'R2_ACCESS_KEY', 'R2_SECRET_KEY']:
+                  if not os.environ.get(name):
+                      raise ValueError('missing secret')
+
+              stage = 'database SELECT 1'
+              pg_env = {k: os.environ[k] for k in ['PATH', 'PGHOST', 'PGUSER', 'PGPASSWORD']}
+              pg_env.update(PGPORT='5432', PGDATABASE='postgres', PGSSLMODE='require',
+                  PGCONNECT_TIMEOUT='15', PGAPPNAME='lino-readonly-connectivity',
+                  PGOPTIONS='-c default_transaction_read_only=on -c statement_timeout=10000')
+              result = subprocess.run(['psql', '-X', '-w', '-A', '-t', '-v', 'ON_ERROR_STOP=1',
+                  '-c', 'SELECT 1;'], env=pg_env, capture_output=True, timeout=30)
+              if result.returncode != 0 or result.stdout.strip() != b'1':
+                  raise RuntimeError('database check failed')
+              print('Database authentication: OK', flush=True)
+
+              stage = 'Storage authenticated listing'
+              class NoRedirect(urllib.request.HTTPRedirectHandler):
+                  def redirect_request(self, *args, **kwargs):
+                      return None
+              opener = urllib.request.build_opener(NoRedirect())
+              request = urllib.request.Request(expected['SUPABASE_URL'] + '/storage/v1/object/list/record-photos',
+                  data=json.dumps({'prefix': '', 'limit': 1, 'offset': 0}).encode(),
+                  headers={'apikey': os.environ['STORAGE_KEY'],
+                      'Authorization': 'Bearer ' + os.environ['STORAGE_KEY'],
+                      'Content-Type': 'application/json'}, method='POST')
+              with opener.open(request, timeout=20) as response:
+                  body = response.read(65537)
+                  if len(body) > 65536 or not isinstance(json.loads(body), list):
+                      raise RuntimeError('invalid listing')
+              print('Storage listing request: OK (no photo content downloaded)', flush=True)
+
+              stage = 'R2 bucket HEAD'
+              client = boto3.client('s3', endpoint_url=expected['R2_ENDPOINT'], region_name='auto',
+                  aws_access_key_id=os.environ['R2_ACCESS_KEY'],
+                  aws_secret_access_key=os.environ['R2_SECRET_KEY'],
+                  config=Config(connect_timeout=10, read_timeout=20,
+                      retries={'total_max_attempts': 1}, s3={'addressing_style': 'path'}))
+              client.head_bucket(Bucket=expected['R2_BUCKET'])
+              print('R2 bucket access: OK (no objects written)', flush=True)
+              print('Connectivity checks passed; backup and restore are NOT tested.')
+          except Exception:
+              print('Connectivity check failed at: ' + stage + '. No raw response or secret logged.', file=sys.stderr)
+              sys.exit(1)
+          PYCODE

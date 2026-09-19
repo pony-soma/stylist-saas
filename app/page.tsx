@@ -1,5 +1,6 @@
+import LegalLinks from '@/components/LegalLinks';
 import Link from 'next/link';
-import { ArrowRight, Scissors, CalendarCheck, MessageCircle, Star } from 'lucide-react';
+import { ArrowRight, Scissors, CalendarCheck, Users, Star } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -15,11 +16,11 @@ export default function Home() {
               <span className="font-bold text-xl tracking-tight text-gray-900">LiNo</span>
             </div>
             <div>
-              <Link href="/admin" className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition mr-6">
+              <Link href="/login?next=/billing" className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition mr-6">
                 ログイン
               </Link>
-              <Link href="/admin" className="text-sm font-bold bg-indigo-600 text-white px-5 py-2.5 rounded-full hover:bg-indigo-700 transition shadow-md hover:shadow-lg">
-                無料で始める
+              <Link href="/login?next=/billing" className="text-sm font-bold bg-indigo-600 text-white px-5 py-2.5 rounded-full hover:bg-indigo-700 transition shadow-md hover:shadow-lg">
+                14日間無料で試す
               </Link>
             </div>
           </div>
@@ -39,19 +40,19 @@ export default function Home() {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">最高の顧客体験</span>を。
           </h1>
           <p className="max-w-2xl mx-auto text-lg sm:text-xl text-gray-500 mb-10 leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
-            LINEを使ったシームレスな予約受付から、直感的なカルテ管理まで。<br className="hidden sm:block" />
-            LiNoは、美容師の皆様が「お客様と向き合う時間」を最大化します。
+            予約・顧客情報・施術記録を、ひとつの画面で管理。<br className="hidden sm:block" />
+            LiNoは、フリーランス美容師の日々の記録と予約管理を支えます。
           </p>
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300">
-            <Link href="/admin?plan=free" className="w-full sm:w-auto px-8 py-4 bg-white text-gray-900 border-2 border-gray-900 rounded-full font-bold text-lg hover:bg-gray-50 transition shadow-md flex items-center justify-center gap-2">
+            <Link href="/login?next=/billing" className="w-full sm:w-auto px-8 py-4 bg-white text-gray-900 border-2 border-gray-900 rounded-full font-bold text-lg hover:bg-gray-50 transition shadow-md flex items-center justify-center gap-2">
               14日間無料で試す
             </Link>
-            <Link href="/admin?plan=pro" className="w-full sm:w-auto px-8 py-4 bg-gray-900 text-white rounded-full font-bold text-lg hover:bg-gray-800 transition shadow-xl hover:shadow-2xl flex items-center justify-center gap-2 group">
-              プロプランで始める
+            <Link href="/login?next=/billing" className="w-full sm:w-auto px-8 py-4 bg-gray-900 text-white rounded-full font-bold text-lg hover:bg-gray-800 transition shadow-xl hover:shadow-2xl flex items-center justify-center gap-2 group">
+              月額1,980円（税込）のプランを確認
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
-          <p className="mt-6 text-sm text-gray-400 animate-in fade-in duration-700 delay-500">※無料トライアルはクレジットカード登録不要です（プロプラン：月額1,980円）</p>
+          <p className="mt-6 text-sm text-gray-400 animate-in fade-in duration-700 delay-500">初回14日間無料・カード登録必須。体験終了前に解約しない場合、月額1,980円（税込）で自動更新します。</p>
         </div>
       </section>
 
@@ -64,17 +65,17 @@ export default function Home() {
           <div className="grid md:grid-cols-3 gap-8">
             <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition">
               <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center mb-6">
-                <MessageCircle className="w-7 h-7 text-green-600" />
+                <Users className="w-7 h-7 text-green-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">LINEで簡単予約</h3>
-              <p className="text-gray-500">お客様はいつものLINEから数タップで予約完了。専用アプリのインストールは不要です。</p>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">顧客情報をまとめて管理</h3>
+              <p className="text-gray-500">顧客情報と来店履歴をまとめて確認。お客様ごとの施術記録を、次回の接客に役立てられます。</p>
             </div>
             <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition">
               <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6">
                 <CalendarCheck className="w-7 h-7 text-indigo-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">直感的なスケジュール</h3>
-              <p className="text-gray-500">予約状況が一目でわかるダッシュボード。自動でLINE通知も送信され、ドタキャンを防ぎます。</p>
+              <p className="text-gray-500">電話やメッセージで受け付けた予約を登録。カレンダーで日時と担当するお客様を確認できます。</p>
             </div>
             <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition">
               <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mb-6">
@@ -84,6 +85,7 @@ export default function Home() {
               <p className="text-gray-500">来店ごとの施術内容や使用薬剤、仕上がりの写真をスマホからサクサク保存できます。</p>
             </div>
           </div>
+          <p className="mt-8 text-center text-sm text-gray-600">現在の提供範囲は、美容師による予約登録・顧客管理・施術記録と写真の管理です。LINEからの予約受付・自動通知は準備中のため、ご利用いただけません。</p>
         </div>
       </section>
       
@@ -94,7 +96,8 @@ export default function Home() {
             <Scissors className="w-4 h-4" />
             <span className="font-bold">LiNo</span>
           </div>
-          <p>&copy; {new Date().getFullYear()} LiNo. All rights reserved.</p>
+          <LegalLinks />
+          <p className="mt-6">&copy; {new Date().getFullYear()} LiNo. All rights reserved.</p>
         </div>
       </footer>
     </div>

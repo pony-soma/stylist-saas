@@ -51,39 +51,31 @@ export function useAvailability(stylistId: string | null) {
     setLoading(false);
   }, [stylistId]);
 
-  const upsertSetting = async (setting: Partial<AvailabilitySetting>) => {
+  const mutate = async (body: Record<string, unknown>) => {
     if (!stylistId) return false;
-    const { error } = await supabase
-      .from('availability_settings')
-      .upsert({ ...setting, stylist_id: stylistId });
-    return !error;
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return response.ok;
+    } catch { return false; }
   };
-
-  const deleteSetting = async (id: string) => {
-    if (!stylistId) return false;
-    const { error } = await supabase
-      .from('availability_settings')
-      .delete()
-      .eq('id', id);
-    return !error;
-  };
-
-  const createBlockedSlot = async (title: string, startTime: string, endTime: string) => {
-    if (!stylistId) return false;
-    const { error } = await supabase
-      .from('blocked_time_slots')
-      .insert({ stylist_id: stylistId, title, start_time: startTime, end_time: endTime });
-    return !error;
-  };
-
-  const deleteBlockedSlot = async (id: string) => {
-    if (!stylistId) return false;
-    const { error } = await supabase
-      .from('blocked_time_slots')
-      .delete()
-      .eq('id', id);
-    return !error;
-  };
+  const saveSettings = (entries: Partial<AvailabilitySetting>[]) => mutate({
+    action: 'availability.save',
+    settings: entries.map(s => ({
+      ...(s.id ? { id: s.id } : {}),
+      day_of_week: s.day_of_week ?? null, specific_date: s.specific_date ?? null,
+      is_day_off: s.is_day_off ?? false,
+      start_time: s.is_day_off ? null : s.start_time ?? null,
+      end_time: s.is_day_off ? null : s.end_time ?? null,
+    })),
+  });
+  const upsertSetting = (setting: Partial<AvailabilitySetting>) => saveSettings([setting]);
+  const deleteSetting = (id: string) => mutate({ action: 'availability.delete', id });
+  const createBlockedSlot = (title: string, startTime: string, endTime: string) =>
+    mutate({ action: 'blocked.create', title, start_time: startTime, end_time: endTime });
+  const deleteBlockedSlot = (id: string) => mutate({ action: 'blocked.delete', id });
 
   return {
     settings,
@@ -91,6 +83,7 @@ export function useAvailability(stylistId: string | null) {
     loading,
     fetchAvailability,
     upsertSetting,
+    saveSettings,
     deleteSetting,
     createBlockedSlot,
     deleteBlockedSlot

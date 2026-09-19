@@ -1,0 +1,40 @@
+name: LiNo backup health (manual and disabled until configured)
+
+# No schedule or outgoing alerts. Enable only after production rollout review.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: lino-backup-health
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    if: github.ref == 'refs/heads/main' && vars.LINO_BACKUP_MONITOR_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: lino-backup
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Install read-only collector dependencies
+        run: |
+          python3 -m venv /tmp/lino-monitor
+          /tmp/lino-monitor/bin/pip install --disable-pip-version-check -r scripts/backup/requirements.txt
+      - name: Inspect completion metadata and GitHub attempts
+        env:
+          LINO_BACKUP_MONITOR_ENABLED: 'true'
+          LINO_BACKUP_MONITOR_ENABLED_AT: ${{ vars.LINO_BACKUP_MONITOR_ENABLED_AT }}
+          LINO_BACKUP_PROJECT_REF: ${{ vars.LINO_BACKUP_PROJECT_REF }}
+          R2_ENDPOINT_URL: ${{ vars.LINO_BACKUP_R2_ENDPOINT }}
+          R2_BUCKET: ${{ vars.LINO_BACKUP_R2_BUCKET }}
+          R2_ACCESS_KEY_ID: ${{ secrets.LINO_BACKUP_R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.LINO_BACKUP_R2_SECRET_ACCESS_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: /tmp/lino-monitor/bin/python scripts/backup/collector.py
+      # No DB/Auth credentials, backup body downloads, writes, artifact uploads or messages.
