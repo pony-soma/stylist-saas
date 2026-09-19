@@ -79,9 +79,12 @@ try {
   const pendingTus=await startTus(path,partial,partial.length+bytes.length);
   stage='S3 baseline';
   await s3Send(new PutObjectCommand({Bucket:'record-photos',Key:signedPath,Body:bytes,ContentType:'image/png'}));
+  stage='S3 baseline delete';
   await s3Send(new DeleteObjectCommand({Bucket:'record-photos',Key:signedPath}));
+  stage='S3 multipart create';
   multipart=await s3Send(new CreateMultipartUploadCommand({Bucket:'record-photos',Key:path,ContentType:'image/png'}));
   assert.ok(multipart.UploadId);
+  stage='S3 multipart part';
   const part=await s3Send(new UploadPartCommand({Bucket:'record-photos',Key:path,UploadId:multipart.UploadId,PartNumber:1,Body:bytes}));
   assert.ok(part.ETag);
   stage='existing writer';
@@ -132,8 +135,12 @@ try {
   check(await admin.storage.from('record-photos').upload(path,bytes,{upsert:true,contentType:'image/png'}));
   console.log('Capture lock rehearsal passed: SQL and HTTP writes blocked, photo reads unchanged, queues drained, normal operation resumed.');
   console.log('Scope: standard/signed/S3 writes, pre-admitted TUS and S3 multipart completion, delete, login. Hosted service versions, sequences and cutover remain separate gates.');
-} catch {
+} catch (error) {
   console.error('Capture lock rehearsal failed at '+stage+'; no production conclusion.');
+  // Only bounded machine identifiers; never log request headers, body or URLs.
+  const errorName=String(error?.name||'Unknown');
+  console.error('Failure type: '+(/^[A-Za-z0-9_]{1,80}$/.test(errorName)?errorName:'redacted')
+    +'; HTTP status: '+(Number.isInteger(error?.$metadata?.httpStatusCode)?error.$metadata.httpStatusCode:'none'));
   process.exitCode=1;
 } finally {
   if(lock)await lock.release().catch(()=>{});
