@@ -6,6 +6,7 @@ Only writes three ephemeral objects in lino-rehearsal/v1/<random UUID>/.
 """
 import argparse
 import base64
+import hashlib
 import io
 import json
 import os
@@ -16,6 +17,7 @@ import tempfile
 import uuid
 
 from backup import digest, require
+from reconcile_photos import reconcile, Refused
 
 ENDPOINT = 'https://6d2ceabc3375e61e0bf33705367f9dff.r2.cloudflarestorage.com'
 BUCKET = 'lino-backups'
@@ -120,6 +122,7 @@ def main(local_only=False):
             databases.append(database)
             sql('CREATE DATABASE ' + database + ';', env)
         sql("CREATE TABLE public.rehearsal_notes (id integer PRIMARY KEY, owner_id text NOT NULL, body text NOT NULL); INSERT INTO public.rehearsal_notes VALUES (1,'owner','synthetic only'),(2,'other','synthetic second'); ALTER TABLE public.rehearsal_notes ENABLE ROW LEVEL SECURITY; CREATE POLICY owner_read ON public.rehearsal_notes FOR SELECT TO " + role + " USING (owner_id = current_setting('rehearsal.owner', true)); GRANT USAGE ON SCHEMA public TO " + role + '; GRANT SELECT ON public.rehearsal_notes TO ' + role + ';', env, source_db)
+        sql("CREATE TABLE public.record_photos (id integer PRIMARY KEY, storage_path text NOT NULL); INSERT INTO public.record_photos VALUES (1, 'synthetic/photo.png');", env, source_db)
         with tempfile.TemporaryDirectory(prefix='lino-rehearsal-') as temporary:
             folder = Path(temporary)
             env['HOME'] = str(folder)
@@ -146,6 +149,16 @@ def main(local_only=False):
                 s3.put_object(Bucket=BUCKET, Key=key, Body=data)
                 manifest['objects'].append({'name': name, 'key': key, 'cipher_sha256': digest(ciphertext), 'plain_sha256': plain_hash})
             plaintext_manifest = folder / 'manifest.json'
+            # Synthetic adapter: real rehearsal objects stay in their authorized
+            # lino-rehearsal prefix. The reconciliation fixture uses a logical
+            # backup key; never fetch or upload this key to a cloud service.
+            photo_evidence = next(obj for obj in manifest['objects'] if obj['name'] == 'photo')
+            fixture_ref = 'a' * 20
+            logical_key = 'lino-backup/v1/' + fixture_ref + '/photos/' + hashlib.sha256(b'synthetic-photo').hexdigest() + '.age'
+            manifest['photo_reconciliation'] = {
+                'format': 1, 'project_ref': fixture_ref, 'atomic_snapshot': False,
+                'photos': [{'source': {'path': 'synthetic/photo.png', 'metadata': {'size': len(PNG)}},
+                            'object': {'key': logical_key, 'plain_sha256': photo_evidence['plain_sha256']}}]}
             plaintext_manifest.write_text(json.dumps(manifest), encoding='utf-8')
             manifest_plain_hash = digest(plaintext_manifest)
             encrypted_manifest = folder / 'complete.manifest.age'
@@ -192,6 +205,38 @@ def main(local_only=False):
             for owner, count in [('owner', '1'), ('stranger', '0')]:
                 result = sql('SET ROLE ' + role + "; SET rehearsal.owner='" + owner + "'; SELECT count(*) FROM public.rehearsal_notes;", env, target_db)
                 require(result.splitlines()[-1] == count)
+            print('rehearsal: reconcile restored DB photo references and decrypted bytes', flush=True)
+            refs = json.loads(sql("SELECT coalesce(json_agg(storage_path ORDER BY id), '[]'::json) FROM public.record_photos;", env, target_db))
+            require(refs == ['synthetic/photo.png'])
+            evidence = json.loads(decrypted_manifest.read_text())['photo_reconciliation']
+            object_dir = folder / 'reconciliation-objects'
+            object_dir.mkdir(mode=0o700)
+            evidence_key = evidence['photos'][0]['object']['key']
+            checked_photo = object_dir / (hashlib.sha256(evidence_key.encode()).hexdigest() + '.plain')
+            checked_photo.write_bytes((folder / 'restored-photo').read_bytes())
+            audit = reconcile(evidence, refs, object_dir, fixture_ref)
+            require(audit['verified_objects'] == 1 and audit['referenced_photos'] == 1 and not audit['source_quiescence_verified'])
+            # Same-size damage must fail even though a byte-count-only check passes.
+            damaged = bytearray(checked_photo.read_bytes())
+            damaged[-1] ^= 1
+            checked_photo.write_bytes(damaged)
+            try:
+                reconcile(evidence, refs, object_dir, fixture_ref)
+            except Refused:
+                pass
+            else:
+                raise RuntimeError('corrupt restored photo accepted')
+            checked_photo.write_bytes((folder / 'restored-photo').read_bytes())
+            # Source reference must come from the restored database, not a static
+            # expected fixture list. A dangling reference must fail the audit.
+            sql("INSERT INTO public.record_photos VALUES (2, 'synthetic/missing.png');", env, target_db)
+            broken_refs = json.loads(sql('SELECT json_agg(storage_path ORDER BY id) FROM public.record_photos;', env, target_db))
+            try:
+                reconcile(evidence, broken_refs, object_dir, fixture_ref)
+            except Refused:
+                pass
+            else:
+                raise RuntimeError('missing restored photo accepted')
             success = True
     finally:
         print('rehearsal: clean up only this run', flush=True)

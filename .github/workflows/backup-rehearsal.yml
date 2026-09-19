@@ -6,12 +6,14 @@ on:
     paths:
       - .github/workflows/backup-rehearsal.yml
       - scripts/backup/rehearse.py
+      - scripts/backup/reconcile_photos.py
   pull_request:
     branches: [main]
     paths:
       - .github/workflows/backup-rehearsal.yml
       - scripts/backup/rehearse.py
       - scripts/backup/backup.py
+      - scripts/backup/reconcile_photos.py
 
 permissions:
   contents: read
@@ -48,7 +50,7 @@ jobs:
   r2:
     name: Encrypted dummy objects in R2
     needs: local
-    if: github.event_name == 'push' && github.repository == 'pony-soma/stylist-saas' && github.ref == 'refs/heads/codex/release-preparation'
+    if: vars.LINO_R2_REHEARSAL_ENABLED == 'true' && github.event_name == 'push' && github.repository == 'pony-soma/stylist-saas' && github.ref == 'refs/heads/codex/release-preparation'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     environment: lino-backup
