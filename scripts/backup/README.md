@@ -14,8 +14,11 @@ the application: do not merge this PR just to enable the backup workflow.
    using the pinned CLI. See PLATFORM-EXPORT.md; hosted recovery gates remain.
 3. Encrypt the archive with age before uploading it to a dedicated private R2
    Standard bucket. Only the age PUBLIC recipient goes in GitHub configuration.
-4. Read `record-photos` metadata and download new/changed files. Encrypt every
-   uploaded file. Unchanged versions can reuse existing opaque object keys.
+4. Read `record-photos` metadata and download every listed file within the total
+   plaintext limit. Encrypt every uploaded file. Reuse existing ciphertext only
+   after its recorded plaintext hash matches freshly downloaded source bytes.
+   Contradictory bytes for the same metadata version abort the run without
+   replacing earlier objects. This increases source egress on repeated backups.
 5. Compare photo metadata before/after collection. Abort on observed changes.
 6. Upload an encrypted manifest LAST, referencing the archive and photo versions.
    Incomplete runs without a manifest are not recovery points. Report only counts.

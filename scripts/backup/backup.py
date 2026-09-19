@@ -234,14 +234,20 @@ def run(cfg, s3, storage):
             version = json.dumps({'entry': entry, 'recipient': cfg['recipient']}, sort_keys=True, separators=(',', ':')).encode()
             key = prefix + 'photos/' + hashlib.sha256(version).hexdigest() + '.age'
             head = head_optional(s3, cfg['bucket'], key)
+            # Metadata equality is not proof of identical bytes. Read every source
+            # object within the total plaintext budget before reusing ciphertext.
+            plain, encrypted = folder / 'photo', folder / 'photo.age'
+            transferred += storage.download(entry, plain, cfg['limit'] - transferred)
+            photo_hash = digest(plain)
             if head is not None:
                 metadata = head.get('Metadata', {})
                 require(head.get('ContentLength', 0) > 0 and all(re.fullmatch(r'[a-f0-9]{64}', metadata.get(k, '')) for k in ('cipher-sha256', 'plain-sha256')))
+                # Refuse a contradictory source version; never overwrite an object
+                # which an earlier encrypted manifest may still reference.
+                require(metadata['plain-sha256'] == photo_hash)
                 obj = {'key': key, 'cipher_sha256': metadata['cipher-sha256'], 'plain_sha256': metadata['plain-sha256']}
+                plain.unlink()
             else:
-                plain, encrypted = folder / 'photo', folder / 'photo.age'
-                transferred += storage.download(entry, plain, cfg['limit'] - transferred)
-                photo_hash = digest(plain)
                 encrypt(plain, encrypted, cfg['recipient'])
                 obj = upload(s3, cfg['bucket'], key, encrypted, photo_hash, budget)
                 encrypted.unlink()

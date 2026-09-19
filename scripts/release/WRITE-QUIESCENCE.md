@@ -76,3 +76,24 @@ Next implementation gate: establish and test supported ingress controls for
 Auth and Storage, including existing upload requests. Until then the full
 quiescence path remains blocked; the completed synthetic recovery tests remain
 valid within their documented scope.
+
+## Distinguish a candidate backup from an exact cutover recovery point
+
+PostgreSQL pg_dump can take a consistent database snapshot while transactions
+continue. This does not make our separate role/schema/history exports and
+external photo bytes a single snapshot. Do not require Auth shutdown solely
+to claim the documented pg_dump property, or use that property to claim a
+zero-loss cutover recovery point. See https://www.postgresql.org/docs/17/app-pgdump.html.
+
+A separately approved candidate capture may be evaluated by isolated restore
+and photo reconciliation, with its actual scope and missing guarantees stated.
+It must not automatically satisfy the release rollback gate: source changes
+after capture, schema drift, sequence state, external billing and photo version
+races still require controls or explicit recovery handling. The existing release
+gate and production-operation approval remain in force.
+
+Photo ciphertext reuse now requires a fresh source download and matching hash.
+Every downloaded photo counts toward the existing per-run plaintext limit.
+Same metadata with different bytes fails without replacing any old photo or
+publishing a new completion marker. This closes a reuse blind spot; it does not
+establish source quiescence or prove the old stored ciphertext is undamaged.

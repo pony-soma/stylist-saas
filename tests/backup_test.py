@@ -94,8 +94,33 @@ class BackupTests(unittest.TestCase):
             b.run(b.config(ENV),s3,storage)
             self.assertTrue(s3.uploads[-1].endswith('/complete.manifest.age'))
             b.run(b.config(ENV),s3,storage)
-        self.assertEqual(storage.downloads,1)
+        self.assertEqual(storage.downloads,2)
         self.assertTrue(all('private' not in k for k in s3.objects))
+    @patch.object(b, 'dump_database', fake_dump)
+    @patch.object(b, 'encrypt', fake_encrypt)
+    def test_same_metadata_changed_bytes_refuses_reuse(self):
+        s3, storage = S3(), Storage()
+        with patch('sys.stdout', new_callable=io.StringIO): b.run(b.config(ENV), s3, storage)
+        saved = {k: v['bytes'] for k, v in s3.objects.items() if '/photos/' in k}
+        markers = [k for k in s3.objects if 'complete.manifest' in k]
+        def changed(entry, target, remaining):
+            b.require(remaining >= 5)
+            target.write_bytes(b'other')
+            return 5
+        storage.download = changed
+        with self.assertRaises(b.BackupError): b.run(b.config(ENV), s3, storage)
+        self.assertEqual(markers, [k for k in s3.objects if 'complete.manifest' in k])
+        self.assertEqual(saved, {k: v['bytes'] for k, v in s3.objects.items() if '/photos/' in k})
+    @patch.object(b, 'dump_database', fake_dump)
+    @patch.object(b, 'encrypt', fake_encrypt)
+    def test_reused_photos_still_count_toward_download_budget(self):
+        s3, storage = S3(), Storage()
+        with patch('sys.stdout', new_callable=io.StringIO): b.run(b.config(ENV), s3, storage)
+        markers = [k for k in s3.objects if 'complete.manifest' in k]
+        cfg = b.config(ENV)
+        cfg['limit'] = 8  # DB=4 + photo=5, even if ciphertext is already stored.
+        with self.assertRaises(b.BackupError): b.run(cfg, s3, storage)
+        self.assertEqual(markers, [k for k in s3.objects if 'complete.manifest' in k])
     @patch.object(b, 'dump_database', fake_dump)
     @patch.object(b, 'encrypt', fake_encrypt)
     def test_changed_listing(self):
