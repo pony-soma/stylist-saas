@@ -24,8 +24,9 @@ const storageEnv=Object.fromEntries(storageContainer.Config.Env.map(entry=>{
 }));
 for(const name of ['S3_PROTOCOL_ACCESS_KEY_ID','S3_PROTOCOL_ACCESS_KEY_SECRET'])
   assert.ok(storageEnv[name],'Local S3 configuration missing: '+name);
-// Mirror Storage's SERVER_REGION / legacy REGION / default resolution.
-const region=storageEnv.SERVER_REGION||storageEnv.REGION||'not-specified';
+// S3 signing uses the storage region, not the HTTP server region.
+// The documented CLI-local region is "local".
+const region=storageEnv.STORAGE_S3_REGION||storageEnv.REGION||'local';
 const s3=new S3Client({endpoint:info.API_URL+'/storage/v1/s3',region,
   forcePathStyle:true,maxAttempts:1,requestChecksumCalculation:'WHEN_REQUIRED',
   credentials:{accessKeyId:storageEnv.S3_PROTOCOL_ACCESS_KEY_ID,secretAccessKey:storageEnv.S3_PROTOCOL_ACCESS_KEY_SECRET}});
