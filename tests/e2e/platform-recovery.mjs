@@ -161,6 +161,7 @@ async function main(){
   // Remove only psql restrict framing; never change SQL, suppress errors or use an admin role.
   assert.ok(!/^COPY\s/im.test(files['data.sql'].toString('utf8')));
   assert.match(files['data.sql'].toString('utf8'),/^INSERT INTO /m);
+  assert.ok(!/^SELECT[^\n]*setval[^\n]*hooks_id_seq/m.test(files['data.sql'].toString('utf8')),'Managed hook sequence reset must be absent');
   progress('Platform candidate: restore filtered roles/schema/data with ordinary postgres');
   stopped=true;run('docker',['stop',...services]);
   assert.deepEqual(report.restore_order.slice(0,3),['roles.sql','pre_restore.sql','schema.sql']);

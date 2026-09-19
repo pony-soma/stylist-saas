@@ -118,3 +118,13 @@ webhook history is silently discarded. This applies to both COPY (production
 default) and INSERT (synthetic hosted rehearsal) exports. Source writes must
 still be quiesced because the logical export consists of separate CLI calls.
 The manifest records `managed_webhook_state`; it is not hosted-restore evidence.
+
+
+The pinned CLI's `--exclude` does not reliably suppress this sequence's
+`setval` statement. After the post-export guard, the exporter therefore removes
+only the exact `setval` to `(1, false)` in its expected sequence section, and
+validates the remaining dump footer. Noninitial, duplicate, or unfamiliar
+statements fail closed. The package records the normalization operation,
+original/output SHA-256 and removed-statement count; its data.sql file hash is
+recomputed after normalization. Hook rows and other sequence resets remain
+unchanged. CI explicitly rejects any remaining hook-sequence reset.

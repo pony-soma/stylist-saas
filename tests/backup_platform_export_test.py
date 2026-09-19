@@ -163,6 +163,33 @@ class PlatformExportTests(unittest.TestCase):
             self.assertNotIn('private row', printed)
         self.assertEqual(p.PlatformExportError('secret', 'private-value').code, 'PRECONDITION_FAILED')
 
+    def test_exact_unused_sequence_normalization_preserves_rows_and_other_reset(self):
+        line = '''SELECT pg_catalog.setval('"supabase_functions"."hooks_id_seq"', 1, false);'''
+        block = '-- Name: hooks_id_seq; Type: SEQUENCE SET; Schema: supabase_functions; Owner: supabase_functions_admin\n--\n\n' + line + '\n'
+        prefix = '''INSERT INTO public.example VALUES ('unchanged synthetic row');
+SELECT pg_catalog.setval('"auth"."refresh_tokens_id_seq"', 1, false);
+--
+'''
+        suffix = '\n--\n-- PostgreSQL database dump complete\n--\n\nRESET ALL;\n'
+        original = (prefix + block + suffix).encode()
+        normalized, metadata = p.normalize_unused_hook_sequence(original, empty_unused_verified=True)
+        self.assertEqual(normalized, original.replace((line+'\n').encode(), b''))
+        self.assertEqual(metadata['removed_statements'], 1)
+        self.assertEqual(metadata['input_sha256'], p.hashlib.sha256(original).hexdigest())
+        self.assertEqual(metadata['output_sha256'], p.hashlib.sha256(normalized).hexdigest())
+        for bad in [original.replace(b', 1, false);\n\n--', b', 2, false);\n\n--'),
+                    original.replace(line.encode(), (line+'\n'+line).encode()),
+                    original.replace(b'RESET ALL;', b"');\nRESET ALL;"),
+                    original.replace(b'Owner: supabase_functions_admin', b'Owner: other'),
+                    original.replace(b'-- PostgreSQL database dump complete', b'-- incomplete')]:
+            with self.subTest(bad=bad), self.assertRaises(p.PlatformExportError):
+                p.normalize_unused_hook_sequence(bad, empty_unused_verified=True)
+        with self.assertRaises(p.PlatformExportError):
+            p.normalize_unused_hook_sequence(original)
+        unchanged, absent = p.normalize_unused_hook_sequence(b'-- fixture without sequence\n', empty_unused_verified=True)
+        self.assertEqual(unchanged, b'-- fixture without sequence\n')
+        self.assertEqual(absent['removed_statements'], 0)
+
     def test_version_pin_and_subprocess_redaction(self):
         with tempfile.TemporaryDirectory() as folder, patch.object(p, '_run', return_value=b'2.0.0\n'):
             with self.assertRaises(p.PlatformExportError):

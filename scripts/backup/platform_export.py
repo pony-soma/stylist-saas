@@ -156,6 +156,41 @@ def _run(command, env, limit, capture=False):
         raise PlatformExportError('platform export subprocess failed', 'SUBPROCESS_FAILED') from None
 
 
+def normalize_unused_hook_sequence(data, *, empty_unused_verified=False):
+    """Remove one known empty platform reset, never arbitrary SQL or hook rows.
+
+    Caller must supply the successful pre/post-export empty-and-initial guards.
+    Strict suffix validation prevents a matching line inside a multiline value
+    or COPY payload from being modified. Unknown dump shapes fail closed.
+    """
+    require(empty_unused_verified is True, 'WEBHOOK_STATE')
+    require(isinstance(data, bytes), 'WEBHOOK_STATE')
+    text = data.decode('utf-8')
+    marker = 'hooks_id_seq'
+    line = '''SELECT pg_catalog.setval('"supabase_functions"."hooks_id_seq"', 1, false);'''
+    header = '-- Name: hooks_id_seq; Type: SEQUENCE SET; Schema: supabase_functions; Owner: supabase_functions_admin'
+    metadata = {'operation': 'remove-unused-managed-hook-sequence-reset-v1',
+                'input_sha256': hashlib.sha256(data).hexdigest(), 'removed_statements': 0}
+    if marker not in text:
+        metadata['output_sha256'] = metadata['input_sha256']
+        return data, metadata
+    require(text.count(marker) == 2 and text.splitlines().count(line) == 1
+            and text.splitlines().count(header) == 1, 'WEBHOOK_STATE')
+    block = re.escape(header) + r'\n--\n\s*' + re.escape(line) + r'\n'
+    matches = list(re.finditer(block, text))
+    require(len(matches) == 1, 'WEBHOOK_STATE')
+    suffix = text[matches[0].end():]
+    require(suffix.splitlines().count('-- PostgreSQL database dump complete') == 1, 'WEBHOOK_STATE')
+    for remaining in suffix.splitlines():
+        require(not remaining.strip() or remaining.startswith('--') or remaining == 'RESET ALL;'
+                or re.fullmatch(r'''SELECT pg_catalog\.setval\('"[a-zA-Z_][a-zA-Z_0-9]*"\."[a-zA-Z_][a-zA-Z_0-9]*"', [0-9]+, (true|false)\);''', remaining), 'WEBHOOK_STATE')
+    # Preserve all other bytes, including the catalog comment and unrelated resets.
+    offset = text.index(line, matches[0].start())
+    result = (text[:offset] + text[offset + len(line) + 1:]).encode('utf-8')
+    metadata.update(removed_statements=1, output_sha256=hashlib.sha256(result).hexdigest())
+    return result, metadata
+
+
 def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supabase'), data_mode='copy'):
     """Write a bounded plaintext tar and return non-secret format/gate metadata."""
     env = dict(os.environ if env is None else env)
@@ -239,6 +274,13 @@ def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supaba
                 guard = json.loads(_run(['psql', '-X', '-At', '-v', 'ON_ERROR_STOP=1', '-c', guard_sql], child, limit, capture=True))
                 require(guard.get('empty') is True and guard.get('initial') is True, 'WEBHOOK_STATE')
                 failure_code = 'PACKAGE_FAILED'
+                data_path = folder / 'data.sql'
+                original = data_path.read_bytes()
+                normalized, normalization = normalize_unused_hook_sequence(original, empty_unused_verified=True)
+                data_path.write_bytes(normalized)
+                size += len(normalized) - len(original)
+                report['files']['data.sql'] = {'bytes': len(normalized), 'sha256': hashlib.sha256(normalized).hexdigest()}
+                report['normalizations'] = [normalization]
             metadata = folder / 'package.json'
             metadata.write_text(json.dumps(report, sort_keys=True), encoding='utf-8')
             metadata.chmod(0o600)
