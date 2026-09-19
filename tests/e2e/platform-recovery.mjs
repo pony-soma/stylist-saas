@@ -14,6 +14,10 @@ const cleanEnv=Object.fromEntries(['PATH','HOME','LANG'].filter(k=>process.env[k
 const run=(cmd,args,options={})=>{
  try{return execFileSync(cmd,args,{env:cleanEnv,stdio:['pipe','pipe','pipe'],maxBuffer:64*1024*1024,timeout:300000,...options});}
  catch(error){
+  if(cmd==='python3' && args[0]==='scripts/backup/platform_export.py'){
+   const code=String(error.stderr??'').split('\n').find(line=>/^PLATFORM_EXPORT_CODE=[A-Z_]{1,40}$/.test(line));
+   if(code)console.error(code);
+  }
   if(cmd==='docker' && args.includes('psql')){
    const lines=String(error.stderr??'').split('\n').filter(line=>/\bERROR:/.test(line)&&!/(?:password|token|secret|COPY|DETAIL:)/i.test(line));
    for(const line of lines.slice(0,3))console.error(line.slice(0,250));
@@ -102,6 +106,19 @@ async function main(){
  }
  assert.equal(sql(SRC,'SELECT count(*) FROM public.stylists'),'0');
  assert.equal(sql(DST,"SELECT count(*) FROM pg_tables WHERE schemaname='public'"),'0');
+ // Exercise the exporter's actual PostgreSQL regex, including a real default
+ // helper's role name that must not be classified as a schema dependency.
+ const webhookPattern=JSON.parse(run('python3',['-c',"import json,runpy; print(json.dumps(runpy.run_path('scripts/backup/platform_export.py')['WEBHOOK_REFERENCE_PATTERN']))"]).toString());
+ assert.ok(!webhookPattern.includes("'"));
+ assert.equal(sql(SRC,`SELECT bool_and((body ~* '${webhookPattern}')=expected) FROM (VALUES
+  ('CREATE USER supabase_functions_admin;',false),
+  ('GRANT USAGE ON SCHEMA net TO supabase_functions_admin;',false),
+  ('SELECT supabase_functions.http_request();',true),
+  ('SELECT "supabase_functions" . "http_request"();',true),
+  ('SELECT SUPABASE_FUNCTIONS.http_request();',true),
+  ('SELECT mysupabase_functions.foo();',false),
+  ('SELECT supabase_functions_admin.foo();',false)
+ ) fixtures(body,expected);`),'t');
  const source=createClient(sourceURL,ss.SERVICE_ROLE_KEY,options);
  const target=createClient(targetURL,ts.SERVICE_ROLE_KEY,options);
  const folder=mkdtempSync(join(tmpdir(),'lino-platform-'));chmodSync(folder,0o700);

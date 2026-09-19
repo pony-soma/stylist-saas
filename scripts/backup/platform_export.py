@@ -20,6 +20,7 @@ from urllib.parse import quote
 
 FORMAT = 'supabase-cli-platform-v1'
 CLI_VERSION = '2.117.0'
+WEBHOOK_REFERENCE_PATTERN = r'(^|[^[:alnum:]_])"?supabase_functions"?[[:space:]]*[.]'
 # pg_dump ACL commands assume built-in PostgreSQL defaults. Supabase's target
 # public defaults would otherwise add grants before source ACLs are applied.
 # This is an explicit, fail-closed step for a fresh target, never source execution.
@@ -93,13 +94,20 @@ RESTORE_GATES = [
 ]
 
 
+ERROR_CODES = frozenset({'PRECONDITION_FAILED', 'SUBPROCESS_FAILED', 'INVENTORY_READ_FAILED',
+    'WEBHOOK_DEPENDENCY', 'WEBHOOK_STATE', 'WEBHOOK_READ_FAILED', 'DUMP_FAILED', 'PACKAGE_FAILED'})
+
+
 class PlatformExportError(Exception):
-    pass
+    def __init__(self, message, code='PRECONDITION_FAILED'):
+        super().__init__(message)
+        self.code = code if code in ERROR_CODES else 'PRECONDITION_FAILED'
 
 
-def require(condition):
+
+def require(condition, code='PRECONDITION_FAILED'):
     if not condition:
-        raise PlatformExportError('platform export precondition or verification failed')
+        raise PlatformExportError('platform export precondition or verification failed', code)
 
 
 def connection_environment(env):
@@ -145,7 +153,7 @@ def _run(command, env, limit, capture=False):
         return result.stdout if capture else None
     except Exception:
         # CLI exceptions contain argv and connection details; never propagate them.
-        raise PlatformExportError('platform export subprocess failed') from None
+        raise PlatformExportError('platform export subprocess failed', 'SUBPROCESS_FAILED') from None
 
 
 def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supabase'), data_mode='copy'):
@@ -162,23 +170,30 @@ def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supaba
     version = _run([*cli, '--version'], child, limit, capture=True).decode().strip()
     require(version == CLI_VERSION)
     # Every DB operation uses the ordinary project role, including inventory.
-    inventory_sql = "SELECT json_build_object('role',current_user,'superuser',(SELECT rolsuper FROM pg_roles WHERE rolname=current_user),'history',EXISTS(SELECT 1 FROM pg_namespace WHERE nspname='supabase_migrations'),'hooks_table',to_regclass('supabase_functions.hooks') IS NOT NULL,'hooks_sequence',to_regclass('supabase_functions.hooks_id_seq') IS NOT NULL,'webhook_dependencies',EXISTS(SELECT 1 FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid JOIN pg_namespace n ON n.oid=p.pronamespace WHERE NOT t.tgisinternal AND n.nspname='supabase_functions') OR EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema','supabase_functions') AND CASE WHEN p.prokind IN ('f','p') THEN pg_get_functiondef(p.oid) ILIKE '%supabase_functions%' ELSE false END))::text"
-    inventory = json.loads(_run(['psql', '-X', '-At', '-v', 'ON_ERROR_STOP=1', '-c', inventory_sql], child, limit, capture=True))
+    inventory_sql = "SELECT json_build_object('role',current_user,'superuser',(SELECT rolsuper FROM pg_roles WHERE rolname=current_user),'history',EXISTS(SELECT 1 FROM pg_namespace WHERE nspname='supabase_migrations'),'hooks_table',to_regclass('supabase_functions.hooks') IS NOT NULL,'hooks_sequence',to_regclass('supabase_functions.hooks_id_seq') IS NOT NULL,'webhook_dependencies',EXISTS(SELECT 1 FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid JOIN pg_namespace n ON n.oid=p.pronamespace WHERE NOT t.tgisinternal AND n.nspname='supabase_functions') OR EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema','supabase_functions') AND CASE WHEN p.prokind IN ('f','p') THEN pg_get_functiondef(p.oid) ~* '__WEBHOOK_REFERENCE_PATTERN__' ELSE false END OR (n.nspname NOT IN ('pg_catalog','information_schema','supabase_functions') AND EXISTS(SELECT 1 FROM pg_depend d LEFT JOIN pg_proc rp ON d.refclassid='pg_proc'::regclass AND rp.oid=d.refobjid LEFT JOIN pg_class rc ON d.refclassid='pg_class'::regclass AND rc.oid=d.refobjid JOIN pg_namespace rn ON rn.oid=COALESCE(rp.pronamespace,rc.relnamespace,CASE WHEN d.refclassid='pg_namespace'::regclass THEN d.refobjid END) WHERE d.classid='pg_proc'::regclass AND d.objid=p.oid AND rn.nspname='supabase_functions'))))::text"
+    inventory_sql = inventory_sql.replace('__WEBHOOK_REFERENCE_PATTERN__', WEBHOOK_REFERENCE_PATTERN)
+    try:
+        inventory = json.loads(_run(['psql', '-X', '-At', '-v', 'ON_ERROR_STOP=1', '-c', inventory_sql], child, limit, capture=True))
+    except Exception:
+        raise PlatformExportError('platform inventory failed', 'INVENTORY_READ_FAILED') from None
     require(inventory.get('role') == 'postgres' and inventory.get('superuser') is False)
     # CLI excludes managed webhook DDL but can emit its empty sequence setval.
     # Omit only a demonstrably unused initial sequence. Never discard hook rows
     # or pretend configured platform webhooks are portable to an absent target.
-    require(inventory.get('webhook_dependencies') is False)
+    require(inventory.get('webhook_dependencies') is False, 'WEBHOOK_DEPENDENCY')
     hooks_present = inventory.get('hooks_table')
     sequence_present = inventory.get('hooks_sequence')
     require(isinstance(hooks_present, bool) and isinstance(sequence_present, bool))
-    require(hooks_present == sequence_present)
+    require(hooks_present == sequence_present, 'WEBHOOK_STATE')
     sequence_exclusions = []
     webhook_state = 'absent'
     if hooks_present:
         guard_sql = "SELECT json_build_object('hooks_guard',true,'empty',NOT EXISTS(SELECT 1 FROM supabase_functions.hooks),'initial',last_value=1 AND NOT is_called)::text FROM supabase_functions.hooks_id_seq"
-        guard = json.loads(_run(['psql', '-X', '-At', '-v', 'ON_ERROR_STOP=1', '-c', guard_sql], child, limit, capture=True))
-        require(guard.get('empty') is True and guard.get('initial') is True)
+        try:
+            guard = json.loads(_run(['psql', '-X', '-At', '-v', 'ON_ERROR_STOP=1', '-c', guard_sql], child, limit, capture=True))
+        except Exception:
+            raise PlatformExportError('platform webhook inventory failed', 'WEBHOOK_READ_FAILED') from None
+        require(guard.get('empty') is True and guard.get('initial') is True, 'WEBHOOK_STATE')
         sequence_exclusions = ['--exclude', 'supabase_functions.hooks_id_seq']
         webhook_state = 'empty-unused; initial managed sequence omitted'
     report = {'database_format': FORMAT, 'cli_version': version, 'hosted_restore_verified': False, 'data_mode': data_mode,
@@ -186,6 +201,7 @@ def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supaba
               'managed_webhook_state': webhook_state,
               'snapshot_consistency': 'separate CLI exports; quiesce application writes for a recovery point', 'files': {}}
     created = False
+    failure_code = 'PACKAGE_FAILED'
     try:
         with tempfile.TemporaryDirectory(prefix='platform-', dir=target.parent) as raw:
             folder = Path(raw)
@@ -209,7 +225,9 @@ def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supaba
                 report['restore_order'].append('history_data.sql')
             for name, flags in specs:
                 path = folder / name
+                failure_code = 'DUMP_FAILED'
                 _run([*cli, 'db', 'dump', '--db-url', url, '--file', str(path), *flags], child, limit - size)
+                failure_code = 'PACKAGE_FAILED'
                 require(path.is_file() and not path.is_symlink())
                 path.chmod(0o600)
                 size += path.stat().st_size
@@ -217,8 +235,10 @@ def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supaba
                 report['files'][name] = {'bytes': path.stat().st_size, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
             if hooks_present:
                 # Separate CLI exports need quiesced writers; recheck before sealing.
+                failure_code = 'WEBHOOK_READ_FAILED'
                 guard = json.loads(_run(['psql', '-X', '-At', '-v', 'ON_ERROR_STOP=1', '-c', guard_sql], child, limit, capture=True))
-                require(guard.get('empty') is True and guard.get('initial') is True)
+                require(guard.get('empty') is True and guard.get('initial') is True, 'WEBHOOK_STATE')
+                failure_code = 'PACKAGE_FAILED'
             metadata = folder / 'package.json'
             metadata.write_text(json.dumps(report, sort_keys=True), encoding='utf-8')
             metadata.chmod(0o600)
@@ -231,10 +251,10 @@ def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supaba
                         archive.add(folder / name, arcname=name, recursive=False)
                 require(stream.tell() <= limit)
         return report
-    except Exception:
+    except Exception as error:
         if created:
             target.unlink(missing_ok=True)
-        raise PlatformExportError('platform export failed; incomplete package removed') from None
+        raise PlatformExportError('platform export failed; incomplete package removed', error.code if isinstance(error, PlatformExportError) and error.code != 'SUBPROCESS_FAILED' else failure_code) from None
 
 
 def main():
@@ -243,7 +263,9 @@ def main():
         report = export_platform(Path(sys.argv[1]), int(os.environ.get('LINO_BACKUP_MAX_BYTES', '104857600')), data_mode=os.environ.get('LINO_BACKUP_DATA_MODE', 'copy'))
         print(json.dumps({'database_format': report['database_format'], 'hosted_restore_verified': False}))
         return 0
-    except Exception:
+    except Exception as error:
+        code = error.code if isinstance(error, PlatformExportError) else 'PRECONDITION_FAILED'
+        print('PLATFORM_EXPORT_CODE=' + code, file=sys.stderr)
         print('Platform export failed; no complete recovery package should be inferred.', file=sys.stderr)
         return 1
 

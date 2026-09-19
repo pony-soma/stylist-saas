@@ -150,6 +150,19 @@ class PlatformExportTests(unittest.TestCase):
                 p.export_platform(target, 1024*1024, ENV)
             self.assertEqual(target.read_bytes(), b'existing')
 
+    def test_diagnostics_are_fixed_codes_not_raw_subprocess_data(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(p, '_run', self.fake_runner(dependencies=True)):
+            with self.assertRaises(p.PlatformExportError) as caught:
+                p.export_platform(Path(folder) / 'database.tar', 1024*1024, LOCAL)
+            self.assertEqual(caught.exception.code, 'WEBHOOK_DEPENDENCY')
+        with patch.object(p.sys, 'argv', ['platform_export.py', '/unused']), patch.object(p, 'export_platform', side_effect=p.PlatformExportError('password private row', 'INVENTORY_READ_FAILED')), patch('sys.stderr') as stderr:
+            self.assertEqual(p.main(), 1)
+            printed = ''.join(str(call.args) for call in stderr.write.call_args_list)
+            self.assertIn('PLATFORM_EXPORT_CODE=INVENTORY_READ_FAILED', printed)
+            self.assertNotIn('password', printed)
+            self.assertNotIn('private row', printed)
+        self.assertEqual(p.PlatformExportError('secret', 'private-value').code, 'PRECONDITION_FAILED')
+
     def test_version_pin_and_subprocess_redaction(self):
         with tempfile.TemporaryDirectory() as folder, patch.object(p, '_run', return_value=b'2.0.0\n'):
             with self.assertRaises(p.PlatformExportError):
