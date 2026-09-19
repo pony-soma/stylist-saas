@@ -9,9 +9,10 @@ const targets = {
 };
 const lineNames = ['NEXT_PUBLIC_LIFF_ID', 'NEXT_PUBLIC_LINE_FRIEND_URL', 'LINE_LOGIN_CHANNEL_ID', 'LINE_LOGIN_CHANNEL_SECRET', 'LINE_CHANNEL_SECRET', 'LINE_CHANNEL_ACCESS_TOKEN'];
 
-function checkEnvironment(target, env) {
+function checkEnvironment(target, env, profile = 'full-line') {
   const spec = targets[target];
   if (!spec) throw new Error('Target must be staging or production');
+  if (!['initial-saas', 'full-line'].includes(profile)) throw new Error('Unknown release profile');
   const errors = [];
   const incomplete = [];
   const value = name => typeof env[name] === 'string' ? env[name].trim() : '';
@@ -53,9 +54,13 @@ function checkEnvironment(target, env) {
     const text = required(name);
     if (text && !new RegExp(`^${prefix}[A-Za-z0-9]+$`).test(text)) errors.push(`${name}: invalid format`);
   }
-  for (const name of lineNames) if (!value(name)) incomplete.push(`${name}: not configured`);
+  if (profile === 'full-line') {
+    for (const name of lineNames) if (!value(name)) incomplete.push(`${name}: not configured`);
+  }
   for (const name of ['LINE_BOOKING_NOTIFICATIONS_ENABLED', 'LINE_BOOKING_CANCELLATION_ENABLED']) {
-    if (value(name) !== 'true') incomplete.push(`${name}: awaiting protected reservation flow verification`);
+    if (profile === 'initial-saas') {
+      if (value(name) !== 'false') errors.push(`${name}: must be explicitly false for initial release`);
+    } else if (value(name) !== 'true') incomplete.push(`${name}: awaiting protected reservation flow verification`);
   }
   const friendUrl = value('NEXT_PUBLIC_LINE_FRIEND_URL');
   if (friendUrl) {
@@ -66,17 +71,18 @@ function checkEnvironment(target, env) {
       if (target === 'staging' && url.hostname === 'lin.ee' && url.pathname.replace(/\/$/, '') === '/PLovQIR') errors.push('NEXT_PUBLIC_LINE_FRIEND_URL: known production LINE destination');
     } catch { errors.push('NEXT_PUBLIC_LINE_FRIEND_URL: invalid official LINE friend URL'); }
   }
-  return { target, errors, incomplete, passed: !errors.length && !incomplete.length };
+  return { target, profile, errors, incomplete, passed: !errors.length && !incomplete.length };
 }
 
 if (require.main === module) {
   const args = process.argv.slice(2);
-  if (args.length !== 2 || args[0] !== '--target' || !Object.hasOwn(targets, args[1])) {
-    console.error('Usage: node scripts/check-release-env.cjs --target staging|production');
+  if (![2, 4].includes(args.length) || args[0] !== '--target' || !Object.hasOwn(targets, args[1]) ||
+      (args.length === 4 && (args[2] !== '--profile' || !['initial-saas', 'full-line'].includes(args[3])))) {
+    console.error('Usage: node scripts/check-release-env.cjs --target staging|production [--profile initial-saas|full-line]');
     process.exitCode = 2;
   } else {
-    const result = checkEnvironment(args[1], process.env);
-    console.log(`Environment preflight: ${result.target}`);
+    const result = checkEnvironment(args[1], process.env, args[3] ?? 'full-line');
+    console.log(`Environment preflight: ${result.target} (${result.profile})`);
     for (const message of result.errors) console.error(`ERROR ${message}`);
     for (const message of result.incomplete) console.error(`INCOMPLETE ${message}`);
     console.log(result.passed ? 'Local configuration checks passed.' : 'Release readiness checks incomplete.');

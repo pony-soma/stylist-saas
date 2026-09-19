@@ -74,3 +74,43 @@ test('CLI requires explicit target and never echoes invalid values', () => {
   assert.equal(result.status, 1);
   assert.doesNotMatch(result.stdout + result.stderr, /sensitive-invalid-value/);
 });
+
+function initialFixture(target = 'staging') {
+  const env = fixture(target);
+  for (const name of Object.keys(env)) if (name.includes('LINE') || name.includes('LIFF')) delete env[name];
+  env.LINE_BOOKING_NOTIFICATIONS_ENABLED = 'false';
+  env.LINE_BOOKING_CANCELLATION_ENABLED = 'false';
+  return env;
+}
+test('initial SaaS validates both targets with LINE explicitly off', () => {
+  for (const target of ['staging', 'production']) {
+    const result = checkEnvironment(target, initialFixture(target), 'initial-saas');
+    assert.equal(result.passed, true);
+    assert.equal(result.profile, 'initial-saas');
+  }
+});
+test('initial profile rejects accidental LINE enablement and missing disabled flags', () => {
+  for (const flag of ['LINE_BOOKING_NOTIFICATIONS_ENABLED', 'LINE_BOOKING_CANCELLATION_ENABLED']) {
+    for (const value of ['true', '', 'FALSE']) {
+      const env = { ...initialFixture(), [flag]: value };
+      assert.equal(checkEnvironment('staging', env, 'initial-saas').passed, false);
+    }
+  }
+});
+test('initial profile retains target and billing checks', () => {
+  const env = initialFixture('production');
+  env.STRIPE_SECRET_KEY = 'sk_test_FAKE';
+  delete env.STRIPE_WEBHOOK_SECRET;
+  const result = checkEnvironment('production', env, 'initial-saas');
+  assert.equal(result.errors.length, 2);
+  assert.equal(result.passed, false);
+  assert.throws(() => checkEnvironment('production', env, 'skip-checks'));
+});
+test('CLI initial profile passes only when explicitly selected', () => {
+  const script = path.join(__dirname, '../scripts/check-release-env.cjs');
+  const env = initialFixture();
+  const run = extra => spawnSync(process.execPath, [script, '--target', 'staging', ...extra], { encoding: 'utf8', env });
+  assert.equal(run(['--profile', 'initial-saas']).status, 0);
+  assert.equal(run([]).status, 1);
+  assert.equal(run(['--profile', 'skip-checks']).status, 2);
+});
