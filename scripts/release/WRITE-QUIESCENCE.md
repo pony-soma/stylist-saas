@@ -1,0 +1,78 @@
+# Cutover write quiescence
+
+Status: inventory verified read-only on production and staging on 2026-09-19.
+Full write exclusion is NOT implemented or verified. This is an operator plan,
+not authorization to change production or evidence of an atomic snapshot.
+
+## Evidence collected
+
+`write-path-inventory.sql` returns one JSON result inside a read-only transaction.
+It excludes customer rows, query text, credentials and IP addresses. Run it on
+the explicitly selected project, retain the timestamp, and check visibility.
+The `writer_roles` field lists login/BYPASSRLS candidates, not effective write
+privileges; it deliberately includes a read-only role. Do not revoke this list.
+
+Both hosted samples had read_all_stats=true, zero observed open transactions,
+zero prepared transactions and zero public SECURITY DEFINER functions. No
+pg_cron extension/cron.job table or HTTP extension was installed in either DB.
+Background cron/net workers still appeared: a worker name is not evidence of
+an application job. Storage had four noninternal triggers. These are transient
+observations, not proof that future requests or external jobs cannot write.
+
+## Required controls and acceptance evidence
+
+| Path | Control to establish before capture | Verification in synthetic rehearsal |
+| --- | --- | --- |
+| Current app | Compatible maintenance deployment, checkout creation closed | Domain/API/OAuth/webhook return 503; public legal pages readable |
+| Old deployments/open clients | Inventory reachable deployments and direct API clients; block their write path at the service boundary | Previously opened client and old URL cannot mutate |
+| Data API/RPC | Review role grants, policies, privileged RPC and service-key callers; define a reversible write restriction | Anonymous, signed-in and service caller write attempts fail; backup reads work |
+| Auth | Identify sign-up, login/refresh, admin actions and provider callbacks; establish supported service-level control | Auth writes cannot race capture; restore of original settings succeeds |
+| Storage | Identify standard/resumable/S3 uploads, signed upload URLs, overwrite/delete and privileged callers; close ingress and drain existing operations | Start upload before closure and attempt overwrite/delete after closure; confirm outcome and unchanged restored bytes |
+| DB clients/jobs | Suspend application jobs, migrations and owner scripts; inspect sessions and prepared transactions | No admitted writer during capture; any observation gap aborts consistency claim |
+| External events | Hold application delivery without acknowledging success; record pending work | Reconcile and replay idempotently after reopening; no duplicate effects |
+
+Do not describe these controls as available until the relevant platform setting
+or implementation has been inspected and tested. In particular, a DB firewall
+or app-only flag must not be assumed to cover Auth/Storage HTTPS APIs.
+
+## Capture and reopen sequence
+
+1. Record exact project IDs, release SHA, previous settings and deployment IDs,
+   scope of the maintenance window, backup destination and recovery target.
+2. Rehearse the above controls using fabricated data. Stop if any write route is
+   unaccounted for; no automatic production changes follow a passing inventory.
+3. Obtain concrete production-operation approval. Close entry points, stop jobs,
+   drain admitted work and collect inventory with sufficient stats visibility.
+4. Maintain the controls throughout roles/schema/data and photo export. Record
+   start/end evidence and abort on drift, lost control or unexplained writes.
+   The existing exporter uses separate dumps and keeps atomic_snapshot=false.
+5. Decrypt and restore in the closed recovery target. Reconcile DB references,
+   object bytes and hashes. Stable listings alone do not establish consistency.
+6. Apply the separately approved cutover while access remains closed. Verify
+   access isolation and production-specific configuration before reopening.
+7. Restore only reviewed service settings, reconcile webhook backlog and confirm
+   normal operations. Do not restore legacy permissive policies after migration.
+
+Stripe can continue its billing schedule during application maintenance. A 503
+holds delivery for retry; it does not pause charges. No real charge is included
+in this plan. An incident before cutover should restore recorded settings; an
+incident after schema/data changes requires the reviewed fix-forward/recovery
+plan, not an automatic old-app rollback.
+
+## Why a table lock alone is insufficient
+
+PostgreSQL SHARE locks can block table DML while allowing ordinary reads, but
+they end with their transaction. They do not freeze separate object storage,
+sequence values or external service state. Locking managed Storage metadata
+does not prove an in-flight object upload has stopped. Do not add triggers to
+managed Auth/Storage tables, terminate managed sessions or revoke managed-role
+permissions as a shortcut.
+
+References checked 2026-09-19:
+- https://www.postgresql.org/docs/17/explicit-locking.html
+- https://supabase.com/docs/guides/storage/schema/design
+
+Next implementation gate: establish and test supported ingress controls for
+Auth and Storage, including existing upload requests. Until then the full
+quiescence path remains blocked; the completed synthetic recovery tests remain
+valid within their documented scope.

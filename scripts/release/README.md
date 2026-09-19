@@ -101,7 +101,9 @@ Initial cutover order to include in the final owner approval:
    environment-variable names/targets and infrastructure configuration securely.
 4. Close general access for the cutover window and hold new checkout creation.
    The current legacy app is not compatible with the new write restrictions.
-   A maintenance mechanism still needs implementation/testing before release.
+   The application maintenance gate is implemented and locally tested; complete
+   write-path exclusion remains unverified. See WRITE-QUIESCENCE.md for controls
+   and the read-only write-path-inventory.sql (not a freeze command).
 5. Prepare live Stripe price (JPY1980/month, explicit inclusive tax treatment),
    portal (period-end cancellation, payment updates, invoice history, approved
    policy links), webhook and matching production secrets. Never copy test IDs.

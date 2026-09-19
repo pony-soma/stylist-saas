@@ -45,7 +45,9 @@ The catalog-only production survey and hosted recovery gaps are in `RECOVERY.md`
 5. Verify schema/version compatibility and source/reference consistency. A
    release snapshot needs all write paths stopped and in-flight writes drained,
    including direct Supabase and external webhook flows. The page maintenance
-   flag alone is not a database write freeze.
+   flag alone is not a database write freeze. See
+   ../release/WRITE-QUIESCENCE.md for the path-by-path acceptance plan and
+   read-only inventory; full write exclusion is not yet verified.
 6. Obtain the user's concrete release/production-operation approval where
    required, then collect a manual snapshot. Verify bytes, decrypt with the
    separately held key, and reconcile record-photo references at the closed
