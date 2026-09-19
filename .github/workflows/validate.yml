@@ -75,6 +75,8 @@ jobs:
         run: node tests/e2e/export-env.mjs
       - name: Rehearse isolated database and file recovery
         run: node tests/e2e/recovery-rehearsal.mjs
+      - name: Rehearse bounded capture locks with synthetic HTTP writers
+        run: node tests/e2e/capture-lock.mjs
       - name: Build application against local Supabase
         run: npm run build
       - name: Verify desktop and mobile browser flows

@@ -97,3 +97,37 @@ Every downloaded photo counts toward the existing per-run plaintext limit.
 Same metadata with different bytes fails without replacing any old photo or
 publishing a new completion marker. This closes a reuse blind spot; it does not
 establish source quiescence or prove the old stored ciphertext is undamaged.
+
+## 2026-09-20 bounded lock experiment (not a production freeze)
+
+Read-only production inspection confirms ordinary `postgres` has UPDATE
+privilege on all ten public tables, Auth data tables and Storage objects/buckets.
+The exceptions are managed migration tables and vector-storage tables. The
+earlier schema-wide privilege summary must not be interpreted as inability to
+lock `auth.users` or `storage.objects` specifically.
+
+`scripts/backup/capture-lock.mjs` is an experimental primitive with no CLI,
+scheduled caller or production activation. It uses one transaction and bounded
+SHARE-lock acquisition; failures roll back. It verifies the same connection's
+actual locks and relation inventory. It excludes named platform migration and
+vector tables, rejects populated vectors and otherwise refuses inaccessible
+relations. It never changes managed grants, triggers or data. An idle timeout
+limits abandoned sessions. This is not a complete capture/cutover coordinator.
+
+`tests/e2e/capture-lock.mjs` runs only against the fixed disposable CI Supabase.
+It verifies ordinary SQL writes, HTTP photo overwrite/delete, a pre-issued signed
+upload token and login, alongside stable readable photo bytes and resumption.
+It also checks that timed-out HTTP writers have left the server lock queue;
+client-side cancellation alone is not evidence of a drained server operation.
+
+Still required before using this candidate for a release: successful CI evidence,
+in-flight uploads admitted before acquisition, resumable/S3 operations, hosted
+service/version compatibility, sequence and administrative-DDL controls, lifetime
+supervision through capture/restore/cutover, and the separately approved production
+window. Do not set `atomic_snapshot=true` or claim global source quiescence from
+these tests. A background object-deletion worker is not stopped by table locks.
+
+The upstream implementation inspected at Supabase Storage
+`5d79e291ef9017c57ef261afca0a16429d1c8240` uses version-specific object locations
+and transactional metadata changes. This is a hypothesis to test, not proof that
+the hosted service uses this revision or that all deletion races are covered.
