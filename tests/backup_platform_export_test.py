@@ -39,7 +39,7 @@ class PlatformExportTests(unittest.TestCase):
             with self.subTest(updates=updates), self.assertRaises(p.PlatformExportError):
                 p.connection_environment(dict(LOCAL, **updates))
 
-    def fake_runner(self, history=True, fail=None, role='postgres', superuser=False):
+    def fake_runner(self, history=True, fail=None, role='postgres', superuser=False, hooks=False, sequence=None, empty=True, initial=True, dependencies=False):
         self.calls = []
         def run(command, env, limit, capture=False):
             self.calls.append(command)
@@ -49,7 +49,9 @@ class PlatformExportTests(unittest.TestCase):
             if command[0] == 'psql':
                 self.assertIn('-X', command)
                 self.assertIn('ON_ERROR_STOP=1', command)
-                return json.dumps({'role': role, 'superuser': superuser, 'history': history}).encode()
+                if "'hooks_guard'" in command[-1]:
+                    return json.dumps({'hooks_guard': True, 'empty': empty, 'initial': initial}).encode()
+                return json.dumps({'role': role, 'superuser': superuser, 'history': history, 'hooks_table': hooks, 'hooks_sequence': hooks if sequence is None else sequence, 'webhook_dependencies': dependencies}).encode()
             file = Path(command[command.index('--file') + 1])
             file.write_bytes(b'-- SQL fixture\n')
             if file.name == fail:
@@ -95,6 +97,22 @@ class PlatformExportTests(unittest.TestCase):
         with patch.object(p, '_run') as runner, self.assertRaises(p.PlatformExportError):
             p.export_platform(Path('/unused'), 1024, LOCAL, data_mode='unknown')
         runner.assert_not_called()
+
+    def test_only_unused_managed_hook_sequence_is_excluded(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(p, '_run', self.fake_runner(hooks=True)):
+            report = p.export_platform(Path(folder) / 'database.tar', 1024*1024, LOCAL)
+            self.assertEqual(report['managed_webhook_state'], 'empty-unused; initial managed sequence omitted')
+            dumps = [cmd for cmd in self.calls if 'dump' in cmd and '--data-only' in cmd]
+            self.assertIn('supabase_functions.hooks_id_seq', dumps[0])
+            self.assertNotIn('supabase_functions.hooks', dumps[0])
+        for args in [{'hooks': True, 'empty': False}, {'hooks': True, 'initial': False},
+                     {'hooks': True, 'dependencies': True}, {'hooks': True, 'sequence': False},
+                     {'hooks': False, 'sequence': True}, {'dependencies': True}]:
+            with self.subTest(args=args), tempfile.TemporaryDirectory() as folder, patch.object(p, '_run', self.fake_runner(**args)):
+                with self.assertRaises(p.PlatformExportError):
+                    p.export_platform(Path(folder) / 'database.tar', 1024*1024, LOCAL)
+                self.assertFalse(any('dump' in cmd for cmd in self.calls))
+                self.assertEqual(list(Path(folder).iterdir()), [])
 
     def test_absent_history_is_explicit_not_silently_failed(self):
         with tempfile.TemporaryDirectory() as folder, patch.object(p, '_run', self.fake_runner(history=False)):

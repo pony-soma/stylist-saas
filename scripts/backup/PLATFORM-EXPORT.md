@@ -99,3 +99,22 @@ production/staging refs, requires a valid exact-owner user session and nonce,
 and uploads/verifies only a fixed synthetic PNG in a private bucket. Deploy
 with JWT verification enabled; no service key leaves the function. This template
 and local CI are not evidence that a hosted rehearsal has already passed.
+
+
+### Empty managed webhook sequence compatibility
+
+The CLI may export `supabase_functions.hooks_id_seq` data while excluding the
+managed schema definition. A fresh hosted project may not contain that sequence.
+The exporter excludes **only this sequence** after confirming that the hooks
+table is empty, the sequence is still at its initial unused state, and no user
+trigger or function refers to `supabase_functions`. Hook-table data is not
+excluded. The empty/initial check runs again before sealing the package.
+
+Absent table and sequence are accepted together; mismatched objects, existing
+hook records, a used sequence, configured dependencies, or unreadable metadata
+stop the export before a complete package is produced. Such projects require a
+separate webhook migration review; no managed objects are fabricated and no
+webhook history is silently discarded. This applies to both COPY (production
+default) and INSERT (synthetic hosted rehearsal) exports. Source writes must
+still be quiesced because the logical export consists of separate CLI calls.
+The manifest records `managed_webhook_state`; it is not hosted-restore evidence.

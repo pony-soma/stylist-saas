@@ -162,11 +162,28 @@ def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supaba
     version = _run([*cli, '--version'], child, limit, capture=True).decode().strip()
     require(version == CLI_VERSION)
     # Every DB operation uses the ordinary project role, including inventory.
-    inventory_sql = "SELECT json_build_object('role',current_user,'superuser',(SELECT rolsuper FROM pg_roles WHERE rolname=current_user),'history',EXISTS(SELECT 1 FROM pg_namespace WHERE nspname='supabase_migrations'))::text"
+    inventory_sql = "SELECT json_build_object('role',current_user,'superuser',(SELECT rolsuper FROM pg_roles WHERE rolname=current_user),'history',EXISTS(SELECT 1 FROM pg_namespace WHERE nspname='supabase_migrations'),'hooks_table',to_regclass('supabase_functions.hooks') IS NOT NULL,'hooks_sequence',to_regclass('supabase_functions.hooks_id_seq') IS NOT NULL,'webhook_dependencies',EXISTS(SELECT 1 FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid JOIN pg_namespace n ON n.oid=p.pronamespace WHERE NOT t.tgisinternal AND n.nspname='supabase_functions') OR EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema','supabase_functions') AND CASE WHEN p.prokind IN ('f','p') THEN pg_get_functiondef(p.oid) ILIKE '%supabase_functions%' ELSE false END))::text"
     inventory = json.loads(_run(['psql', '-X', '-At', '-v', 'ON_ERROR_STOP=1', '-c', inventory_sql], child, limit, capture=True))
     require(inventory.get('role') == 'postgres' and inventory.get('superuser') is False)
+    # CLI excludes managed webhook DDL but can emit its empty sequence setval.
+    # Omit only a demonstrably unused initial sequence. Never discard hook rows
+    # or pretend configured platform webhooks are portable to an absent target.
+    require(inventory.get('webhook_dependencies') is False)
+    hooks_present = inventory.get('hooks_table')
+    sequence_present = inventory.get('hooks_sequence')
+    require(isinstance(hooks_present, bool) and isinstance(sequence_present, bool))
+    require(hooks_present == sequence_present)
+    sequence_exclusions = []
+    webhook_state = 'absent'
+    if hooks_present:
+        guard_sql = "SELECT json_build_object('hooks_guard',true,'empty',NOT EXISTS(SELECT 1 FROM supabase_functions.hooks),'initial',last_value=1 AND NOT is_called)::text FROM supabase_functions.hooks_id_seq"
+        guard = json.loads(_run(['psql', '-X', '-At', '-v', 'ON_ERROR_STOP=1', '-c', guard_sql], child, limit, capture=True))
+        require(guard.get('empty') is True and guard.get('initial') is True)
+        sequence_exclusions = ['--exclude', 'supabase_functions.hooks_id_seq']
+        webhook_state = 'empty-unused; initial managed sequence omitted'
     report = {'database_format': FORMAT, 'cli_version': version, 'hosted_restore_verified': False, 'data_mode': data_mode,
               'restore_gates': RESTORE_GATES.copy(), 'migration_history': 'included' if inventory['history'] else 'absent',
+              'managed_webhook_state': webhook_state,
               'snapshot_consistency': 'separate CLI exports; quiesce application writes for a recovery point', 'files': {}}
     created = False
     try:
@@ -174,7 +191,7 @@ def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supaba
             folder = Path(raw)
             data_flags = ['--data-only'] + (['--use-copy'] if data_mode == 'copy' else [])
             specs = [('roles.sql', ['--role-only']), ('schema.sql', []),
-                     ('data.sql', [*data_flags, '--exclude', 'storage.buckets_vectors', '--exclude', 'storage.vector_indexes'])]
+                     ('data.sql', [*data_flags, '--exclude', 'storage.buckets_vectors', '--exclude', 'storage.vector_indexes', *sequence_exclusions])]
             if inventory['history']:
                 specs.extend([('history_schema.sql', ['--schema', 'supabase_migrations']),
                               ('history_data.sql', ['--schema', 'supabase_migrations', *data_flags])])
@@ -198,6 +215,10 @@ def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supaba
                 size += path.stat().st_size
                 require(size < limit)
                 report['files'][name] = {'bytes': path.stat().st_size, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+            if hooks_present:
+                # Separate CLI exports need quiesced writers; recheck before sealing.
+                guard = json.loads(_run(['psql', '-X', '-At', '-v', 'ON_ERROR_STOP=1', '-c', guard_sql], child, limit, capture=True))
+                require(guard.get('empty') is True and guard.get('initial') is True)
             metadata = folder / 'package.json'
             metadata.write_text(json.dumps(report, sort_keys=True), encoding='utf-8')
             metadata.chmod(0o600)
