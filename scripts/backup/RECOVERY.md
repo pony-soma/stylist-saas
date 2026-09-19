@@ -86,8 +86,10 @@ recovery; this is not a permanent statement about the production configuration.
 
 - Synthetic hosted INSERT restoration, target lifecycle within Free and owner-key
   roundtrip are complete: see HOSTED-REHEARSAL.md for dated evidence and limits.
-- Production-format COPY integration coverage, actual production snapshot
-  decryption/reconciliation and production Auth provider/SMTP settings need evidence.
+- Production-format COPY integration passed in CI run 35436817152 at commit
+  ba61b8bd9390d2e53f55d022cf4bc9bbd50f243b, alongside INSERT and legacy recovery.
+  Actual production snapshot decryption/reconciliation and production Auth
+  provider/SMTP settings still need evidence.
 - Vault currently contains zero rows, but review external configuration and any
   newly introduced encryption dependencies before each actual recovery.
 - Writer freeze and DB/photo consistency across the real capture remain unverified.
