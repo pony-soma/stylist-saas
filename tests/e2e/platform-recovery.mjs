@@ -54,16 +54,23 @@ const compareCatalog=(actual,expected,label)=>{
 };
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 // Transport adaptation only: SQL statements and data are never rewritten.
-const sqlOnly=bytes=>{
- const lines=bytes.toString('utf8').split('\n');let restriction=null;
+const sqlOnly=(bytes,mode='inserts')=>{
+ assert.ok(['copy','inserts'].includes(mode),'Invalid SQL transport mode');
+ const lines=bytes.toString('utf8').split('\n');let restriction=null,copying=false;
  return lines.filter(line=>{
+  // COPY rows are opaque: preserve backslashes, tabs and the psql terminator.
+  // Only framing OUTSIDE a COPY block may be removed. Never split row fields.
+  if(copying){if(line==='\\.')copying=false;return true;}
+  if(/^COPY .+ FROM stdin;$/.test(line)){
+   assert.equal(mode,'copy','COPY forbidden in INSERT transport');copying=true;return true;
+  }
   if(!line.trimStart().startsWith('\\'))return true;
   const match=/^\\(restrict|unrestrict) ([A-Za-z0-9]+)\s*$/.exec(line);
   assert.ok(match,'Unexpected psql meta-command');
   if(match[1]==='restrict'){assert.equal(restriction,null);restriction=match[2];}
   else{assert.equal(match[2],restriction);restriction=null;}
   return false;
- }).join('\n')+(()=>{assert.equal(restriction,null);return '';})();
+ }).join('\n')+(()=>{assert.equal(restriction,null);assert.equal(copying,false,'Unterminated COPY block');return '';})();
 };
 const assertSyntheticRows=users=>{
  // Fixed local container, never a remote URL. Remove only synthetic admin audit.
@@ -94,6 +101,8 @@ const catalog=schemas=>`SELECT json_build_object(
 )::text;`;
 
 async function main(){
+ const dataMode=process.env.LINO_RECOVERY_DATA_MODE??'inserts';
+ assert.ok(['copy','inserts'].includes(dataMode),'Invalid recovery data mode');
  assert.equal(process.env.CI,'true');assert.equal(process.env.LINO_E2E_LOCAL,'1');
  assert.equal(process.env.NEXT_PUBLIC_SUPABASE_URL,sourceURL);
  const ss=status('tests/e2e'),ts=status('tests/e2e/recovery-target');
@@ -123,6 +132,7 @@ async function main(){
  const target=createClient(targetURL,ts.SERVICE_ROLE_KEY,options);
  const folder=mkdtempSync(join(tmpdir(),'lino-platform-'));chmodSync(folder,0o700);
  const users=[], customer=randomUUID(),record=randomUUID();
+ const fixtureNotes='Synthetic candidate record: tab\t newline\n日本語 backslash \\N and \\. end';
  const services=['auth','rest','storage'].map(name=>'supabase_'+name+'_lino-recovery-target');
  let stopped=false;
  try{
@@ -135,7 +145,7 @@ async function main(){
   }
   check(await source.from('customers').insert({id:customer,line_user_id:`manual:platform:${customer}`,display_name:'Synthetic candidate recovery'}));
   check(await source.from('stylist_customers').insert({stylist_id:users[0].id,customer_id:customer}));
-  check(await source.from('medical_records').insert({id:record,customer_id:customer,stylist_id:users[0].id,visit_date:'2026-01-01',notes:'Synthetic candidate record'}));
+  check(await source.from('medical_records').insert({id:record,customer_id:customer,stylist_id:users[0].id,visit_date:'2026-01-01',notes:fixtureNotes}));
   assertSyntheticRows(users);
   const publicBefore=sql(SRC,catalog("'public'"));
   const managedBefore=sql(DST,catalog("'auth','storage'"));
@@ -146,10 +156,10 @@ async function main(){
   run('python3',['scripts/backup/platform_export.py',join(folder,'database.tar')],{env:{...cleanEnv,
    CI:'true',LINO_E2E_LOCAL:'1',NEXT_PUBLIC_SUPABASE_URL:sourceURL,
    PGHOST:'127.0.0.1',PGPORT:'54322',PGUSER:'postgres',PGDATABASE:'postgres',
-   PGPASSWORD:decodeURIComponent(srcDb.password),PGSSLMODE:'disable',LINO_BACKUP_MAX_BYTES:'67108864',LINO_BACKUP_DATA_MODE:'inserts'}});
+   PGPASSWORD:decodeURIComponent(srcDb.password),PGSSLMODE:'disable',LINO_BACKUP_MAX_BYTES:'67108864',LINO_BACKUP_DATA_MODE:dataMode}});
   run('tar',['-xf',join(folder,'database.tar'),'-C',folder]);
   const report=JSON.parse(readFileSync(join(folder,'package.json'),'utf8'));
-  assert.equal(report.database_format,'supabase-cli-platform-v1');assert.equal(report.data_mode,'inserts');
+  assert.equal(report.database_format,'supabase-cli-platform-v1');assert.equal(report.data_mode,dataMode);
   assert.equal(report.hosted_restore_verified,false);assert.ok(report.restore_gates.length>=5);
   const files={};
   for(const [name,metadata] of Object.entries(report.files)){
@@ -159,8 +169,14 @@ async function main(){
   }
   for(const name of ['roles.sql','pre_restore.sql','schema.sql','data.sql'])assert.ok(files[name]);
   // Remove only psql restrict framing; never change SQL, suppress errors or use an admin role.
-  assert.ok(!/^COPY\s/im.test(files['data.sql'].toString('utf8')));
-  assert.match(files['data.sql'].toString('utf8'),/^INSERT INTO /m);
+  const dataText=files['data.sql'].toString('utf8');
+  if(dataMode==='copy'){
+   assert.match(dataText,/^COPY .+ FROM stdin;$/m);
+   assert.ok(!/^INSERT INTO /m.test(dataText));
+  }else{
+   assert.ok(!/^COPY\s/im.test(dataText));
+   assert.match(dataText,/^INSERT INTO /m);
+  }
   assert.ok(!/^SELECT[^\n]*setval[^\n]*hooks_id_seq/m.test(files['data.sql'].toString('utf8')),'Managed hook sequence reset must be absent');
   progress('Platform candidate: restore filtered roles/schema/data with ordinary postgres');
   stopped=true;run('docker',['stop',...services]);
@@ -169,7 +185,7 @@ async function main(){
   if(files['history_schema.sql'])chunks.push(files['history_schema.sql']);
   chunks.push(Buffer.from('SET session_replication_role = replica;\n'),files['data.sql']);
   if(files['history_data.sql'])chunks.push(files['history_data.sql']);
-  const restoreSQL=chunks.map(sqlOnly).join('\n');
+  const restoreSQL=chunks.map(bytes=>sqlOnly(bytes,dataMode)).join('\n');
   run('docker',['exec','-i',DST,'psql','-X','--single-transaction','-f','-','-v','ON_ERROR_STOP=1','-U','postgres','-d','postgres'],{input:restoreSQL});
   compareCatalog(sql(DST,catalog("'auth','storage'")),managedBefore,'managed auth/storage');
   compareCatalog(sql(DST,catalog("'public'")),publicBefore,'public');
@@ -198,10 +214,14 @@ async function main(){
    assert.equal(check(await clients[0].from(table).select('id').eq('id',id)).length,1);
    assert.equal(check(await clients[1].from(table).select('id').eq('id',id)).length,0);
   }
+  const restoredRecord=check(await clients[0].from('medical_records').select('notes').eq('id',record).single());
+  assert.equal(restoredRecord.notes,fixtureNotes,'Restored text must preserve COPY escapes and Unicode');
   const anonymous=createClient(targetURL,ts.ANON_KEY,options);
   const response=await anonymous.from('medical_records').select('id').eq('id',record);
   assert.ok(response.error || response.data.length===0);
   for(const client of clients)check(await client.auth.signOut());
+  // Hosted transport is INSERT-only. COPY remains private and is removed below.
+  if(dataMode==='inserts'){
   // Explicit synthetic artifact for a subsequent hosted rehearsal. No hosted keys.
   const artifact='/tmp/lino-hosted-fixture';
   const outputs={...files,'package.json':Buffer.from(JSON.stringify(report)),
@@ -217,7 +237,8 @@ async function main(){
    for(const [name,bytes] of Object.entries(outputs))writeFileSync(join(artifact,name),bytes,{mode:0o600,flag:'wx'});
    writeFileSync(join(artifact,'checksums.json'),JSON.stringify(Object.fromEntries(Object.entries(outputs).map(([name,b])=>[name,{bytes:b.length,sha256:hash(b)}]))),{mode:0o600,flag:'wx'});
   }catch(error){rmSync(artifact,{recursive:true,force:true});throw error;}
-  console.log('PASS: actual filtered export restored locally as non-superuser postgres; managed definitions unchanged, password login and public RLS verified. Hosted gates remain unresolved.');
+  }
+  console.log('PASS ('+dataMode+'): actual filtered export restored locally as non-superuser postgres; managed definitions unchanged, password login and public RLS verified. Hosted gates remain unresolved.');
  }finally{
   // Every plaintext file is removed even when restore or assertions fail.
   rmSync(folder,{recursive:true,force:true});

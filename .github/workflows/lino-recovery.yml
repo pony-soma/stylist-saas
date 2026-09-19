@@ -19,16 +19,26 @@ concurrency:
 
 jobs:
   recovery:
-    name: Restore synthetic LiNo (${{ matrix.script }})
+    name: Restore synthetic LiNo (${{ matrix.label }})
     strategy:
       fail-fast: false
       matrix:
-        script: [lino-recovery, platform-recovery]
+        include:
+          - script: lino-recovery
+            label: lino-recovery
+            data_mode: inserts
+          - script: platform-recovery
+            label: platform-recovery-inserts
+            data_mode: inserts
+          - script: platform-recovery
+            label: platform-recovery-copy
+            data_mode: copy
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
       CI: 'true'
       LINO_E2E_LOCAL: '1'
+      LINO_RECOVERY_DATA_MODE: ${{ matrix.data_mode }}
       NEXT_PUBLIC_BASE_URL: http://localhost:3000
       NEXT_PUBLIC_APP_URL: http://localhost:3000
     steps:
@@ -57,7 +67,7 @@ jobs:
       - name: Restore and verify schema Auth ownership and photos
         run: node tests/e2e/${{ matrix.script }}.mjs
       - name: Retain verified synthetic SQL for hosted rehearsal
-        if: matrix.script == 'platform-recovery'
+        if: matrix.script == 'platform-recovery' && matrix.data_mode == 'inserts'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: lino-synthetic-hosted-fixture

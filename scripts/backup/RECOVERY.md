@@ -1,16 +1,19 @@
 # LiNo recovery runbook — candidate, not activated
 
-Updated 2026-09-18. Production is `pprlqowossudjvtgkfir` (`stylist-saas`);
+Updated 2026-09-19. Production is `pprlqowossudjvtgkfir` (`stylist-saas`);
 ordinary staging is `kmwvfotrvhaddriebxur`. Neither is a restore target in this
 runbook. Supabase Free is retained. Recovery target creation and production
 cutover require a concrete reviewed plan and the owner's release approval.
 
 ## Read-only production inventory
 
-The 2026-09-18 catalog-only inspection found PostgreSQL **17.6** and extensions
+The 2026-09-19 read-only inspection confirmed PostgreSQL **17.6** and extensions
 `plpgsql 1.0`, `pg_stat_statements 1.11`, `uuid-ossp 1.1`, `pgcrypto 1.3`,
 `supabase_vault 0.3.1`. Vault being installed does not establish whether encrypted
-values are in use; no secret values or customer/Auth records were inspected.
+values are in use. A separate aggregate-only query returned zero vault.secrets
+rows and zero public functions on 2026-09-19. This narrows the observed Vault
+dependency but does not inventory external credentials; no secret values or
+customer/Auth records were inspected.
 Schemas: auth, extensions, graphql, graphql_public, public, realtime, storage,
 vault. No supabase_migrations schema appeared in this inventory.
 
@@ -19,7 +22,8 @@ The legacy archive CI used its own local Docker administrator. The separate
 filtered-export CI uses ordinary postgres. Do **not** transfer the legacy
 schema-drop procedure to hosted Supabase or attempt to obtain its admin key.
 
-Current production Storage policies still include `Public Access` for SELECT on
+The production record-photos bucket was public=true with no size/MIME limits
+on 2026-09-19. Current production Storage policies still include `Public Access` for SELECT on
 record-photos and authenticated-role INSERT/UPDATE/DELETE without owner checks.
 These are legacy policies, not the release candidate's server-only photo model.
 Preserve their definitions as incident evidence; do not reapply them blindly when
@@ -80,11 +84,13 @@ recovery; this is not a permanent statement about the production configuration.
 
 ## Remaining evidence before production enablement
 
-- Real hosted restore target, cost check and approved target access are unresolved.
-- Vault usage/root-key dependency and Auth provider/SMTP settings remain unverified.
-- Filtered export and ordinary-role local restore have a dedicated CI rehearsal;
-  hosted managed-permission restoration remains untested.
-- Owner public-key roundtrip, writer freeze and DB/photo consistency are untested.
+- Synthetic hosted INSERT restoration, target lifecycle within Free and owner-key
+  roundtrip are complete: see HOSTED-REHEARSAL.md for dated evidence and limits.
+- Production-format COPY integration coverage, actual production snapshot
+  decryption/reconciliation and production Auth provider/SMTP settings need evidence.
+- Vault currently contains zero rows, but review external configuration and any
+  newly introduced encryption dependencies before each actual recovery.
+- Writer freeze and DB/photo consistency across the real capture remain unverified.
 - Retention and health helpers are offline review tools; live deletion, scheduled
   collection, independent missed-run monitoring and external alerts are not active.
 

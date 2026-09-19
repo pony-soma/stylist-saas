@@ -15,6 +15,10 @@ that recurring backups or production recovery have been enabled.
   were removed after each hosted test. Main also deploys the app: do not merge
   solely to activate backup workflows.
 
+- Synthetic hosted ordinary-role schema/Auth/RLS/private-photo recovery passed
+  2026-09-19; staging was resumed and the target paused. Owner-key roundtrip also
+  passed. See HOSTED-REHEARSAL.md; actual production snapshot recovery remains separate.
+
 ## Offline review helpers (implemented, not connected)
 
 `retention.py` produces reference-aware dry-run candidates only; `health.py`
@@ -49,8 +53,9 @@ The catalog-only production survey and hosted recovery gaps are in `RECOVERY.md`
 
 ## Before scheduling daily backups
 
-- Initial proposed retention is 7 daily + 4 weekly DB points and 30 days of
-  deleted/overwritten photo history. NOT implemented/enforced yet. A retained
+- The offline retention helper preserves all snapshots within 30 days, then
+  7 observed daily / 4 weekly points and all referenced photos, with 48-hour
+  interrupted-run grace. Live pruning is NOT enabled. A retained
   manifest can refer to older deduplicated photo objects, so deleting objects
   by age alone is unsafe. Pruning must compute all retained references first,
   offer a dry-run, and preserve a grace period for interrupted runs.
