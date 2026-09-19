@@ -4,6 +4,8 @@ import { randomUUID, createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import pg from 'pg';
 import { createClient } from '@supabase/supabase-js';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, CreateMultipartUploadCommand,
+  UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand } from '@aws-sdk/client-s3';
 import { acquireCaptureLock } from '../../scripts/backup/capture-lock.mjs';
 
 assert.equal(process.env.CI,'true');
@@ -14,6 +16,18 @@ const info=JSON.parse(execFileSync('npx',['--no-install','supabase','status','--
 assert.equal(info.API_URL,'http://127.0.0.1:54321');
 assert.equal(new URL(info.DB_URL).hostname,'127.0.0.1');
 assert.equal(new URL(info.DB_URL).port,'54322');
+// These are generated credentials from this exact disposable local container.
+const storageContainer=JSON.parse(execFileSync('docker',['inspect','supabase_storage_lino-e2e'],
+  {encoding:'utf8',stdio:['ignore','pipe','pipe']}))[0];
+const storageEnv=Object.fromEntries(storageContainer.Config.Env.map(entry=>{
+  const at=entry.indexOf('=');return [entry.slice(0,at),entry.slice(at+1)];
+}));
+for(const name of ['REGION','S3_PROTOCOL_ACCESS_KEY_ID','S3_PROTOCOL_ACCESS_KEY_SECRET'])
+  assert.ok(storageEnv[name],'Local S3 configuration missing: '+name);
+const s3=new S3Client({endpoint:info.API_URL+'/storage/v1/s3',region:storageEnv.REGION,
+  forcePathStyle:true,maxAttempts:1,requestChecksumCalculation:'WHEN_REQUIRED',
+  credentials:{accessKeyId:storageEnv.S3_PROTOCOL_ACCESS_KEY_ID,secretAccessKey:storageEnv.S3_PROTOCOL_ACCESS_KEY_SECRET}});
+const s3Send=command=>s3.send(command,{abortSignal:AbortSignal.timeout(45000)});
 const options={auth:{persistSession:false,autoRefreshToken:false},
   global:{fetch:(url,options)=>fetch(url,{...options,signal:AbortSignal.timeout(45000)})}};
 const admin=createClient(info.API_URL,info.SERVICE_ROLE_KEY,options);
@@ -44,7 +58,7 @@ async function startTus(objectName,first,total){
   assert.equal(location.origin,info.API_URL);assert.ok(location.pathname.startsWith('/storage/v1/upload/resumable/'));
   await response.arrayBuffer();return location.href;
 }
-let lock, account, stage='connect';
+let lock, account, multipart, stage='connect';
 try {
   await client.connect();await observer.connect();
   const {rows:[identity]}=await client.query('select pg_backend_pid() as pid');
@@ -61,6 +75,19 @@ try {
   check(await admin.storage.from('record-photos').remove([signedPath]));
   const partial=Buffer.alloc(6*1024*1024);bytes.copy(partial);
   const pendingTus=await startTus(path,partial,partial.length+bytes.length);
+  stage='S3 baseline';
+  await s3Send(new PutObjectCommand({Bucket:'record-photos',Key:signedPath,Body:bytes,ContentType:'image/png'}));
+  await s3Send(new DeleteObjectCommand({Bucket:'record-photos',Key:signedPath}));
+  multipart=await s3Send(new CreateMultipartUploadCommand({Bucket:'record-photos',Key:path,ContentType:'image/png'}));
+  assert.ok(multipart.UploadId);
+  const part=await s3Send(new UploadPartCommand({Bucket:'record-photos',Key:path,UploadId:multipart.UploadId,PartNumber:1,Body:bytes}));
+  assert.ok(part.ETag);
+  stage='existing writer';
+  await observer.query('begin');
+  await observer.query('update public.stylists set name=name where id=$1',[account.id]);
+  await assert.rejects(acquireCaptureLock(client));
+  assert.equal((await client.query("select count(*)::int as held from pg_locks where pid=pg_backend_pid() and granted and mode='ShareLock'")).rows[0].held,0);
+  await observer.query('rollback');
   stage='acquire';lock=await acquireCaptureLock(client);await lock.verify();
   // Reads remain usable while updates from ordinary SQL are refused on timeout.
   await observer.query("set lock_timeout='500ms'");
@@ -78,6 +105,10 @@ try {
       'Content-Type':'application/offset+octet-stream'},body:bytes}).then(async response=>{
         const ok=response.ok;await response.arrayBuffer();return {error:ok?null:'blocked'};
       }),
+    s3Send(new PutObjectCommand({Bucket:'record-photos',Key:path,Body:bytes,ContentType:'image/png'})).then(()=>({error:null})),
+    s3Send(new DeleteObjectCommand({Bucket:'record-photos',Key:path})).then(()=>({error:null})),
+    s3Send(new CompleteMultipartUploadCommand({Bucket:'record-photos',Key:path,UploadId:multipart.UploadId,
+      MultipartUpload:{Parts:[{PartNumber:1,ETag:part.ETag}]}})).then(()=>({error:null})),
   ]);
   for(const [index,result] of results.entries())
     assert.ok(result.status==='rejected'||result.value.error,'Writer unexpectedly succeeded: '+index);
@@ -98,13 +129,16 @@ try {
   check(await anon.auth.signInWithPassword({email,password}));
   check(await admin.storage.from('record-photos').upload(path,bytes,{upsert:true,contentType:'image/png'}));
   console.log('Capture lock rehearsal passed: SQL and HTTP writes blocked, photo reads unchanged, queues drained, normal operation resumed.');
-  console.log('Scope: standard/signed upload, pre-admitted partial resumable overwrite, delete, login. S3 uploads, hosted service versions, sequences and cutover remain separate gates.');
+  console.log('Scope: standard/signed/S3 writes, pre-admitted TUS and S3 multipart completion, delete, login. Hosted service versions, sequences and cutover remain separate gates.');
 } catch {
   console.error('Capture lock rehearsal failed at '+stage+'; no production conclusion.');
   process.exitCode=1;
 } finally {
   if(lock)await lock.release().catch(()=>{});
+  await observer.query('rollback').catch(()=>{});
   await client.end().catch(()=>{});await observer.end().catch(()=>{});
+  if(multipart?.UploadId)await s3Send(new AbortMultipartUploadCommand({Bucket:'record-photos',Key:path,UploadId:multipart.UploadId})).catch(()=>{});
+  s3.destroy();
   await admin.storage.from('record-photos').remove([path,signedPath]).catch(()=>{});
   if(account)await admin.auth.admin.deleteUser(account.id).catch(()=>{});
 }
