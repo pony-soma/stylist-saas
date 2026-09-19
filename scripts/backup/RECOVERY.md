@@ -101,3 +101,50 @@ Official references checked 2026-09-18:
 [platform-to-self-hosted caveats](https://supabase.com/docs/guides/self-hosting/restore-from-platform),
 [extension version pinning](https://supabase.com/changelog/extension-version-pinning-ignored),
 [managed Realtime schema](https://supabase.com/changelog/realtime-schema-locked-down-against-modification).
+# Offline photo/reference reconciliation
+
+`reconcile_photos.py` validates an owner-decrypted manifest against decrypted
+photo bytes and **all** `public.record_photos.storage_path` values from the closed
+restore target. It performs no network requests or database writes. Use only a
+private local recovery workspace; these inputs contain private paths and must
+not be committed or uploaded as CI artifacts.
+
+Prepare `references.json` as a JSON array from the restored DB, with a read-only
+session and sufficient privileges to bypass customer RLS. Export the result of:
+
+```sql
+SELECT coalesce(json_agg(storage_path ORDER BY id), '[]'::json)
+FROM public.record_photos;
+```
+
+The helper cannot verify the origin/completeness of this supplied array. A
+filtered client query or an empty file substituted for real rows is invalid
+evidence. Verify the restored database archive and manifest provenance first.
+For each manifest photo, decrypt the referenced ciphertext into a private flat
+directory under filename `sha256(object.key.encode('utf-8')).hexdigest()+'.plain'`.
+Do not turn source storage paths into local filenames. Check ciphertext hashes
+against the manifest before decryption; do not upload the owner's private key.
+
+```sh
+python3 scripts/backup/reconcile_photos.py --project-ref RESTORED_SOURCE_REF \
+  --manifest /private/recovery/manifest.json \
+  --references /private/recovery/references.json \
+  --objects /private/recovery/decrypted-photos
+```
+
+Use the backup's source project reference even when restoring into another
+isolated project. Every referenced path must be present and every manifest photo
+must match the expected size and SHA256, including unreferenced photos. Missing,
+corrupt, duplicate, unsafe or foreign-project evidence fails. Unreferenced photos
+are counted and preserved, not deleted. The output contains aggregate counts only.
+Limits match the current supervised capture: 1000 photos and 100 MiB photo bytes.
+
+Eight synthetic tests passed locally on 2026-09-19, including same-size corruption,
+missing references/files, duplicate paths/JSON keys, symlinks, wrong project,
+size limits and private-path suppression. Existing backup CI discovery includes
+the new test file. No production snapshot has been processed by this helper.
+
+This is a **post-restore audit**, not a source write lock or proof of atomicity.
+`atomic_snapshot` and `source_quiescence_verified` remain false. It does not prove
+Auth consistency, that the DB export corresponds to the supplied reference array,
+or that a later source overwrite did not race a listing/deduplicated backup.
