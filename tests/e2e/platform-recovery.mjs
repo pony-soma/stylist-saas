@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { chmodSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
@@ -49,6 +49,31 @@ const compareCatalog=(actual,expected,label)=>{
  if(mismatch)throw Error('catalog mismatch');
 };
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+// Transport adaptation only: SQL statements and data are never rewritten.
+const sqlOnly=bytes=>{
+ const lines=bytes.toString('utf8').split('\n');let restriction=null;
+ return lines.filter(line=>{
+  if(!line.trimStart().startsWith('\\'))return true;
+  const match=/^\\(restrict|unrestrict) ([A-Za-z0-9]+)\s*$/.exec(line);
+  assert.ok(match,'Unexpected psql meta-command');
+  if(match[1]==='restrict'){assert.equal(restriction,null);restriction=match[2];}
+  else{assert.equal(match[2],restriction);restriction=null;}
+  return false;
+ }).join('\n')+(()=>{assert.equal(restriction,null);return '';})();
+};
+const assertSyntheticRows=users=>{
+ // Fixed local container, never a remote URL. Remove only synthetic admin audit.
+ sql(SRC,'DELETE FROM auth.audit_log_entries;');
+ const tables=JSON.parse(sql(SRC,"SELECT json_agg(json_build_object('schema',schemaname,'name',tablename)) FROM pg_tables WHERE schemaname IN ('public','auth','storage')"));
+ const expected={'public.stylists':2,'public.customers':1,'public.stylist_customers':1,'public.medical_records':1,'auth.users':2,'auth.identities':2,'storage.buckets':1};
+ for(const {schema,name} of tables){
+  assert.match(schema,/^[a-z_]+$/);assert.match(name,/^[a-z_0-9]+$/);
+  if(['auth.schema_migrations','storage.migrations'].includes(schema+'.'+name))continue;
+  assert.equal(Number(sql(SRC,`SELECT count(*) FROM "${schema}"."${name}"`)),expected[schema+'.'+name]??0,'Unexpected synthetic fixture table count: '+schema+'.'+name);
+ }
+ assert.deepEqual(JSON.parse(sql(SRC,'SELECT json_agg(id ORDER BY id) FROM auth.users')),users.map(u=>u.id).sort());
+ assert.deepEqual(JSON.parse(sql(SRC,'SELECT json_agg(user_id ORDER BY user_id) FROM auth.identities')),users.map(u=>u.id).sort());
+};
 const options={auth:{persistSession:false,autoRefreshToken:false}};
 let stage='guards';
 const progress=value=>{stage=value;console.log(value);};
@@ -94,6 +119,7 @@ async function main(){
   check(await source.from('customers').insert({id:customer,line_user_id:`manual:platform:${customer}`,display_name:'Synthetic candidate recovery'}));
   check(await source.from('stylist_customers').insert({stylist_id:users[0].id,customer_id:customer}));
   check(await source.from('medical_records').insert({id:record,customer_id:customer,stylist_id:users[0].id,visit_date:'2026-01-01',notes:'Synthetic candidate record'}));
+  assertSyntheticRows(users);
   const publicBefore=sql(SRC,catalog("'public'"));
   const managedBefore=sql(DST,catalog("'auth','storage'"));
   // This fixture has no custom managed definitions; prove it against target.
@@ -103,10 +129,10 @@ async function main(){
   run('python3',['scripts/backup/platform_export.py',join(folder,'database.tar')],{env:{...cleanEnv,
    CI:'true',LINO_E2E_LOCAL:'1',NEXT_PUBLIC_SUPABASE_URL:sourceURL,
    PGHOST:'127.0.0.1',PGPORT:'54322',PGUSER:'postgres',PGDATABASE:'postgres',
-   PGPASSWORD:decodeURIComponent(srcDb.password),PGSSLMODE:'disable',LINO_BACKUP_MAX_BYTES:'67108864'}});
+   PGPASSWORD:decodeURIComponent(srcDb.password),PGSSLMODE:'disable',LINO_BACKUP_MAX_BYTES:'67108864',LINO_BACKUP_DATA_MODE:'inserts'}});
   run('tar',['-xf',join(folder,'database.tar'),'-C',folder]);
   const report=JSON.parse(readFileSync(join(folder,'package.json'),'utf8'));
-  assert.equal(report.database_format,'supabase-cli-platform-v1');
+  assert.equal(report.database_format,'supabase-cli-platform-v1');assert.equal(report.data_mode,'inserts');
   assert.equal(report.hosted_restore_verified,false);assert.ok(report.restore_gates.length>=5);
   const files={};
   for(const [name,metadata] of Object.entries(report.files)){
@@ -115,7 +141,9 @@ async function main(){
    assert.equal(files[name].length,metadata.bytes);assert.equal(hash(files[name]),metadata.sha256);
   }
   for(const name of ['roles.sql','pre_restore.sql','schema.sql','data.sql'])assert.ok(files[name]);
-  // Never transform SQL, suppress errors, drop managed schemas, or use an admin role.
+  // Remove only psql restrict framing; never change SQL, suppress errors or use an admin role.
+  assert.ok(!/^COPY\s/im.test(files['data.sql'].toString('utf8')));
+  assert.match(files['data.sql'].toString('utf8'),/^INSERT INTO /m);
   progress('Platform candidate: restore filtered roles/schema/data with ordinary postgres');
   stopped=true;run('docker',['stop',...services]);
   assert.deepEqual(report.restore_order.slice(0,3),['roles.sql','pre_restore.sql','schema.sql']);
@@ -123,7 +151,8 @@ async function main(){
   if(files['history_schema.sql'])chunks.push(files['history_schema.sql']);
   chunks.push(Buffer.from('SET session_replication_role = replica;\n'),files['data.sql']);
   if(files['history_data.sql'])chunks.push(files['history_data.sql']);
-  run('docker',['exec','-i',DST,'psql','-X','--single-transaction','-f','-','-v','ON_ERROR_STOP=1','-U','postgres','-d','postgres'],{input:Buffer.concat(chunks.flatMap(chunk=>[chunk,Buffer.from('\n')]))});
+  const restoreSQL=chunks.map(sqlOnly).join('\n');
+  run('docker',['exec','-i',DST,'psql','-X','--single-transaction','-f','-','-v','ON_ERROR_STOP=1','-U','postgres','-d','postgres'],{input:restoreSQL});
   compareCatalog(sql(DST,catalog("'auth','storage'")),managedBefore,'managed auth/storage');
   compareCatalog(sql(DST,catalog("'public'")),publicBefore,'public');
   if(report.migration_history==='included'){
@@ -155,6 +184,21 @@ async function main(){
   const response=await anonymous.from('medical_records').select('id').eq('id',record);
   assert.ok(response.error || response.data.length===0);
   for(const client of clients)check(await client.auth.signOut());
+  // Explicit synthetic artifact for a subsequent hosted rehearsal. No hosted keys.
+  const artifact='/tmp/lino-hosted-fixture';
+  const outputs={...files,'package.json':Buffer.from(JSON.stringify(report)),
+   'restore.sql':Buffer.from(restoreSQL),'expected-public.json':Buffer.from(publicBefore),
+   'expected-managed.json':Buffer.from(managedBefore),
+   'fixture.json':Buffer.from(JSON.stringify({format:'lino-synthetic-hosted-fixture-v1',synthetic_only:true,
+    hosted_restore_verified:false,source:'fixed-local-CI',users,customer,record,
+    transport:'CLI inserts; only paired psql restrict/unrestrict framing removed',
+    limitations:['No photo bytes in this fixture','No custom managed definitions','No hosted configuration equivalence claim']}))};
+  assert.ok(Object.values(outputs).reduce((sum,b)=>sum+b.length,0)<8*1024*1024);
+  mkdirSync(artifact,{mode:0o700});
+  try{
+   for(const [name,bytes] of Object.entries(outputs))writeFileSync(join(artifact,name),bytes,{mode:0o600,flag:'wx'});
+   writeFileSync(join(artifact,'checksums.json'),JSON.stringify(Object.fromEntries(Object.entries(outputs).map(([name,b])=>[name,{bytes:b.length,sha256:hash(b)}]))),{mode:0o600,flag:'wx'});
+  }catch(error){rmSync(artifact,{recursive:true,force:true});throw error;}
   console.log('PASS: actual filtered export restored locally as non-superuser postgres; managed definitions unchanged, password login and public RLS verified. Hosted gates remain unresolved.');
  }finally{
   // Every plaintext file is removed even when restore or assertions fail.

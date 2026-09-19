@@ -56,10 +56,18 @@ jobs:
         run: npx --no-install supabase start --workdir tests/e2e/recovery-target > /dev/null
       - name: Restore and verify schema Auth ownership and photos
         run: node tests/e2e/${{ matrix.script }}.mjs
+      - name: Retain verified synthetic SQL for hosted rehearsal
+        if: matrix.script == 'platform-recovery'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lino-synthetic-hosted-fixture
+          path: /tmp/lino-hosted-fixture
+          retention-days: 1
+          if-no-files-found: error
       - name: Remove disposable target
         if: always()
         run: npx --no-install supabase stop --workdir tests/e2e/recovery-target --no-backup
       - name: Remove disposable source
         if: always()
         run: npx --no-install supabase stop --workdir tests/e2e --no-backup
-      # No environment, hosted secrets, deployment, or backup artifacts.
+      # No environment, hosted secrets, or deployment. Artifact is synthetic only.

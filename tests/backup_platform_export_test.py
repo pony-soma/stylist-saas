@@ -61,6 +61,7 @@ class PlatformExportTests(unittest.TestCase):
             target = Path(folder) / 'database.tar'
             report = p.export_platform(target, 1024*1024, ENV)
             self.assertEqual(report['database_format'], p.FORMAT)
+            self.assertEqual(report['data_mode'], 'copy')
             self.assertFalse(report['hosted_restore_verified'])
             self.assertEqual(report['migration_history'], 'included')
             self.assertEqual(len(report['restore_gates']), 5)
@@ -82,6 +83,18 @@ class PlatformExportTests(unittest.TestCase):
             self.assertIn('--use-copy', dumps[2])
             self.assertIn('storage.vector_indexes', dumps[2])
             self.assertFalse(any('pg_dump' in cmd or 'pg_restore' in cmd for cmd in self.calls))
+
+    def test_inserts_omit_copy_flag_and_invalid_mode_fails_before_io(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(p, '_run', self.fake_runner()):
+            target = Path(folder) / 'database.tar'
+            report = p.export_platform(target, 1024*1024, LOCAL, data_mode='inserts')
+            self.assertEqual(report['data_mode'], 'inserts')
+            dumps = [cmd for cmd in self.calls if 'dump' in cmd and '--data-only' in cmd]
+            self.assertEqual(len(dumps), 2)
+            self.assertTrue(all('--use-copy' not in cmd for cmd in dumps))
+        with patch.object(p, '_run') as runner, self.assertRaises(p.PlatformExportError):
+            p.export_platform(Path('/unused'), 1024, LOCAL, data_mode='unknown')
+        runner.assert_not_called()
 
     def test_absent_history_is_explicit_not_silently_failed(self):
         with tempfile.TemporaryDirectory() as folder, patch.object(p, '_run', self.fake_runner(history=False)):

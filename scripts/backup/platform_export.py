@@ -148,9 +148,10 @@ def _run(command, env, limit, capture=False):
         raise PlatformExportError('platform export subprocess failed') from None
 
 
-def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supabase')):
+def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supabase'), data_mode='copy'):
     """Write a bounded plaintext tar and return non-secret format/gate metadata."""
     env = dict(os.environ if env is None else env)
+    require(data_mode in ('copy', 'inserts'))
     target = Path(target)
     require(isinstance(limit, int) and not isinstance(limit, bool) and limit > 0)
     require(target.parent.is_dir() and not target.parent.is_symlink())
@@ -164,18 +165,19 @@ def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supaba
     inventory_sql = "SELECT json_build_object('role',current_user,'superuser',(SELECT rolsuper FROM pg_roles WHERE rolname=current_user),'history',EXISTS(SELECT 1 FROM pg_namespace WHERE nspname='supabase_migrations'))::text"
     inventory = json.loads(_run(['psql', '-X', '-At', '-v', 'ON_ERROR_STOP=1', '-c', inventory_sql], child, limit, capture=True))
     require(inventory.get('role') == 'postgres' and inventory.get('superuser') is False)
-    report = {'database_format': FORMAT, 'cli_version': version, 'hosted_restore_verified': False,
+    report = {'database_format': FORMAT, 'cli_version': version, 'hosted_restore_verified': False, 'data_mode': data_mode,
               'restore_gates': RESTORE_GATES.copy(), 'migration_history': 'included' if inventory['history'] else 'absent',
               'snapshot_consistency': 'separate CLI exports; quiesce application writes for a recovery point', 'files': {}}
     created = False
     try:
         with tempfile.TemporaryDirectory(prefix='platform-', dir=target.parent) as raw:
             folder = Path(raw)
+            data_flags = ['--data-only'] + (['--use-copy'] if data_mode == 'copy' else [])
             specs = [('roles.sql', ['--role-only']), ('schema.sql', []),
-                     ('data.sql', ['--data-only', '--use-copy', '--exclude', 'storage.buckets_vectors', '--exclude', 'storage.vector_indexes'])]
+                     ('data.sql', [*data_flags, '--exclude', 'storage.buckets_vectors', '--exclude', 'storage.vector_indexes'])]
             if inventory['history']:
                 specs.extend([('history_schema.sql', ['--schema', 'supabase_migrations']),
-                              ('history_data.sql', ['--schema', 'supabase_migrations', '--data-only', '--use-copy'])])
+                              ('history_data.sql', ['--schema', 'supabase_migrations', *data_flags])])
             preparation = folder / 'pre_restore.sql'
             preparation.write_text(PRE_RESTORE_SQL, encoding='utf-8')
             preparation.chmod(0o600)
@@ -217,7 +219,7 @@ def export_platform(target, limit, env=None, cli=('npx', '--no-install', 'supaba
 def main():
     try:
         require(len(sys.argv) == 2)
-        report = export_platform(Path(sys.argv[1]), int(os.environ.get('LINO_BACKUP_MAX_BYTES', '104857600')))
+        report = export_platform(Path(sys.argv[1]), int(os.environ.get('LINO_BACKUP_MAX_BYTES', '104857600')), data_mode=os.environ.get('LINO_BACKUP_DATA_MODE', 'copy'))
         print(json.dumps({'database_format': report['database_format'], 'hosted_restore_verified': False}))
         return 0
     except Exception:

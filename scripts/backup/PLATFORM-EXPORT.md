@@ -83,3 +83,19 @@ Before activation: test real metadata collection on synthetic correlated evidenc
 choose an independent execution/notification path, authorize its destination, and
 verify failed and never-started backup scenarios. Main merge still needs release
 approval; do not merge solely to activate this workflow.
+
+## Synthetic hosted handoff
+
+The exporter also supports explicit `data_mode="inserts"`; normal backup calls
+retain COPY by default. The isolated platform CI validates the INSERT export
+after removing only paired psql restrict/unrestrict framing, then retains a
+1-day, bounded synthetic-only artifact. It contains disposable fixture login
+credentials, never hosted service keys or production/staging records. The
+artifact is emitted only after local SQL, catalog, login and RLS checks pass.
+
+`hosted-photo-rehearsal.ts.template` is an undeployed transient Edge Function
+template for the independently approved new recovery target. It rejects the
+production/staging refs, requires a valid exact-owner user session and nonce,
+and uploads/verifies only a fixed synthetic PNG in a private bucket. Deploy
+with JWT verification enabled; no service key leaves the function. This template
+and local CI are not evidence that a hosted rehearsal has already passed.
