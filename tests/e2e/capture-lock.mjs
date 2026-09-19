@@ -22,9 +22,11 @@ const storageContainer=JSON.parse(execFileSync('docker',['inspect','supabase_sto
 const storageEnv=Object.fromEntries(storageContainer.Config.Env.map(entry=>{
   const at=entry.indexOf('=');return [entry.slice(0,at),entry.slice(at+1)];
 }));
-for(const name of ['REGION','S3_PROTOCOL_ACCESS_KEY_ID','S3_PROTOCOL_ACCESS_KEY_SECRET'])
+for(const name of ['S3_PROTOCOL_ACCESS_KEY_ID','S3_PROTOCOL_ACCESS_KEY_SECRET'])
   assert.ok(storageEnv[name],'Local S3 configuration missing: '+name);
-const s3=new S3Client({endpoint:info.API_URL+'/storage/v1/s3',region:storageEnv.REGION,
+// Mirror Storage's SERVER_REGION / legacy REGION / default resolution.
+const region=storageEnv.SERVER_REGION||storageEnv.REGION||'not-specified';
+const s3=new S3Client({endpoint:info.API_URL+'/storage/v1/s3',region,
   forcePathStyle:true,maxAttempts:1,requestChecksumCalculation:'WHEN_REQUIRED',
   credentials:{accessKeyId:storageEnv.S3_PROTOCOL_ACCESS_KEY_ID,secretAccessKey:storageEnv.S3_PROTOCOL_ACCESS_KEY_SECRET}});
 const s3Send=command=>s3.send(command,{abortSignal:AbortSignal.timeout(45000)});
@@ -142,3 +144,4 @@ try {
   await admin.storage.from('record-photos').remove([path,signedPath]).catch(()=>{});
   if(account)await admin.auth.admin.deleteUser(account.id).catch(()=>{});
 }
+
