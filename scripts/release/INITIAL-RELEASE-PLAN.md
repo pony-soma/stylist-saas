@@ -27,7 +27,7 @@ credentials work or grant permission to publish.
 | Recovery | Synthetic ordinary-role DB/Auth/private photo restore; encrypted local restore and photo corruption/missing-reference detection | Actual approved capture, closed restore and cutover consistency controls |
 | Stripe | Live account enabled; monthly JPY1,980 price exists | Inclusive price treatment, portal, webhook and secret storage |
 | Public documents | Three staging legal pages return 200 | Three production legal URLs returned 404; publish approved pages before offering purchase |
-| Environment | Owner screenshots show existing legacy Stripe variables | Values not inspected; new server price/portal IDs absent from shown list; verify actual targets |
+| Environment | Vercel CLI authenticated by owner on 2026-09-20; production variable names read directly | Values not inspected; server price/portal IDs and both explicit LINE flags absent; verify actual targets |
 | Automation | Release branch tests; main remains protected by release decision | Main push also deploys app; do not merge merely to run backup |
 
 ## Order after the concrete production plan is approved
@@ -63,11 +63,28 @@ credentials work or grant permission to publish.
 1. Approved, executable capture/recovery path and sufficient cutover consistency
    controls (global source quiescence is not yet established).
 2. Production-specific config and public-page rollout, including a way to store
-   Stripe secrets without exposing them in chat. Browser Vercel login is blocked
-   by 2FA; the owner can use their existing browser if a manual step is necessary.
+   Stripe secrets without exposing them in chat. Owner-approved Vercel CLI device
+   authentication now works. Bulk production-secret export was rejected by
+   automatic approval review and was not performed; metadata inspection alone
+   does not verify secret values, account mode or connectivity.
 3. Final acceptance evidence and owner approval for the exact revision/actions.
 
 Keep these gates explicit. Do not repeatedly add unrelated features or routine
 backup scheduling/notification work as new conditions for a supervised initial
 release. Do not treat this document or a generic request to continue as the final
 production approval.
+
+## Read-only production inspection, 2026-09-20 JST
+
+The public domain currently resolves to READY deployment
+`dpl_3VYfk8mfLmxuqcaw6tQk1B4i26bF`, revision
+`2945fc2b44e0bc7f17bca5e3ef13334c7a202dd2`. Do not assume the latest main
+commit is the currently serving application. No production deployment was made.
+
+`preflight-report.sql` returns one JSON result in a read-only transaction.
+The six migration prerequisite error counts were all zero, and no new release
+tables were already initialized. Preservation counts: 8 Auth users, 5 customers,
+16 medical records, 15 photo references, 16 Storage objects and 2 legacy
+subscriptions. The one photo bucket remains public without MIME/size limits;
+hardening remains an approved-cutover action. These counts are an observation,
+not a backup or evidence that writes have stopped.

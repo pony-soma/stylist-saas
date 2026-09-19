@@ -120,8 +120,16 @@ upload token and login, alongside stable readable photo bytes and resumption.
 It also checks that timed-out HTTP writers have left the server lock queue;
 client-side cancellation alone is not evidence of a drained server operation.
 
-Still required before using this candidate for a release: successful CI evidence,
-in-flight uploads admitted before acquisition, resumable/S3 operations, hosted
+CI run 35451737637 passed the primitive, pre-issued signed upload and TUS
+overwrite admitted before acquisition, along with the existing browser suite
+(10 checks). The tested source is a disposable local stack, not hosted production.
+CI run 35452918895 also passed the expanded lock rehearsal: standard S3
+overwrite/delete, multipart completion admitted before acquisition, and bounded
+acquisition failure when an existing writer holds a conflicting lock. The
+rehearsal verified unchanged photo bytes, drained server lock queues and normal
+operation after release. S3 signing uses STORAGE_S3_REGION, not SERVER_REGION.
+
+Still required before using this candidate for a release: hosted
 service/version compatibility, sequence and administrative-DDL controls, lifetime
 supervision through capture/restore/cutover, and the separately approved production
 window. Do not set `atomic_snapshot=true` or claim global source quiescence from
