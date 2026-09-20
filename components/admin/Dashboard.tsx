@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase/client';
 import PendingBookingsList from './dashboard/PendingBookingsList';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useBookings } from '@/hooks/useBookings';
-import { formatTime, getDurationMinutes } from '@/lib/utils';
+import { formatTime, getDurationMinutes, formatLocalDateInput } from '@/lib/utils';
 import { Booking } from '@/types';
 
 export default function AdminDashboard() {
@@ -201,7 +201,7 @@ export default function AdminDashboard() {
               {selectedDate.getMonth() + 1}月{selectedDate.getDate()}日のスケジュール
             </h2>
             <Link 
-              href={`/admin/bookings/new?date=${selectedDate.toISOString().split('T')[0]}`}
+              href={`/admin/bookings/new?date=${formatLocalDateInput(selectedDate)}`}
               className="w-full sm:w-auto justify-center whitespace-nowrap text-sm px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 font-medium rounded-lg flex items-center gap-2 transition border border-indigo-200 dark:border-indigo-800"
             >
               <CalendarPlus className="w-4 h-4" />

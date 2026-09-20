@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CalendarPlus, UploadCloud, Loader2 } from 'lucide-react';
+import { formatLocalDateInput } from '@/lib/utils';
 
 type Props = {
   initialData?: {
@@ -14,7 +15,7 @@ type Props = {
 
 export default function MedicalRecordForm({ initialData, onSubmit, onCancel }: Props) {
   const [form, setForm] = useState(initialData || {
-    visit_date: new Date().toISOString().split('T')[0],
+    visit_date: formatLocalDateInput(new Date()),
     treatment_menu: '',
     chemicals_used: '',
     notes: ''
