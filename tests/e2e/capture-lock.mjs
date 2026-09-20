@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { S3Client, PutObjectCommand, DeleteObjectCommand, CreateMultipartUploadCommand,
   UploadPartCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand } from '@aws-sdk/client-s3';
 import { acquireCaptureLock } from '../../scripts/backup/capture-lock.mjs';
+import { superviseCaptureLock } from '../../scripts/backup/capture-lease.mjs';
 
 assert.equal(process.env.CI,'true');
 assert.equal(process.env.LINO_E2E_LOCAL,'1');
@@ -94,7 +95,11 @@ try {
   await assert.rejects(acquireCaptureLock(client));
   assert.equal((await client.query("select count(*)::int as held from pg_locks where pid=pg_backend_pid() and granted and mode='ShareLock'")).rows[0].held,0);
   await observer.query('rollback');
-  stage='acquire';lock=await acquireCaptureLock(client);await lock.verify();
+  stage='acquire';lock=superviseCaptureLock(await acquireCaptureLock(client));await lock.verify();
+  // No caller activity beyond the database's 90s idle deadline. Heartbeats alone
+  // must retain the same connection's locks. Synthetic CI target only.
+  stage='heartbeat beyond idle deadline';await new Promise(resolve=>setTimeout(resolve,95000));
+  await lock.verify();assert.equal(lock.signal.aborted,false);
   // Reads remain usable while updates from ordinary SQL are refused on timeout.
   await observer.query("set lock_timeout='500ms'");
   await assert.rejects(observer.query('update public.stylists set name=name where id=$1',[account.id]),e=>e.code==='55P03');

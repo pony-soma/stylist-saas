@@ -139,3 +139,24 @@ The upstream implementation inspected at Supabase Storage
 `5d79e291ef9017c57ef261afca0a16429d1c8240` uses version-specific object locations
 and transactional metadata changes. This is a hypothesis to test, not proof that
 the hosted service uses this revision or that all deletion races are covered.
+
+
+## Capture lease supervision (experimental)
+
+`capture-lease.mjs` supervises an already acquired lock on the same connection.
+It verifies every 10 seconds with a bounded verification timeout and a separate
+15-minute overall deadline (configurable, never unlimited). Checks are serialized.
+Loss, timeout or expiry permanently aborts its signal; later successful responses
+cannot rehabilitate the capture. Query details are not included in public errors.
+
+The caller must await `verify()` before starting work, stop and await all workers
+on signal abort, and only then call `release()` in cleanup. The timer deliberately
+does not unlock while workers may still be running. This module does not launch
+or stop export processes, publish completion markers, reconnect, or authorize
+production operation. The candidate exporter is not wired to it yet.
+
+Unit tests cover loss, stalls, expiry, serialization and cleanup. The disposable
+CI lock rehearsal now waits 95 seconds without caller queries, then verifies the
+actual locks beyond the database's 90-second idle deadline before the existing
+HTTP writer tests. Passing that rehearsal does not establish hosted Storage
+quiescence or the lock handoff to a migration connection. Those gates remain.
