@@ -34,8 +34,10 @@ credentials work or grant permission to publish.
 
 1. Record exact app/code revisions, source and recovery targets, previous
    settings, maintenance/consistency controls and failure recovery procedure.
-   Resolve the protected backup execution path without accidentally deploying
-   the new application. This path is still an outstanding gate.
+   Review the protected tag-triggered candidate capture path in
+   ../backup/CANDIDATE-CAPTURE.md. Its implementation does not require a main
+   merge; actual tag/environment activation and external deployment integration
+   behavior still require verification and specific operation approval.
 2. Apply the rehearsed maintenance controls. Capture the approved data scope,
    decrypt/restore in the closed target, and verify DB/photo references and
    byte hashes. A completed upload alone does not pass this gate. Do not expose
@@ -60,8 +62,10 @@ credentials work or grant permission to publish.
 
 ## Three outstanding release gates
 
-1. Approved, executable capture/recovery path and sufficient cutover consistency
-   controls (global source quiescence is not yet established).
+1. Activate and verify the reviewed candidate capture/recovery path and establish
+   sufficient cutover consistency controls. The candidate runner is implemented
+   with target/revision/event/expiry checks; global source quiescence and actual
+   production ciphertext restoration are not yet established.
 2. Production-specific config and public-page rollout, including a way to store
    Stripe secrets without exposing them in chat. Owner-approved Vercel CLI device
    authentication now works. Bulk production-secret export was rejected by
