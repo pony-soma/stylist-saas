@@ -4,4 +4,3 @@ node_modules
 .env*
 *.ps1
 README-STAGING.md
-tests
