@@ -181,3 +181,18 @@ may delay cooperative exit; lock loss during that interval invalidates the run.
 No production launcher or workflow invokes this path. Final marker publication,
 restoration acceptance and migration handoff remain separate unimplemented gates.
 Pending manifests are not accepted by existing completion collectors.
+
+
+## Supervised continuation
+
+The optional `afterStaged({signal, verify})` callback runs after worker close
+and lock verification, before lease release. The supervisor awaits callback
+settlement even on cancellation, then verifies again. Callbacks must await
+their own cleanup and must not return while their work is still running.
+They receive no release capability. Return values cannot declare completion.
+
+This is an ownership boundary, not a migration implementation: do not run
+long same-connection migration SQL until heartbeat serialization and changed
+inventory verification are implemented. No CLI enables this path. Existing
+backup calls remain unchanged. Atomic snapshot and completion promotion gates
+remain unsatisfied.
