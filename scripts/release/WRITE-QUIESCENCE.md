@@ -160,3 +160,24 @@ CI lock rehearsal now waits 95 seconds without caller queries, then verifies the
 actual locks beyond the database's 90-second idle deadline before the existing
 HTTP writer tests. Passing that rehearsal does not establish hosted Storage
 quiescence or the lock handoff to a migration connection. Those gates remain.
+
+
+## Cooperative staged worker (not a cutover command)
+
+`runStagedBackup(lease)` starts the Python exporter on Linux with
+`--supervised-stage`. The worker installs cooperative SIGTERM/SIGINT handling
+and checks cancellation between bounded I/O operations. It writes only
+`pending.manifest.age`, never the existing `complete.manifest.age`, even if
+cancellation races the final upload. Existing candidate/scheduled calls retain
+their prior transfer-only semantics and are not automatically put under a lease.
+
+The supervisor signals cancellation, waits for process close and rechecks the
+lease after a zero exit. Cancellation followed by zero exit is still failure.
+It releases the lock only during cleanup after the worker closes; stdout and
+stderr are not forwarded. It does not force-kill Docker or other processes,
+promote a pending marker, or mark a snapshot atomic. A slow in-flight operation
+may delay cooperative exit; lock loss during that interval invalidates the run.
+
+No production launcher or workflow invokes this path. Final marker publication,
+restoration acceptance and migration handoff remain separate unimplemented gates.
+Pending manifests are not accepted by existing completion collectors.

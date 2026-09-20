@@ -206,17 +206,22 @@ def upload(s3, bucket, key, path, plain_sha, budget, extra_metadata=None):
     return {'key': key, 'cipher_sha256': cipher_sha, 'plain_sha256': plain_sha}
 
 
-def run(cfg, s3, storage):
+def run(cfg, s3, storage, *, staged=False, checkpoint=None):
+    require(isinstance(staged, bool) and (not staged or callable(checkpoint)))
+    check = checkpoint if checkpoint is not None else lambda: None
+    check()
     os.umask(0o077)
     provenance = github_provenance(os.environ)
     run_id = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex
     prefix = 'lino-backup/v1/' + cfg['ref'] + '/'
     budget = {'used': 0, 'limit': cfg['stored_limit']}
     for page in s3.get_paginator('list_objects_v2').paginate(Bucket=cfg['bucket'], Prefix=prefix):
+        check()
         for obj in page.get('Contents', []):
             budget['used'] += obj['Size']
             require(budget['used'] <= budget['limit'])
     before = storage.listing()
+    check()
     platform = cfg['database_format'] == 'supabase-cli-platform-v1'
     manifest = {'format': 2 if platform else 1, 'run_id': run_id, 'project_ref': cfg['ref'], 'atomic_snapshot': False, 'photos': []}
     if platform:
@@ -225,19 +230,25 @@ def run(cfg, s3, storage):
         folder = Path(temp)
         plain, encrypted = folder / 'database.dump', folder / 'database.age'
         transferred = (dump_platform_database if platform else dump_database)(plain, cfg['limit'])
+        check()
         db_hash = digest(plain)
         encrypt(plain, encrypted, cfg['recipient'])
+        check()
         manifest['database'] = upload(s3, cfg['bucket'], prefix + 'runs/' + run_id + '/database.age', encrypted, db_hash, budget)
+        check()
         encrypted.unlink()
         for entry in before:
+            check()
             # Key depends on recipient: key rotation never reuses old-key ciphertext.
             version = json.dumps({'entry': entry, 'recipient': cfg['recipient']}, sort_keys=True, separators=(',', ':')).encode()
             key = prefix + 'photos/' + hashlib.sha256(version).hexdigest() + '.age'
             head = head_optional(s3, cfg['bucket'], key)
+            check()
             # Metadata equality is not proof of identical bytes. Read every source
             # object within the total plaintext budget before reusing ciphertext.
             plain, encrypted = folder / 'photo', folder / 'photo.age'
             transferred += storage.download(entry, plain, cfg['limit'] - transferred)
+            check()
             photo_hash = digest(plain)
             if head is not None:
                 metadata = head.get('Metadata', {})
@@ -249,21 +260,28 @@ def run(cfg, s3, storage):
                 plain.unlink()
             else:
                 encrypt(plain, encrypted, cfg['recipient'])
+                check()
                 obj = upload(s3, cfg['bucket'], key, encrypted, photo_hash, budget)
+                check()
                 encrypted.unlink()
             manifest['photos'].append({'source': entry, 'object': obj})
         require(before == storage.listing())
+        check()
         manifest['plaintext_bytes_downloaded'] = transferred
         plain, encrypted = folder / 'manifest.json', folder / 'manifest.age'
         plain.write_text(json.dumps(manifest, sort_keys=True), encoding='utf-8')
         manifest_hash = digest(plain)
         encrypt(plain, encrypted, cfg['recipient'])
-        # The only completion marker is encrypted and uploaded after all checks.
-        upload(s3, cfg['bucket'], prefix + 'runs/' + run_id + '/complete.manifest.age', encrypted, manifest_hash, budget, provenance)
-    print(json.dumps({'status': 'complete', 'photos': len(before), 'plaintext_bytes_downloaded': transferred}))
+        check()
+        # Supervised workers can only stage ciphertext. They never publish the
+        # existing complete marker, including when cancellation races this upload.
+        marker = 'pending.manifest.age' if staged else 'complete.manifest.age'
+        upload(s3, cfg['bucket'], prefix + 'runs/' + run_id + '/' + marker, encrypted, manifest_hash, budget, provenance)
+        check()
+    print(json.dumps({'status': 'staged' if staged else 'complete', 'photos': len(before), 'plaintext_bytes_downloaded': transferred}))
 
 
-def main():
+def main(*, staged=False, checkpoint=None):
     try:
         cfg = config(os.environ)
         commands = ('age', 'npx', 'psql') if cfg['database_format'] == 'supabase-cli-platform-v1' else ('age', 'pg_dump')
@@ -271,7 +289,7 @@ def main():
         import boto3
         from botocore.config import Config
         s3 = boto3.client('s3', endpoint_url=os.environ['R2_ENDPOINT_URL'], aws_access_key_id=os.environ['R2_ACCESS_KEY_ID'], aws_secret_access_key=os.environ['R2_SECRET_ACCESS_KEY'], region_name='auto', config=Config(retries={'max_attempts': 3}, connect_timeout=15, read_timeout=60, s3={'addressing_style': 'path'}))
-        run(cfg, s3, Storage(cfg))
+        run(cfg, s3, Storage(cfg), staged=staged, checkpoint=checkpoint)
         return 0
     except Exception:
         # Deliberately exclude SDK/HTTP/CLI exception text, paths and credentials.
@@ -280,4 +298,16 @@ def main():
 
 
 if __name__ == '__main__':
+    if sys.argv[1:] == ['--supervised-stage']:
+        import signal
+        import threading
+        cancelled = threading.Event()
+        signal.signal(signal.SIGTERM, lambda *_: cancelled.set())
+        signal.signal(signal.SIGINT, lambda *_: cancelled.set())
+        def checkpoint():
+            require(not cancelled.is_set())
+        sys.exit(main(staged=True, checkpoint=checkpoint))
+    if sys.argv[1:]:
+        print('Unsupported backup arguments.', file=sys.stderr)
+        sys.exit(1)
     sys.exit(main())
