@@ -1,0 +1,113 @@
+name: LiNo validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lino-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Tests, types and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      # Build-only dummy values. This workflow has no service credentials or deploy step.
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_BUILD_ONLY
+      SUPABASE_SERVICE_ROLE_KEY: sb_secret_BUILD_ONLY
+      NEXT_PUBLIC_BASE_URL: https://example.test
+      NEXT_PUBLIC_APP_URL: https://example.test
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run unit and API mock tests
+        run: node --experimental-strip-types --test tests/*.test.cjs tests/*.test.mjs
+      - name: Check TypeScript
+        run: npx --no-install tsc --noEmit --incremental false
+      - name: Build with dummy configuration
+        run: npm run build
+      - name: Verify maintenance HTTP gate
+        run: node tests/maintenance-http.cjs
+
+  browser:
+    name: Browser E2E (isolated Supabase)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      LINO_E2E_LOCAL: '1'
+      NEXT_PUBLIC_BASE_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install Chromium
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Start disposable Supabase
+        run: npx --no-install supabase start --workdir tests/e2e > /dev/null
+      - name: Build schema and verify SQL permissions
+        run: bash tests/e2e/prepare-db.sh
+      - name: Configure local-only application
+        run: node tests/e2e/export-env.mjs
+      - name: Rehearse isolated database and file recovery
+        run: node tests/e2e/recovery-rehearsal.mjs
+      - name: Rehearse bounded capture locks with synthetic HTTP writers
+        run: node tests/e2e/capture-lock.mjs
+      - name: Build application against local Supabase
+        run: npm run build
+      - name: Verify desktop and mobile browser flows
+        run: npm run test:e2e
+      - name: Save browser report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: browser-e2e-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Remove disposable database and files
+        if: always()
+        run: npx --no-install supabase stop --workdir tests/e2e --no-backup
+
+  backup-tools:
+    name: Backup safety and encryption tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends age
+          python3 -m venv /tmp/lino-backup-test
+          /tmp/lino-backup-test/bin/pip install --disable-pip-version-check -r scripts/backup/requirements.txt
+      - name: Verify backup safety with fabricated inputs
+        run: /tmp/lino-backup-test/bin/python -m unittest discover -s tests -p 'backup*_test.py' -v

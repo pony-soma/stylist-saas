@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, Menu as MenuIcon, MessageCircle, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Menu as MenuIcon, MessageCircle, ChevronRight, CreditCard } from 'lucide-react';
 
 export default function SettingsHubPage() {
   return (
@@ -19,6 +19,15 @@ export default function SettingsHubPage() {
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
         <div className="divide-y divide-gray-100 dark:divide-gray-800">
           
+          <Link href="/billing" className="flex items-center p-6 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition group">
+            <CreditCard className="w-6 h-6 mr-7 text-indigo-600" />
+            <div className="flex-1">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">契約・お支払い</h2>
+              <p className="text-sm text-gray-500 mt-0.5">無料体験の期限、お支払い情報、解約を確認・管理します</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </Link>
+
           <Link href="/admin/menus" className="flex items-center p-6 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition group">
             <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center mr-4">
               <MenuIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />

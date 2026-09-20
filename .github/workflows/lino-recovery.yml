@@ -1,0 +1,83 @@
+name: LiNo schema Auth and photo recovery
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/lino-recovery.yml
+      - tests/e2e/**
+      - supabase/**
+      - package-lock.json
+      - scripts/backup/platform_export.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lino-schema-recovery-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  recovery:
+    name: Restore synthetic LiNo (${{ matrix.label }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - script: lino-recovery
+            label: lino-recovery
+            data_mode: inserts
+          - script: platform-recovery
+            label: platform-recovery-inserts
+            data_mode: inserts
+          - script: platform-recovery
+            label: platform-recovery-copy
+            data_mode: copy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      LINO_E2E_LOCAL: '1'
+      LINO_RECOVERY_DATA_MODE: ${{ matrix.data_mode }}
+      NEXT_PUBLIC_BASE_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install PostgreSQL client for filtered export
+        if: matrix.script == 'platform-recovery'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+      - name: Start disposable source Supabase
+        run: npx --no-install supabase start --workdir tests/e2e > /dev/null
+      - name: Prepare actual LiNo schema on source
+        run: bash tests/e2e/prepare-db.sh
+      - name: Configure source local-only keys
+        run: node tests/e2e/export-env.mjs
+      - name: Start separate disposable restore target
+        run: npx --no-install supabase start --workdir tests/e2e/recovery-target > /dev/null
+      - name: Restore and verify schema Auth ownership and photos
+        run: node tests/e2e/${{ matrix.script }}.mjs
+      - name: Retain verified synthetic SQL for hosted rehearsal
+        if: matrix.script == 'platform-recovery' && matrix.data_mode == 'inserts'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lino-synthetic-hosted-fixture
+          path: /tmp/lino-hosted-fixture
+          retention-days: 1
+          if-no-files-found: error
+      - name: Remove disposable target
+        if: always()
+        run: npx --no-install supabase stop --workdir tests/e2e/recovery-target --no-backup
+      - name: Remove disposable source
+        if: always()
+        run: npx --no-install supabase stop --workdir tests/e2e --no-backup
+      # No environment, hosted secrets, or deployment. Artifact is synthetic only.

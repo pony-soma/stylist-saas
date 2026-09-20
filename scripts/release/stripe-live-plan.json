@@ -1,0 +1,81 @@
+{
+  "status": "review_only_not_applied",
+  "target_mode": "live",
+  "price_requirements": {
+    "currency": "jpy",
+    "unit_amount": 1980,
+    "recurring": {
+      "interval": "month",
+      "interval_count": 1
+    },
+    "tax_behavior": "inclusive"
+  },
+  "portal_create_parameters": {
+    "name": "LiNo monthly subscription",
+    "business_profile": {
+      "headline": "LiNo ご契約管理",
+      "privacy_policy_url": "https://lino-salon.app/privacy",
+      "terms_of_service_url": "https://lino-salon.app/terms"
+    },
+    "default_return_url": "https://lino-salon.app/billing?portal_return=true",
+    "features": {
+      "invoice_history": {
+        "enabled": true
+      },
+      "payment_method_update": {
+        "enabled": true
+      },
+      "subscription_cancel": {
+        "enabled": true,
+        "mode": "at_period_end",
+        "proration_behavior": "none"
+      },
+      "subscription_update": {
+        "enabled": false
+      },
+      "customer_update": {
+        "enabled": false
+      }
+    },
+    "login_page": {
+      "enabled": false
+    }
+  },
+  "webhook_create_parameters": {
+    "url": "https://lino-salon.app/api/webhooks/stripe",
+    "api_version": "2026-06-24.dahlia",
+    "connect": false,
+    "description": "LiNo production subscription synchronization",
+    "enabled_events": [
+      "checkout.session.completed",
+      "customer.subscription.created",
+      "customer.subscription.updated",
+      "customer.subscription.deleted",
+      "customer.subscription.paused",
+      "customer.subscription.resumed",
+      "invoice.paid",
+      "invoice.payment_failed",
+      "invoice.finalization_failed"
+    ]
+  },
+  "production_environment_names": [
+    "STRIPE_SECRET_KEY",
+    "STRIPE_PRO_PLAN_ID",
+    "STRIPE_BILLING_PORTAL_CONFIGURATION_ID",
+    "STRIPE_WEBHOOK_SECRET"
+  ],
+  "execution_gates": [
+    "Owner approval for specific live changes",
+    "Recheck live account and avoid duplicate configurations",
+    "Verify approved public legal URLs",
+    "Deploy compatible database and webhook handler under maintenance before opening checkout",
+    "Store new webhook signing secret directly in production secret storage; never in this file or logs",
+    "Verify signed delivery and billing reconciliation before opening checkout"
+  ],
+  "limits": [
+    "No API calls are made by this file",
+    "Inclusive price does not configure tax registration or automatic tax",
+    "Trial duration and card requirement are set by Checkout code, not Price",
+    "Do not create a live Checkout session or charge as part of configuration review"
+  ]
+}

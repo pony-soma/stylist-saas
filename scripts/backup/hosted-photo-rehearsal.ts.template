@@ -1,0 +1,119 @@
+// Transient isolated-project rehearsal only. Deploy with verify_jwt=true.
+// Replace the three placeholders only after independently verifying the new target.
+// Never deploy to production or staging. No source customer data or credentials.
+// Minimal ambient runtime type keeps the Next.js repository typecheck independent
+// of Deno packages; this file has no imports and is deployed only as an Edge entry.
+declare const Deno: {
+  env: { get(name: string): string | undefined };
+  serve(handler: (request: Request) => Promise<Response>): unknown;
+};
+const PROJECT_REF = '__PROJECT_REF__';
+const OWNER_ID = '__OWNER_ID__';
+const NONCE = '__NONCE__';
+const BUCKET = 'record-photos';
+const PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN1cAAAAASUVORK5CYII=';
+const FORBIDDEN = ['pprlqowossudjvtgkfir', 'kmwvfotrvhaddriebxur'];
+
+function reply(status: number, body: Record<string, unknown>): Response {
+  return Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+}
+
+async function bounded(response: Response, limit: number): Promise<Uint8Array> {
+  if (!response.body) throw new Error('empty_body');
+  const reader = response.body.getReader();
+  const pieces: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > limit) throw new Error('response_limit');
+      pieces.push(value);
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const piece of pieces) { result.set(piece, offset); offset += piece.length; }
+  return result;
+}
+
+async function json(response: Response): Promise<unknown> {
+  return JSON.parse(new TextDecoder().decode(await bounded(response, 65536)));
+}
+
+async function sha256(bytes: Uint8Array): Promise<string> {
+  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(bytes).buffer)))
+    .map((value) => value.toString(16).padStart(2, '0')).join('');
+}
+
+Deno.serve(async (request: Request): Promise<Response> => {
+  if (request.method !== 'POST') return reply(405, { error: 'post_required' });
+  const url = Deno.env.get('SUPABASE_URL');
+  if (!/^[a-z]{20}$/.test(PROJECT_REF) || FORBIDDEN.includes(PROJECT_REF) ||
+      url !== `https://${PROJECT_REF}.supabase.co` ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(OWNER_ID) ||
+      !/^[0-9a-f]{64}$/.test(NONCE)) return reply(503, { error: 'target_guard' });
+  if (request.headers.get('x-rehearsal-nonce') !== NONCE) return reply(403, { error: 'forbidden' });
+  const authorization = request.headers.get('authorization') ?? '';
+  if (!/^Bearer [A-Za-z0-9._-]{20,8192}$/.test(authorization)) return reply(401, { error: 'user_required' });
+
+  // One bounded deadline covers fetches AND streamed response reads.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25000);
+  let phase = 'authenticate';
+  try {
+    const anon = Deno.env.get('SUPABASE_ANON_KEY');
+    const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!anon || !service) return reply(503, { error: 'keys_unavailable' });
+    const call = (path: string, init: RequestInit = {}) => fetch(`${url}${path}`, {
+      ...init, redirect: 'error', signal: controller.signal,
+    });
+    const userResponse = await call('/auth/v1/user', {
+      headers: { apikey: anon, Authorization: authorization },
+    });
+    if (!userResponse.ok) { await userResponse.body?.cancel(); return reply(401, { error: 'user_required' }); }
+    const user = await json(userResponse) as { id?: string; is_anonymous?: boolean };
+    if (user.id !== OWNER_ID || user.is_anonymous === true) return reply(403, { error: 'owner_required' });
+    // Caller supplies no target, object content, key, URL or database instruction.
+    phase = 'bucket';
+    const headers = { apikey: service, Authorization: `Bearer ${service}` };
+    const bucketResponse = await call('/storage/v1/bucket', { headers });
+    if (!bucketResponse.ok) throw new Error('bucket_list');
+    const buckets = await json(bucketResponse);
+    if (!Array.isArray(buckets)) throw new Error('bucket_shape');
+    const existing = buckets.find((bucket) => bucket.id === BUCKET);
+    if (existing && existing.public !== false) throw new Error('bucket_not_private');
+    if (!existing) {
+      const created = await call('/storage/v1/bucket', {
+        method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: BUCKET, name: BUCKET, public: false,
+          file_size_limit: 10485760, allowed_mime_types: ['image/png', 'image/jpeg', 'image/webp'] }),
+      });
+      if (!created.ok) throw new Error('bucket_create');
+      await created.body?.cancel();
+    }
+    const key = `synthetic-recovery/${OWNER_ID}/fixture.png`;
+    const png = Uint8Array.from(atob(PNG_BASE64), (character) => character.charCodeAt(0));
+    const expected = await sha256(png);
+    phase = 'upload';
+    const uploaded = await call(`/storage/v1/object/${BUCKET}/${key}`, {
+      method: 'POST', headers: { ...headers, 'Content-Type': 'image/png', 'x-upsert': 'true' }, body: png,
+    });
+    if (!uploaded.ok) throw new Error('upload');
+    await uploaded.body?.cancel();
+    phase = 'verify';
+    const downloaded = await call(`/storage/v1/object/${BUCKET}/${key}`, { headers });
+    if (!downloaded.ok) throw new Error('download');
+    const actual = await bounded(downloaded, 1024);
+    if (actual.length !== png.length || await sha256(actual) !== expected) throw new Error('integrity');
+    const check = await call(`/storage/v1/bucket/${BUCKET}`, { headers });
+    if (!check.ok || (await json(check) as { public?: boolean }).public !== false) throw new Error('bucket_visibility');
+    return reply(200, { status: 'passed', bucket: BUCKET, key, bytes: png.length, sha256: expected });
+  } catch {
+    // Do not echo request bodies, upstream error bodies, token values or exceptions.
+    return reply(502, { error: 'rehearsal_failed', phase });
+  } finally { clearTimeout(timer); }
+});

@@ -1,0 +1,67 @@
+name: LiNo approved candidate capture (inactive until authorized)
+
+# Tag push reads the workflow at that tag: no main merge or app deployment step.
+# Never create the launch tag before concrete owner approval and environment review.
+on:
+  push:
+    tags: ['lino-candidate-*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lino-offsite-backup
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    if: github.repository == 'pony-soma/stylist-saas' && github.ref_type == 'tag' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: lino-backup
+    env:
+      LINO_CANDIDATE_CAPTURE_ENABLED: ${{ vars.LINO_CANDIDATE_CAPTURE_ENABLED }}
+      LINO_CANDIDATE_ACK: ${{ vars.LINO_CANDIDATE_ACK }}
+      LINO_CANDIDATE_APPROVED_SHA: ${{ vars.LINO_CANDIDATE_APPROVED_SHA }}
+      LINO_CANDIDATE_APPROVED_REF: ${{ vars.LINO_CANDIDATE_APPROVED_REF }}
+      LINO_CANDIDATE_EXPIRES_UTC: ${{ vars.LINO_CANDIDATE_EXPIRES_UTC }}
+      LINO_BACKUP_PROJECT_REF: ${{ vars.LINO_BACKUP_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Validate approval before installing or accessing services
+        run: python3 scripts/backup/candidate_capture.py --check-only
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked tools
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends python3 python3-venv postgresql-client age ca-certificates
+          python3 -m venv /tmp/lino-candidate-tools
+          /tmp/lino-candidate-tools/bin/pip install --disable-pip-version-check -r scripts/backup/requirements.txt
+      - name: Revalidate approval and capture encrypted candidate
+        env:
+          LINO_BACKUP_DATABASE_FORMAT: supabase-cli-platform-v1
+          SUPABASE_URL: ${{ vars.LINO_BACKUP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.LINO_BACKUP_STORAGE_KEY }}
+          PGHOST: ${{ secrets.LINO_BACKUP_PGHOST }}
+          PGPORT: '5432'
+          PGDATABASE: postgres
+          PGUSER: ${{ secrets.LINO_BACKUP_PGUSER }}
+          PGPASSWORD: ${{ secrets.LINO_BACKUP_PGPASSWORD }}
+          PGSSLMODE: require
+          AGE_RECIPIENT: ${{ vars.LINO_BACKUP_AGE_RECIPIENT }}
+          R2_ENDPOINT_URL: ${{ vars.LINO_BACKUP_R2_ENDPOINT }}
+          R2_BUCKET: ${{ vars.LINO_BACKUP_R2_BUCKET }}
+          R2_ACCESS_KEY_ID: ${{ secrets.LINO_BACKUP_R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.LINO_BACKUP_R2_SECRET_ACCESS_KEY }}
+          LINO_BACKUP_MAX_BYTES: '104857600'
+          LINO_BACKUP_MAX_PHOTOS: '1000'
+          LINO_BACKUP_MAX_STORED_BYTES: '8589934592'
+        run: /tmp/lino-candidate-tools/bin/python scripts/backup/candidate_capture.py
+      # No artifact upload, identity key, deployment, migration, restore or schedule.

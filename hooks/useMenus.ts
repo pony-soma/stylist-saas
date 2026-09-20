@@ -21,43 +21,21 @@ export function useMenus(stylistId: string | null) {
     setLoading(false);
   }, [stylistId]);
 
-  const createMenu = async (name: string, duration: number, price: number) => {
+  const mutate = async (body: Record<string, unknown>) => {
     if (!stylistId) return false;
-    const { error } = await supabase
-      .from('menus')
-      .insert({
-        stylist_id: stylistId,
-        name,
-        duration,
-        price
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
-    return !error;
+      return response.ok;
+    } catch { return false; }
   };
-
-  const updateMenu = async (id: string, name: string, duration: number, price: number) => {
-    if (!stylistId) return false;
-    const { error } = await supabase
-      .from('menus')
-      .update({
-        name,
-        duration,
-        price,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .eq('stylist_id', stylistId);
-    return !error;
-  };
-
-  const deleteMenu = async (id: string) => {
-    if (!stylistId) return false;
-    const { error } = await supabase
-      .from('menus')
-      .delete()
-      .eq('id', id)
-      .eq('stylist_id', stylistId);
-    return !error;
-  };
+  const createMenu = (name: string, duration: number, price: number) =>
+    mutate({ action: 'menu.create', name, duration, price });
+  const updateMenu = (id: string, name: string, duration: number, price: number) =>
+    mutate({ action: 'menu.update', id, name, duration, price });
+  const deleteMenu = (id: string) => mutate({ action: 'menu.delete', id });
 
   return {
     menus,

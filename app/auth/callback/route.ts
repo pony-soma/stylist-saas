@@ -32,25 +32,22 @@ export async function GET(request: Request) {
       const user = sessionData.user;
       
       // 美容師テーブルに存在するか確認し、なければ作成
-      const { data: stylist } = await supabase.from('stylists').select('id').eq('id', user.id).single();
+      const { data: stylist, error: readError } = await supabase.from('stylists').select('id').eq('id', user.id).maybeSingle();
+      if (readError) return NextResponse.redirect(`${origin}/login?error=profile-unavailable`);
       if (!stylist) {
-        await supabase.from('stylists').insert({
+        const { error: insertError } = await supabase.from('stylists').insert({
           id: user.id,
           name: user.user_metadata?.full_name || '美容師'
         });
+        // Concurrent callbacks can both observe a missing row.
+        if (insertError && insertError.code !== '23505') {
+          return NextResponse.redirect(`${origin}/login?error=profile-unavailable`);
+        }
       }
-      const next = searchParams.get('next') ?? '/admin';
-      const plan = searchParams.get('plan');
-      
-      let redirectUrl = `${origin}${next}`;
-      if (plan) {
-        redirectUrl += `?plan=${plan}`;
-      }
-      
-      return NextResponse.redirect(redirectUrl)
+      return NextResponse.redirect(`${origin}/admin`)
     }
     // エラー詳細をURLに含めてリダイレクト
-    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error?.message || 'auth failed')}`)
+    return NextResponse.redirect(`${origin}/login?error=auth-failed`)
   }
 
   // codeが無い場合
