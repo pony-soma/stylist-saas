@@ -16,7 +16,7 @@ export default function AccountSwitcher() {
     return () => { active = false; };
   }, []);
 
-  const switchAccount = async () => {
+  const signOut = async (destination: '/login' | '/') => {
     setBusy(true);
     setError('');
     try {
@@ -24,7 +24,7 @@ export default function AccountSwitcher() {
       const { error } = await supabase.auth.signOut({ scope: 'local' });
       if (error) throw error;
       // Discard cached pages belonging to the previous account.
-      window.location.replace('/login');
+      window.location.replace(destination);
     } catch {
       setError('ログアウトできませんでした。もう一度お試しください。');
       setBusy(false);
@@ -34,10 +34,16 @@ export default function AccountSwitcher() {
   return (
     <section aria-label="ログイン中のアカウント" className="my-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
       {email && <p className="break-all">ログイン中：{email}</p>}
-      <button type="button" onClick={() => void switchAccount()} disabled={busy}
+      <div className="flex flex-wrap gap-2">
+      <button type="button" onClick={() => void signOut('/login')} disabled={busy}
         className="mt-2 min-h-11 rounded-lg border border-indigo-600 px-3 py-2 font-semibold text-indigo-700 disabled:opacity-50">
         {busy ? 'ログアウト中…' : '別のGoogleアカウントに切り替える'}
       </button>
+      <button type="button" onClick={() => void signOut('/')} disabled={busy}
+        className="mt-2 min-h-11 rounded-lg border border-slate-400 px-3 py-2 font-semibold disabled:opacity-50">
+        ログアウト
+      </button>
+      </div>
       <p className="mt-2 text-xs">このブラウザからログアウトします。契約や保存したデータは削除されません。</p>
       {error && <p role="alert" className="mt-2 text-red-700">{error}</p>}
     </section>

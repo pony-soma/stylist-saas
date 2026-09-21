@@ -52,3 +52,16 @@ test('RPC authorization, conflicts and validation failures map to actionable sta
     const f=fixture({dbError:{code,message:'private'}}); const r=await f.run(); assert.equal(r.status,status); assert.equal(JSON.stringify(await r.json()).includes('private'),false);
   }
 });
+
+test('closed hours and blocked slots return safe, specific guidance', async () => {
+  for (const [code, message, guidance] of [
+    ['22023', 'Outside opening hours', '定休日または営業時間外'],
+    ['22023', 'Invalid menus', 'メニューが変更または削除'],
+    ['40001', 'Blocked time', '予約不可枠'],
+  ]) {
+    const result = await fixture({ dbError: { code, message, details: 'private-data' } }).run();
+    const body = await result.json();
+    assert.ok(body.error.includes(guidance));
+    assert.ok(!JSON.stringify(body).includes('private-data'));
+  }
+});

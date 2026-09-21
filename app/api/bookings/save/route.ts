@@ -41,7 +41,19 @@ export async function POST(request: Request) {
     });
     if (error) {
       const statuses: Record<string, number> = { '42501': 403, 'P0002': 404, '22023': 400, '22007': 400, '22008': 400, '40001': 409 };
-      if (statuses[error.code]) return NextResponse.json({ error: 'Booking could not be saved' }, { status: statuses[error.code] });
+      // Only expose known, static guidance, never raw database messages or details.
+      const reasons: Record<string, string> = {
+        'Outside opening hours': '定休日または営業時間外です。日付・時間を変更するか、設定の「営業時間・定休日設定」で臨時営業日を登録してください。',
+        'Ambiguous opening hours': '営業時間の設定が重複しています。「営業時間・定休日設定」を確認してください。',
+        'Invalid menus': '選択したメニューが変更または削除されています。画面を更新して選び直してください。',
+        'Blocked time': '指定された時間には予約不可枠があります。時間を変更してください。',
+        'Booking changed': '予約が別の操作で変更されています。画面を更新してください。',
+        'Request conflict': '前回の予約内容と異なります。画面を更新して予約を確認してください。',
+        'Customer unavailable': 'このお客様を選択できません。画面を更新して選び直してください。',
+        'Booking unavailable': 'この予約を編集できません。画面を更新してください。',
+        'Active access required': 'ご利用期間を確認できません。「契約・お支払い」で契約状態を確認してください。',
+      };
+      if (statuses[error.code]) return NextResponse.json({ error: reasons[error.message] ?? '予約内容を確認して、もう一度お試しください。' }, { status: statuses[error.code] });
       throw Error('Booking save failed');
     }
     if (typeof data !== 'string') throw Error('Missing booking');
