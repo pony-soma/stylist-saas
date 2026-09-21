@@ -18,7 +18,7 @@ test('proxy reservation explains closed days, then saves on an open day', async 
   const rejected = page.waitForResponse(r => r.url().endsWith('/api/bookings/save') && r.request().method() === 'POST');
   await page.getByRole('button', { name: '予約を確定', exact: true }).click();
   expect((await rejected).status()).toBe(400);
-  await expect(page.getByRole('alert')).toContainText('定休日または営業時間外');
+  await expect(page.getByRole('alert').filter({ hasText: '定休日または営業時間外' })).toBeVisible();
   expect((await admin.from('bookings').select('id').eq('stylist_id', account.id)).data).toEqual([]);
   await expect(page.getByRole('checkbox', { name: /確認カット/ })).toBeChecked();
   await page.getByLabel('日付', { exact: true }).fill('2030-01-09');
