@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import AccountSwitcher from '@/components/AccountSwitcher';
 import { createClient } from '@/lib/supabase/server';
 import { SubscriptionBanner } from '@/components/admin/SubscriptionBanner';
 import { redirect } from 'next/navigation';
@@ -18,6 +19,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <div className="flex flex-col min-h-screen">
+      <div className="mx-auto w-full max-w-5xl px-4"><AccountSwitcher /></div>
       <Suspense fallback={null}>
         <SubscriptionBanner />
       </Suspense>
