@@ -10,7 +10,8 @@ for (const pending of [false, true]) {
       expect(changed.error).toBeNull();
     }
     await page.goto('/');
-    await expect(page).toHaveURL(pending ? /\/billing$/ : /\/admin$/);
+    await page.getByRole('link', { name: 'ログイン', exact: true }).click();
+    await expect(page).toHaveURL(pending ? /\/billing$/ : /\/admin(?:\?|$)/);
     await expect(page.getByText(`ログイン中：${account.email}`, { exact: true })).toBeVisible();
     await page.getByRole('button', { name: '別のGoogleアカウントに切り替える' }).click();
     await expect(page).toHaveURL(/\/login$/);
