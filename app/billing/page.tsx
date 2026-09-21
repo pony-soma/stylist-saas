@@ -1,6 +1,7 @@
 'use client';
 
 import LegalLinks from '@/components/LegalLinks';
+import AccountSwitcher from '@/components/AccountSwitcher';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 
@@ -110,6 +111,7 @@ export default function BillingPage() {
       <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-6 sm:p-10 shadow-sm">
         <Link href="/" className="font-bold text-indigo-600">LiNo</Link>
         <h1 className="mt-6 text-2xl font-bold">契約・お支払い</h1>
+        <AccountSwitcher />
         {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">{error}</p>}
         {loading && <p role="status" className="mt-4 text-sm text-slate-600">契約状態を確認しています…</p>}
         {canceled && <p className="mt-4 text-sm text-slate-600">お支払い手続きを中断しました。契約状態は下記をご確認ください。</p>}
