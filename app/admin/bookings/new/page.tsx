@@ -35,6 +35,7 @@ function ProxyBookingForm() {
   
   const [selectedMenuIds, setSelectedMenuIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
@@ -79,6 +80,7 @@ function ProxyBookingForm() {
   };
 
   const handleSave = async () => {
+    setSaveError('');
     const startTimeStr = `${form.startHour}:${form.startMinute}`;
     const endTimeStr = `${form.endHour}:${form.endMinute}`;
     const finalCustomerId = form.customerId || (proxyCustomers.length > 0 ? proxyCustomers[0].id : '');
@@ -94,32 +96,15 @@ function ProxyBookingForm() {
 
     const selectedMenusList = menus.filter(m => selectedMenuIds.has(m.id));
     const totalPrice = selectedMenusList.reduce((acc, curr) => acc + curr.price, 0);
-    const startDateTime = new Date(`${form.date}T${startTimeStr}:00`);
-    const endDateTime = new Date(`${form.date}T${endTimeStr}:00`);
-
     setSaving(true);
-
-    const { data: overlappingBlocks } = await supabase
-      .from('blocked_time_slots')
-      .select('id')
-      .eq('stylist_id', userId)
-      .lt('start_time', endDateTime.toISOString())
-      .gt('end_time', startDateTime.toISOString())
-      .limit(1);
-
-    if (overlappingBlocks && overlappingBlocks.length > 0) {
-      alert('指定された時間は「予約不可枠（休憩等）」としてブロックされているため予約できません。');
-      setSaving(false);
-      return;
-    }
 
     try {
       await createProxyBooking(finalCustomerId, form.date, startTimeStr, endTimeStr, form.menuNote, selectedMenusList, totalPrice);
       alert('代理予約を作成しました！');
       router.back();
     } catch (err) {
-      console.error(err);
-      alert('予約作成に失敗しました。');
+      setSaveError(err instanceof Error ? err.message : '予約を保存できませんでした。通信状況を確認して、もう一度お試しください。');
+    } finally {
       setSaving(false);
     }
   };
@@ -146,11 +131,12 @@ function ProxyBookingForm() {
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 sm:p-8 space-y-6">
         <div>
-          <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">お客様 (過去の予約から選択)</label>
+          <label htmlFor="booking-customer" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">お客様</label>
           {proxyCustomers.length === 0 ? (
-            <p className="text-sm text-red-500">過去の顧客データがありません。</p>
+            <p className="text-sm text-red-500">顧客一覧からお客様を登録してください。</p>
           ) : (
             <select 
+              id="booking-customer"
               value={form.customerId}
               onChange={e => setForm({...form, customerId: e.target.value})}
               className="w-full rounded-xl border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition"
@@ -163,8 +149,9 @@ function ProxyBookingForm() {
         </div>
         
         <div>
-          <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">日付</label>
+          <label htmlFor="booking-date" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">日付</label>
           <input 
+            id="booking-date"
             type="date" 
             value={form.date} 
             onChange={e => setForm({...form, date: e.target.value})} 
@@ -229,6 +216,10 @@ function ProxyBookingForm() {
           />
         </div>
         
+        {saveError && <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">
+          <p>{saveError}</p>
+          <Link href="/admin/schedule/settings" className="mt-2 inline-block underline">営業時間・定休日設定を開く</Link>
+        </div>}
         <div className="pt-6 mt-6 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
           <button onClick={() => router.back()} className="w-full sm:w-auto px-6 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-50 transition">
             キャンセル

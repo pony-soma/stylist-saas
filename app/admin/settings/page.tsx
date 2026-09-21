@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import AccountSwitcher from '@/components/AccountSwitcher';
+import { SubscriptionBanner } from '@/components/admin/SubscriptionBanner';
 import { ArrowLeft, Menu as MenuIcon, MessageCircle, ChevronRight, CreditCard } from 'lucide-react';
 
 export default function SettingsHubPage() {
@@ -16,6 +18,8 @@ export default function SettingsHubPage() {
         <p className="text-gray-500 mt-1">店舗のメニューや各種連携を設定します</p>
       </div>
 
+      <AccountSwitcher />
+      <SubscriptionBanner />
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
         <div className="divide-y divide-gray-100 dark:divide-gray-800">
           

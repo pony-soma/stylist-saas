@@ -81,7 +81,15 @@ export function useBookings(userId: string | null) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...details, requestId: pendingCreate.current.requestId }),
     });
-    if (!response.ok) throw new Error('予約を保存できませんでした。利用期限・営業時間・予約不可枠を確認してください。');
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      const message = response.status === 401 ? 'ログインの有効期限が切れました。設定からログインし直してください。'
+        : response.status === 403 ? 'ご利用権限を確認できません。契約状態を確認してください。'
+        : [400, 404, 409].includes(response.status) && typeof result?.error === 'string'
+          ? result.error
+          : '予約を保存できませんでした。通信状況を確認して、もう一度お試しください。';
+      throw new Error(message);
+    }
     pendingCreate.current = null;
   };
 
