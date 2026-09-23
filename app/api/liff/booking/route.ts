@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { notifyBookingRequest } from '@/lib/booking-notification';
 import { assertBillingOrigin, billingAdmin, getBillingStatus } from '@/lib/billing';
 import { verifiedLineProfile, LineBookingAuthError } from '@/lib/line-booking-auth';
 
@@ -52,7 +53,17 @@ export async function POST(request: Request) {
       throw Error();
     }
     if (typeof result.data !== 'string') throw Error();
-    return json({ id: result.data }, 201);
+    // Saving succeeded. Notification failure must never turn this into a booking failure.
+    let notification = 'unavailable';
+    try {
+      const sent = await notifyBookingRequest(new Request(request.url, {
+        method: 'POST', headers: { Authorization: request.headers.get('authorization')!, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: result.data }),
+      }));
+      notification = sent.ok ? 'accepted' : 'unavailable';
+      console.info('LINE booking notification result', { status: sent.status });
+    } catch { console.error('LINE booking notification unavailable after save'); }
+    return json({ id: result.data, notification }, 201);
   } catch (error) {
     if (error instanceof LineBookingAuthError) {
       // Only fixed categories and HTTP status: never tokens, profiles or provider bodies.
