@@ -54,7 +54,11 @@ export async function POST(request: Request) {
     if (typeof result.data !== 'string') throw Error();
     return json({ id: result.data }, 201);
   } catch (error) {
-    if (error instanceof LineBookingAuthError) return json({ error: 'LINEのログインを確認できません。予約URLから開き直してください。' }, 401);
+    if (error instanceof LineBookingAuthError) {
+      // Only fixed categories and HTTP status: never tokens, profiles or provider bodies.
+      console.warn('LINE booking authentication rejected', { reason: error.reason, providerStatus: error.providerStatus });
+      return json({ error: 'LINEのログインを確認できません。予約URLから開き直してください。' }, 401);
+    }
     // Deliberately omit tokens, profiles, request bodies and database details.
     console.error('LINE booking request unavailable');
     return json({ error: '予約情報を読み込めませんでした。時間をおいて再度お試しください。' }, 503);

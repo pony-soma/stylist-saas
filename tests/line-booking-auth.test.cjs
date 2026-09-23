@@ -9,12 +9,12 @@ function fixture(options = {}) {
   vm.runInNewContext(code,{exports,process:{env:{LINE_LOGIN_CHANNEL_ID:'expected-channel'}},AbortSignal,fetch:async (url, init)=>{
     calls.push({url,init});
     return url.includes('/verify?') ? Response.json({client_id:options.wrongChannel?'other':'expected-channel',expires_in:options.expired?0:300},{status:options.invalid?401:200})
-      : Response.json({userId:options.badProfile?'spoof':'U'+'1'.repeat(32),displayName:'Verified guest'});
+      : Response.json({userId:options.badProfile?'spoof':'U'+'1'.repeat(32),displayName:'Verified guest'},{status:options.profileRejected?403:200});
   }});
   return {calls,run:()=>exports.verifiedLineProfile(new Request('https://example.test',{headers:options.missing?{}:{Authorization:'Bearer test-token'}}))};
 }
-for(const mode of ['missing','invalid','wrongChannel','expired','badProfile']) test('LINE identity rejects '+mode, async()=>{
-  const f=fixture({[mode]:true}); await assert.rejects(f.run());
+for(const mode of ['missing','invalid','wrongChannel','expired','badProfile','profileRejected']) test('LINE identity rejects '+mode, async()=>{
+  const f=fixture({[mode]:true}); await assert.rejects(f.run(), error => { assert.equal(error.reason, {missing:'missing_token',invalid:'token_rejected',wrongChannel:'channel_mismatch',expired:'expired_token',badProfile:'invalid_profile',profileRejected:'profile_rejected'}[mode]); assert.equal(error.message.includes('test-token'),false); return true; });
   if(mode==='missing') assert.equal(f.calls.length,0);
   if(['invalid','wrongChannel','expired'].includes(mode))assert.equal(f.calls.length,1);
 });
