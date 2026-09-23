@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
+import { formatLocalDateInput } from '@/lib/utils';
 import liff from '@line/liff';
 import LiffMonthView from './calendar/LiffMonthView';
 import TimeSlotSheet from './calendar/TimeSlotSheet';
@@ -25,8 +25,10 @@ export default function LiffBookingCalendar() {
   const [liffError, setLiffError] = useState<string | null>(null);
 
   const [stylistId, setStylistId] = useState<string | null>(null);
-  const [customerId, setCustomerId] = useState<string | null>(null);
-  const [lineProfile, setLineProfile] = useState<{ displayName: string; userId: string } | null>(null);
+  const pendingRequest = useRef<{ payload: string; id: string } | null>(null);
+  const [submitError, setSubmitError] = useState('');
+  const [completed, setCompleted] = useState(false);
+  const [lineProfile, setLineProfile] = useState<{ displayName: string } | null>(null);
 
   const [menus, setMenus] = useState<Menu[]>([]);
   const [selectedMenuIds, setSelectedMenuIds] = useState<Set<string>>(new Set());
@@ -67,114 +69,52 @@ export default function LiffBookingCalendar() {
     setDays(newDays);
   }, [availabilitySettings]);
 
+  const bookingRequest = async (body: object) => {
+    const token = liff.getAccessToken();
+    if (!token) throw new Error('LINEのログインを確認できません。予約URLから開き直してください。');
+    const response = await fetch('/api/liff/booking', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify(body),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || '予約情報を取得できませんでした。');
+    return result;
+  };
+
   useEffect(() => {
-    const fetchStylistMenus = async (sid: string) => {
-      const { data } = await supabase.from('menus').select('*').eq('stylist_id', sid).order('created_at');
-      if (data) setMenus(data as Menu[]);
-    };
-
-    const fetchAvailability = async (sid: string) => {
-      const { data } = await supabase.from('availability_settings').select('*').eq('stylist_id', sid);
-      if (data) {
-        setAvailabilitySettings(data);
-        return data;
-      }
-      return [];
-    };
-
-    const initLiffAndData = async () => {
+    const init = async () => {
       try {
         const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
-        if (!liffId) throw new Error("LIFF ID が設定されていません");
-
+        if (!liffId) throw new Error('予約画面の準備ができていません。担当者へお問い合わせください。');
         await liff.init({ liffId });
-        
+        // LIFF's secondary redirect expands liff.state into the URL. Also accept it
+        // explicitly, without choosing an arbitrary stylist when the link is invalid.
+        const params = new URLSearchParams(window.location.search);
+        const state = params.get('liff.state');
+        const nested = state ? new URL(state, window.location.origin).searchParams : null;
+        const sid = params.get('stylist') || nested?.get('stylist');
+        if (!sid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid)) throw new Error('予約先が指定されていません。担当者から届いた予約URLを開いてください。');
         if (!liff.isLoggedIn()) {
-          liff.login();
+          const redirect = new URL('/liff', window.location.origin);
+          redirect.searchParams.set('stylist', sid);
+          liff.login({ redirectUri: redirect.toString() });
           return;
         }
-
-        const profile = await liff.getProfile();
-        setLineProfile(profile);
-
-        // LINEのユーザーIDから顧客情報を取得、または新規作成
-        let { data: customer } = await supabase
-          .from('customers')
-          .select('id')
-          .eq('line_user_id', profile.userId)
-          .single();
-
-        if (!customer) {
-          const { data: newCustomer, error: insertError } = await supabase
-            .from('customers')
-            .insert({
-              line_user_id: profile.userId,
-              display_name: profile.displayName,
-              line_picture_url: profile.pictureUrl
-            })
-            .select()
-            .single();
-            
-          if (insertError) throw insertError;
-          customer = newCustomer;
-        } else {
-          // すでに存在する場合も名前と画像を最新化しておく
-          await supabase
-            .from('customers')
-            .update({
-              display_name: profile.displayName,
-              line_picture_url: profile.pictureUrl
-            })
-            .eq('id', customer.id);
-        }
-        
-        setCustomerId(customer!.id);
-        setCustomerName(profile.displayName);
-
-        // URLパラメータから美容師IDを取得 (?stylist=xxx)
-        const searchParams = new URLSearchParams(window.location.search);
-        let targetStylistId = searchParams.get('stylist');
-        let finalSettings = availabilitySettings;
-
-        if (targetStylistId) {
-          const { data: sData } = await supabase
-            .from('stylists')
-            .select('id, line_user_id')
-            .eq('id', targetStylistId)
-            .single();
-            
-          if (sData) {
-            setStylistId(sData.id);
-            fetchStylistMenus(sData.id);
-            finalSettings = await fetchAvailability(sData.id);
-          } else {
-            console.error('指定された美容師が見つかりませんでした');
-          }
-        } else {
-          const { data: sData } = await supabase
-            .from('stylists')
-            .select('id, line_user_id')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-          if (sData) {
-            setStylistId(sData.id);
-            fetchStylistMenus(sData.id);
-            finalSettings = await fetchAvailability(sData.id);
-          }
-        }
-
-        generateCalendar(currentMonth, finalSettings);
+        const data = await bookingRequest({ action: 'load', stylistId: sid });
+        setStylistId(sid);
+        setLineProfile({ displayName: data.displayName });
+        setCustomerName(data.displayName);
+        setMenus(data.menus);
+        setAvailabilitySettings(data.settings);
+        generateCalendar(currentMonth, data.settings);
         setLoading(false);
-
-      } catch (err: any) {
-        console.error("LIFF Init Error:", err);
-        setLiffError(err.message);
+      } catch (error) {
+        setLiffError(error instanceof Error ? error.message : '予約情報を読み込めませんでした。');
         setLoading(false);
       }
     };
-
-    initLiffAndData();
+    void init();
+    // Initialize once; calendar changes must not repeat LINE authentication.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -201,25 +141,16 @@ export default function LiffBookingCalendar() {
     setSelectedTime(null);
     setShowBottomSheet(true);
 
-    const startOfDay = new Date(day.date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(day.date);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const { data: bookings } = await supabase
-      .from('bookings')
-      .select('start_time, end_time')
-      .eq('stylist_id', stylistId)
-      .gte('start_time', startOfDay.toISOString())
-      .lte('start_time', endOfDay.toISOString())
-      .neq('status', 'cancelled');
-
-    const { data: blockedSlots } = await supabase
-      .from('blocked_time_slots')
-      .select('start_time, end_time')
-      .eq('stylist_id', stylistId)
-      .gte('start_time', startOfDay.toISOString())
-      .lte('start_time', endOfDay.toISOString());
+    setTimeSlots([]);
+    setSubmitError('');
+    let blockedSlots: { start_time: string; end_time: string }[];
+    try {
+      const result = await bookingRequest({ action: 'slots', stylistId, date: formatLocalDateInput(day.date) });
+      blockedSlots = result.blocks;
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : '空き時間を取得できませんでした。');
+      return;
+    }
 
     // 選択されたメニューの合計時間を計算
     const selectedMenusList = menus.filter(m => selectedMenuIds.has(m.id));
@@ -263,13 +194,11 @@ export default function LiffBookingCalendar() {
       // 営業開始時間前、終了時間後を除外
       if (hours < startHour || (hours === startHour && mins < startMin)) return null;
       
-      const slotStartTime = new Date(day.date);
-      slotStartTime.setHours(hours, mins, 0, 0);
+      const slotStartTime = new Date(formatLocalDateInput(day.date) + "T" + timeStr + ":00+09:00");
       const slotEndTime = new Date(slotStartTime.getTime() + totalDuration * 60000);
       
       // 営業終了時間を越える場合は予約不可
-      const endOfDayLimit = new Date(day.date);
-      endOfDayLimit.setHours(endHour, endMin, 0, 0);
+      const endOfDayLimit = new Date(formatLocalDateInput(day.date) + 'T' + String(endHour).padStart(2,'0') + ':' + String(endMin).padStart(2,'0') + ':00+09:00');
       if (slotEndTime.getTime() > endOfDayLimit.getTime()) {
         return { time: timeStr, available: false };
       }
@@ -286,7 +215,7 @@ export default function LiffBookingCalendar() {
 
       return {
         time: timeStr,
-        available: !isBlocked
+        available: !isBlocked && slotStartTime.getTime() > Date.now()
       };
     }).filter(Boolean) as { time: string, available: boolean }[];
 
@@ -294,67 +223,27 @@ export default function LiffBookingCalendar() {
   };
 
   const handleSubmit = async () => {
-    if (!selectedDate || !selectedTime || !stylistId || !customerId) return;
-    
+    if (!selectedDate || !selectedTime || !stylistId || submitting) return;
     setSubmitting(true);
-
-    const [hours, mins] = selectedTime.split(':').map(Number);
-    const startDateTime = new Date(selectedDate);
-    startDateTime.setHours(hours, mins, 0, 0);
-    
-    const selectedMenusList = menus.filter(m => selectedMenuIds.has(m.id));
-    const totalDuration = selectedMenusList.reduce((acc, curr) => acc + curr.duration, 0);
-    const totalPrice = selectedMenusList.reduce((acc, curr) => acc + curr.price, 0);
-    
-    const endDateTime = new Date(startDateTime.getTime() + totalDuration * 60000);
-
-    const { data: savedBooking, error } = await supabase
-      .from('bookings')
-      .insert({
-        customer_id: customerId,
-        stylist_id: stylistId,
-        start_time: startDateTime.toISOString(),
-        end_time: endDateTime.toISOString(),
-        status: 'pending',
-        menu_note: menuNote,
-        source: 'liff',
-        selected_menus: selectedMenusList,
-        total_price: totalPrice
-      })
-      .select('id')
-      .single();
-
-    // エラーがなければLINEに通知を送信
-    if (!error) {
-      try {
-        const accessToken = liff.getAccessToken();
-        if (savedBooking?.id && accessToken) {
-          const response = await fetch('/api/notify/booking', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({ bookingId: savedBooking.id }),
-          });
-          if (!response.ok) console.warn('予約は保存済みですが、LINE通知を送信できませんでした。');
-        }
-      } catch (err) {
-        console.error('Failed to send LINE notification');
-      }
-    }
-
-    setSubmitting(false);
-
-    if (error) {
-      console.error(error);
-      alert('予約の保存に失敗しました。');
-    } else {
-      alert('予約を受け付けました！');
+    setSubmitError('');
+    try {
+      const details = { action: 'save', stylistId,
+        startTime: new Date(formatLocalDateInput(selectedDate) + 'T' + selectedTime + ':00+09:00').toISOString(),
+        menuIds: Array.from(selectedMenuIds).sort(), menuNote };
+      const payload = JSON.stringify(details);
+      if (pendingRequest.current?.payload !== payload) pendingRequest.current = { payload, id: crypto.randomUUID() };
+      await bookingRequest({ ...details, requestId: pendingRequest.current.id });
       setShowBottomSheet(false);
-      liff.closeWindow();
-    }
+      setCompleted(true);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : '予約を保存できませんでした。もう一度お試しください。');
+    } finally { setSubmitting(false); }
   };
+
+  if (completed) return <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+    <h1 className="text-xl font-bold">予約リクエストを受け付けました</h1>
+    <p className="mt-4">担当者の承認をお待ちください。この画面を閉じていただけます。</p>
+  </div>;
 
   if (loading) {
     return (
@@ -474,6 +363,7 @@ export default function LiffBookingCalendar() {
         onSelectTime={setSelectedTime}
       >
         <div className="mt-4 border-t border-gray-200 dark:border-gray-800 pt-4">
+          {submitError && <p role="alert" className="mb-3 text-sm text-red-700">{submitError}</p>}
           <div className="bg-gray-50 dark:bg-slate-800/50 p-3 rounded-xl mb-3 border border-gray-100 dark:border-gray-800">
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 font-medium">ご予約内容</p>
             {selectedDate && selectedTime && (

@@ -24,7 +24,7 @@ export default defineConfig({
     { name: 'chromium-mobile', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: 'npm run start -- --hostname localhost --port 3000',
+    command: 'node --require ./tests/e2e/line-provider.cjs ./node_modules/next/dist/bin/next start --hostname localhost --port 3000',
     url: 'http://localhost:3000/login',
     reuseExistingServer: false,
     timeout: 90_000,
