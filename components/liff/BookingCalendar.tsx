@@ -28,6 +28,7 @@ export default function LiffBookingCalendar() {
   const pendingRequest = useRef<{ payload: string; id: string } | null>(null);
   const [submitError, setSubmitError] = useState('');
   const [completed, setCompleted] = useState(false);
+  const [notificationUnavailable, setNotificationUnavailable] = useState(false);
   const [lineProfile, setLineProfile] = useState<{ displayName: string } | null>(null);
 
   const [menus, setMenus] = useState<Menu[]>([]);
@@ -232,7 +233,8 @@ export default function LiffBookingCalendar() {
         menuIds: Array.from(selectedMenuIds).sort(), menuNote };
       const payload = JSON.stringify(details);
       if (pendingRequest.current?.payload !== payload) pendingRequest.current = { payload, id: crypto.randomUUID() };
-      await bookingRequest({ ...details, requestId: pendingRequest.current.id });
+      const saved = await bookingRequest({ ...details, requestId: pendingRequest.current.id });
+      setNotificationUnavailable(saved.notification === 'unavailable');
       setShowBottomSheet(false);
       setCompleted(true);
     } catch (error) {
@@ -243,6 +245,7 @@ export default function LiffBookingCalendar() {
   if (completed) return <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
     <h1 className="text-xl font-bold">予約リクエストを受け付けました</h1>
     <p className="mt-4">担当者の承認をお待ちください。この画面を閉じていただけます。</p>
+    {notificationUnavailable && <p role="status" className="mt-4 text-amber-700">予約は保存されていますが、担当者へのLINE通知を送れませんでした。お急ぎの場合は担当者へ直接ご連絡ください。</p>}
   </div>;
 
   if (loading) {

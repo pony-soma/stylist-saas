@@ -4,6 +4,7 @@ const valid={action:'save',stylistId:stylist,startTime:'2035-01-03T01:00:00.000Z
 function fixture(options={}){
   const exports={},calls=[],logs=[];class AuthError extends Error{constructor(){super('private-token');this.reason='channel_mismatch';}} 
   const mocks={
+    '@/lib/booking-notification':{notifyBookingRequest:async(req)=>{calls.push({notification:await req.json()});if(options.notifyThrows)throw Error('private-provider-error');return Response.json({}, {status:options.notifyFails?503:200});}},
     'next/server':{NextResponse:{json:(body,init)=>Response.json(body,init)}},
     '@/lib/line-booking-auth':{LineBookingAuthError:AuthError,verifiedLineProfile:async()=>{if(options.noAuth)throw new AuthError();return {userId:'U'+'1'.repeat(32),displayName:'Verified'};}},
     '@/lib/billing':{assertBillingOrigin:()=>{if(options.badOrigin)throw Error();},getBillingStatus:async()=>({status:options.expired?'expired':'master'}),billingAdmin:()=>({
@@ -11,7 +12,7 @@ function fixture(options={}){
       rpc:async(name,args)=>{calls.push({name,args});return {data:'saved',error:options.dbError};}
     })}
   };
-  vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/api/liff/booking/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:id=>mocks[id],console:{error(){},warn:(...args)=>logs.push(args)},Date});
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/api/liff/booking/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:id=>mocks[id],console:{error(){},warn:(...args)=>logs.push(args),info:(...args)=>logs.push(args)},Date,Request});
   return {calls,logs,run:(body=valid)=>exports.POST(new Request('https://example.test/api/liff/booking',{method:'POST',body:JSON.stringify(body)}))};
 }
 test('LINE reservation rejects forged identity, customer, price and end time',async()=>{
@@ -30,3 +31,5 @@ test('LINE database failures never expose provider or customer details',async()=
 });
 
 test('LINE auth diagnostic logs only safe reason and never identity or token',async()=>{const f=fixture({noAuth:true});const r=await f.run();assert.equal(r.status,401);assert.equal(f.logs[0][1].reason,'channel_mismatch');assert.equal(JSON.stringify(f.logs).includes('private-token'),false);assert.equal((await r.text()).includes('channel_mismatch'),false);});
+
+test('saved reservation stays successful when notification fails or throws',async()=>{for(const options of [{notifyFails:true},{notifyThrows:true},{}]){const f=fixture(options);const r=await f.run();assert.equal(r.status,201);const b=await r.json();assert.equal(b.id,'saved');assert.equal(b.notification,options.notifyFails||options.notifyThrows?'unavailable':'accepted');assert.deepEqual(f.calls.find(x=>x.notification).notification,{bookingId:'saved'});}});

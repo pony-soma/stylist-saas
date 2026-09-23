@@ -3,6 +3,7 @@ import { test, expect, appURL } from './fixtures';
 
 test('copied booking URL → LINE identity → menu/date → durable pending reservation; repeat safely', async ({ page, context, account, admin }) => {
   const lineHex = randomUUID().replaceAll('-', '');
+  expect((await admin.from('stylists').update({line_user_id:'U'+randomUUID().replaceAll('-','')}).eq('id',account.id)).error).toBeNull();
   await context.addInitScript(token => sessionStorage.setItem('lino-e2e-line-token', token), 'e2e-line-' + lineHex);
   const menu = await admin.from('menus').insert({ stylist_id: account.id, name: 'LINE予約カット', duration: 60, price: 4200 }).select('id').single();
   expect(menu.error).toBeNull();
@@ -27,6 +28,7 @@ test('copied booking URL → LINE identity → menu/date → durable pending res
   await page.getByRole('button', { name: /予約.*(確定|リクエスト|送信)/ }).click();
   const response = await saved;
   expect(response.status()).toBe(201);
+  expect((await response.json()).notification).toBe('accepted');
   await expect(page.getByRole('heading', { name: '予約リクエストを受け付けました', exact: true })).toBeVisible();
   const customer = await admin.from('customers').select('id').eq('line_user_id', 'U'+lineHex).single();
   expect(customer.error).toBeNull();
@@ -37,6 +39,7 @@ test('copied booking URL → LINE identity → menu/date → durable pending res
   expect(Date.parse(bookings.data![0].end_time)-Date.parse(bookings.data![0].start_time)).toBe(3600000);
   const replay = await page.request.post('/api/liff/booking', { headers: { Origin: appURL, Authorization: 'Bearer e2e-line-'+lineHex }, data: response.request().postDataJSON() });
   expect(replay.status()).toBe(201);
+  expect((await replay.json()).notification).toBe('accepted');
   expect((await replay.json()).id).toBe(bookings.data![0].id);
   expect((await admin.from('bookings').select('id').eq('stylist_id', account.id)).data).toHaveLength(1);
   await page.goto('/liff?stylist='+account.id);
@@ -66,4 +69,22 @@ test('provider-rejected LINE token shows a safe error without loading customer d
   const after = await admin.from('bookings').select('id', { count: 'exact', head: true }).eq('stylist_id', account.id);
   expect(after.error).toBeNull();
   expect(after.count).toBe(before.count);
+});
+
+test('notification unavailable still completes the booking and explains saved state', async ({page, context, account, admin}) => {
+  const lineHex = randomUUID().replaceAll('-', '');
+  await context.clearCookies();
+  await context.addInitScript(token => sessionStorage.setItem('lino-e2e-line-token', token), 'e2e-line-' + lineHex);
+  expect((await admin.from('stylists').update({line_user_id:null}).eq('id',account.id)).error).toBeNull();
+  expect((await admin.from('menus').insert({stylist_id:account.id,name:'通知失敗確認',duration:30,price:1000})).error).toBeNull();
+  await page.goto('/liff?stylist='+account.id);
+  await page.getByRole('checkbox',{name:/通知失敗確認/}).check();
+  await page.getByRole('button',{name:'翌月',exact:true}).click();
+  await page.getByRole('button',{name:'1',exact:true}).click();
+  await page.getByRole('button',{name:/10:00/}).click();
+  await page.getByRole('button',{name:/予約.*(確定|リクエスト|送信)/}).click();
+  await expect(page.getByRole('heading',{name:'予約リクエストを受け付けました',exact:true})).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('予約は保存されていますが');
+  const saved=await admin.from('bookings').select('status').eq('stylist_id',account.id);
+  expect(saved.error).toBeNull();expect(saved.data).toEqual([{status:'pending'}]);
 });
