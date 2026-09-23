@@ -2,7 +2,7 @@ const {test}=require('node:test');const assert=require('node:assert/strict');con
 const stylist='aaaaaaaa-0000-4000-8000-000000000001',menu='aaaaaaaa-0000-4000-8000-000000000002';
 const valid={action:'save',stylistId:stylist,startTime:'2035-01-03T01:00:00.000Z',menuIds:[menu],menuNote:'',requestId:'aaaaaaaa-0000-4000-8000-000000000003'};
 function fixture(options={}){
-  const exports={},calls=[];class AuthError extends Error{}
+  const exports={},calls=[],logs=[];class AuthError extends Error{constructor(){super('private-token');this.reason='channel_mismatch';}} 
   const mocks={
     'next/server':{NextResponse:{json:(body,init)=>Response.json(body,init)}},
     '@/lib/line-booking-auth':{LineBookingAuthError:AuthError,verifiedLineProfile:async()=>{if(options.noAuth)throw new AuthError();return {userId:'U'+'1'.repeat(32),displayName:'Verified'};}},
@@ -11,8 +11,8 @@ function fixture(options={}){
       rpc:async(name,args)=>{calls.push({name,args});return {data:'saved',error:options.dbError};}
     })}
   };
-  vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/api/liff/booking/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:id=>mocks[id],console:{error(){}},Date});
-  return {calls,run:(body=valid)=>exports.POST(new Request('https://example.test/api/liff/booking',{method:'POST',body:JSON.stringify(body)}))};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/api/liff/booking/route.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:id=>mocks[id],console:{error(){},warn:(...args)=>logs.push(args)},Date});
+  return {calls,logs,run:(body=valid)=>exports.POST(new Request('https://example.test/api/liff/booking',{method:'POST',body:JSON.stringify(body)}))};
 }
 test('LINE reservation rejects forged identity, customer, price and end time',async()=>{
  for(const extra of [{customerId:menu},{lineUserId:'spoof'},{displayName:'spoof'},{totalPrice:1},{endTime:valid.startTime}]){
@@ -28,3 +28,5 @@ test('LINE reservation delegates atomic save using only verified identity',async
 test('LINE database failures never expose provider or customer details',async()=>{
  for(const code of ['42501','40001','22023','XX000']){const response=await fixture({dbError:{code,message:'private-value',details:'private-value'}}).run();assert.equal((await response.text()).includes('private-value'),false);}
 });
+
+test('LINE auth diagnostic logs only safe reason and never identity or token',async()=>{const f=fixture({noAuth:true});const r=await f.run();assert.equal(r.status,401);assert.equal(f.logs[0][1].reason,'channel_mismatch');assert.equal(JSON.stringify(f.logs).includes('private-token'),false);assert.equal((await r.text()).includes('channel_mismatch'),false);});

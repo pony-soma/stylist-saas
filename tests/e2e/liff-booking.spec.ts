@@ -51,3 +51,19 @@ test('invalid booking link and unauthenticated LINE requests cannot select anoth
   const result = await page.request.post('/api/liff/booking', { headers: { Origin: appURL }, data: { action: 'load', stylistId: account.id } });
   expect(result.status()).toBe(401);
 });
+
+test('provider-rejected LINE token shows a safe error without loading customer data', async ({ page, context, account, admin }) => {
+  await context.clearCookies();
+  await context.addInitScript(() => sessionStorage.setItem('lino-e2e-line-token', 'rejected-token'));
+  const before = await admin.from('bookings').select('id', { count: 'exact', head: true }).eq('stylist_id', account.id);
+  expect(before.error).toBeNull();
+  const request = page.waitForResponse(r => r.url().endsWith('/api/liff/booking'));
+  await page.goto('/liff?stylist=' + account.id);
+  const response = await request;
+  expect(response.status()).toBe(401);
+  await expect(page.getByText('LINEのログインを確認できません。予約URLから開き直してください。')).toBeVisible();
+  expect(await response.text()).not.toContain('rejected-token');
+  const after = await admin.from('bookings').select('id', { count: 'exact', head: true }).eq('stylist_id', account.id);
+  expect(after.error).toBeNull();
+  expect(after.count).toBe(before.count);
+});
