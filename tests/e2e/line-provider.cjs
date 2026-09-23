@@ -13,7 +13,7 @@ globalThis.fetch = async (input, init) => {
   if(url.pathname === '/v2/bot/message/push') {
     const headers = new Headers(init?.headers), key=headers.get('x-line-retry-key');
     const body=JSON.parse(init.body);
-    if(headers.get('authorization')!=='Bearer synthetic-notification-token' || !key || !/^U[0-9a-f]{32}$/.test(body.to) || body.messages[0].text !== '新しい予約リクエストが入りました。\nLiNoの管理画面でご確認ください。\nhttps://lino-salon.app/admin') return Response.json({}, {status:400});
+    if(headers.get('authorization')!=='Bearer synthetic-notification-token' || !key || !/^U[0-9a-f]{32}$/.test(body.to) || !['【お客様】予約テストのお客様 様','【日時】','【メニュー】','【合計料金】','https://lino-salon.app/admin'].every(part=>body.messages[0].text.includes(part))) return Response.json({}, {status:400});
     if(acceptedNotifications.has(key)) return Response.json({}, {status:409,headers:{'x-line-accepted-request-id':'synthetic-accepted'}});
     acceptedNotifications.add(key);return Response.json({});
   }

@@ -45,12 +45,12 @@ export async function notifyBookingRequest(req: Request) {
     }
     const db = billingAdmin();
     const { data: booking, error: bookingError } = await db.from('bookings')
-      .select('id,customer_id,stylist_id,status,source,created_at')
+      .select('id,customer_id,stylist_id,status,source,created_at,start_time,selected_menus,total_price,menu_note')
       .eq('id', body.bookingId).maybeSingle();
     if (bookingError) throw new Error('Database unavailable');
     if (!booking) return NextResponse.json({ error: 'Booking unavailable' }, { status: 404 });
     const { data: customer, error: customerError } = await db.from('customers')
-      .select('line_user_id').eq('id', booking.customer_id).maybeSingle();
+      .select('line_user_id,display_name').eq('id', booking.customer_id).maybeSingle();
     if (customerError) throw new Error('Database unavailable');
     if (!customer || customer.line_user_id !== profile.userId) {
       return NextResponse.json({ error: 'Booking unavailable' }, { status: 404 });
@@ -67,8 +67,25 @@ export async function notifyBookingRequest(req: Request) {
     if (!stylist || typeof stylist.line_user_id !== 'string' || !lineId.test(stylist.line_user_id)) {
       return NextResponse.json({ error: 'Stylist LINE connection unavailable' }, { status: 409 });
     }
-    // No customer name, menu, price, date or notes leave the application.
-    const messageText = '新しい予約リクエストが入りました。\nLiNoの管理画面でご確認ください。\nhttps://lino-salon.app/admin';
+    // Use only stored booking details; never caller-provided message content.
+    if (!Number.isFinite(Date.parse(booking.start_time)) || !Number.isSafeInteger(booking.total_price) || booking.total_price < 0 ||
+        typeof customer.display_name !== 'string' || !Array.isArray(booking.selected_menus) ||
+        booking.selected_menus.some((menu: unknown) => !menu || typeof menu !== 'object' || !('name' in menu) || typeof menu.name !== 'string') ||
+        (booking.menu_note != null && typeof booking.menu_note !== 'string')) throw new Error('Invalid booking data');
+    const dateStr = new Date(booking.start_time).toLocaleString('ja-JP', {
+      timeZone: 'Asia/Tokyo', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+    const details = `📅 新規の予約リクエストが入りました！\n\n` +
+      `【お客様】${customer.display_name} 様\n` +
+      `【日時】${dateStr}〜\n` +
+      `【メニュー】${booking.selected_menus.map((menu: { name: string }) => menu.name).join(', ')}\n` +
+      `【合計料金】¥${booking.total_price.toLocaleString('ja-JP')}\n` +
+      (booking.menu_note ? `【備考】${booking.menu_note}\n` : '');
+    const footer = '\nダッシュボードから承認を行ってください。\nhttps://lino-salon.app/admin';
+    // LINE text limit: preserve the action link even for very long notes.
+    const notice = '\n（続きは管理画面でご確認ください）';
+    const messageText = details.length + footer.length <= 5000 ? details + footer
+      : details.slice(0, 5000 - footer.length - notice.length).replace(/[\uD800-\uDBFF]$/, '') + notice + footer;
     const response = await fetch('https://api.line.me/v2/bot/message/push', {
       method: 'POST', headers: { Authorization: 'Bearer ' + channelAccessToken, 'Content-Type': 'application/json', 'X-Line-Retry-Key': booking.id },
       body: JSON.stringify({ to: stylist.line_user_id, messages: [{ type: 'text', text: messageText }] }),
