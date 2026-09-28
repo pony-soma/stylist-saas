@@ -65,12 +65,16 @@ test('proxy reservation explains closed days, then saves on an open day', async 
   await page.goto('/admin/customers');
   await page.getByRole('heading', { name: '代理予約確認用', exact: true }).click();
   await expect(page).toHaveURL(`${appURL}/admin/customers/${customer.data!.customer_id}`);
+  await expect(page.getByRole('button', { name: 'LINE送信', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '電話する', exact: true })).toBeDisabled();
+  await expect(page.getByRole('link', { name: '電話する', exact: true })).toHaveCount(0);
   const phone = page.getByPlaceholder('090-1234-5678');
   await phone.fill('09000000000');
   await phone.blur();
   await expect.poll(async () => (await admin.from('customers').select('phone_number').eq('id', customer.data!.customer_id).single()).data?.phone_number).toBe('09000000000');
   await page.reload();
   await expect(phone).toHaveValue('09000000000');
+  await expect(page.getByRole('link', { name: '電話する', exact: true })).toHaveAttribute('href', 'tel:09000000000');
   const address = page.getByPlaceholder('都道府県・市区町村・番地など');
   await address.fill('検証用住所');
   await address.blur();
