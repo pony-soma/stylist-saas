@@ -8,9 +8,15 @@ import LiffMonthView from './calendar/LiffMonthView';
 import TimeSlotSheet from './calendar/TimeSlotSheet';
 import { Menu } from '@/types';
 
+type Block = { start_time: string; end_time: string };
+type MonthEntry = { expires: number; value?: Block[]; pending?: Promise<Block[]> };
 type DayData = { date: Date; isAvailable: boolean };
 
 export default function LiffBookingCalendar() {
+  const monthCache = useRef(new Map<string, MonthEntry>());
+  const slotRequest = useRef(0);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [stylistName, setStylistName] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showBottomSheet, setShowBottomSheet] = useState(false);
   const [customerName, setCustomerName] = useState('お客様');
@@ -82,6 +88,30 @@ export default function LiffBookingCalendar() {
     return result;
   };
 
+  const loadMonth = (sid: string, date: Date): Promise<Block[]> => {
+    const month = formatLocalDateInput(date).slice(0, 7);
+    const key = sid + ':' + month;
+    const cached = monthCache.current.get(key);
+    if (cached?.pending) return cached.pending;
+    if (cached?.value && cached.expires > Date.now()) return Promise.resolve(cached.value);
+    const entry: MonthEntry = { expires: 0 };
+    const pending = bookingRequest({ action: 'slots', stylistId: sid, month }).then(result => {
+      entry.value = result.blocks;
+      entry.expires = Date.now() + 30_000;
+      entry.pending = undefined;
+      return result.blocks as Block[];
+    }).catch(error => {
+      monthCache.current.delete(key);
+      throw error;
+    });
+    entry.pending = pending;
+    // Bound memory even if someone browses many months.
+    if (monthCache.current.size >= 3) monthCache.current.delete(monthCache.current.keys().next().value!);
+    monthCache.current.set(key, entry);
+    return pending;
+  };
+  const prefetchMonth = (sid: string, date: Date) => { void loadMonth(sid, date).catch(() => {}); };
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -103,6 +133,8 @@ export default function LiffBookingCalendar() {
         }
         const data = await bookingRequest({ action: 'load', stylistId: sid });
         setStylistId(sid);
+        setStylistName(data.stylistName || '');
+        prefetchMonth(sid, currentMonth);
         setLineProfile({ displayName: data.displayName });
         setCustomerName(data.displayName);
         setMenus(data.menus);
@@ -123,12 +155,14 @@ export default function LiffBookingCalendar() {
     const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
     setCurrentMonth(newMonth);
     generateCalendar(newMonth);
+    if (stylistId) prefetchMonth(stylistId, newMonth);
   };
 
   const handleNextMonth = () => {
     const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
     setCurrentMonth(newMonth);
     generateCalendar(newMonth);
+    if (stylistId) prefetchMonth(stylistId, newMonth);
   };
 
   const handleDateClick = async (day: DayData) => {
@@ -142,13 +176,17 @@ export default function LiffBookingCalendar() {
     setSelectedTime(null);
     setShowBottomSheet(true);
 
+    const requestId = ++slotRequest.current;
+    setSlotsLoading(true);
     setTimeSlots([]);
     setSubmitError('');
     let blockedSlots: { start_time: string; end_time: string }[];
     try {
-      const result = await bookingRequest({ action: 'slots', stylistId, date: formatLocalDateInput(day.date) });
-      blockedSlots = result.blocks;
+      blockedSlots = await loadMonth(stylistId, day.date);
+      if (requestId !== slotRequest.current) return;
     } catch (error) {
+      if (requestId !== slotRequest.current) return;
+      setSlotsLoading(false);
       setSubmitError(error instanceof Error ? error.message : '空き時間を取得できませんでした。');
       return;
     }
@@ -221,6 +259,7 @@ export default function LiffBookingCalendar() {
     }).filter(Boolean) as { time: string, available: boolean }[];
 
     setTimeSlots(calculatedSlots);
+    setSlotsLoading(false);
   };
 
   const handleSubmit = async () => {
@@ -271,6 +310,8 @@ export default function LiffBookingCalendar() {
     const newSet = new Set(selectedMenuIds);
     if (newSet.has(id)) newSet.delete(id);
     else newSet.add(id);
+    ++slotRequest.current;
+    setSelectedTime(null);
     setSelectedMenuIds(newSet);
   };
 
@@ -282,7 +323,7 @@ export default function LiffBookingCalendar() {
     <div className="bg-gray-50 dark:bg-slate-950 min-h-screen w-full max-w-md mx-auto shadow-xl relative font-sans pb-24 transition-colors duration-300">
       {/* ヘッダーエリア */}
       <header className="bg-white dark:bg-slate-900 px-5 pt-8 pb-4 shadow-sm relative z-10 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
-        <h1 className="font-bold text-xl text-gray-900 dark:text-white">ご予約</h1>
+        <div><p className="brand-wordmark text-indigo-700">LiNo</p><h1 className="font-bold text-xl text-gray-900 dark:text-white mt-2">ご予約</h1></div>
         {lineProfile && (
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{lineProfile.displayName} 様</span>
@@ -290,7 +331,8 @@ export default function LiffBookingCalendar() {
         )}
       </header>
 
-      <main className="p-4">
+      <main className="p-4 space-y-5">
+        <div className="px-1 py-3"><p className="text-lg font-semibold">{stylistName ? `${stylistName}へのご予約` : 'あなたらしいスタイルを、ここから。'}</p><p className="mt-2 text-sm text-gray-500 leading-relaxed">メニューと日時を選んで、予約をリクエスト。<br />担当者の承認後に予約が確定します。</p></div>
         {/* メニュー選択エリア */}
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl mb-4 shadow-sm border border-gray-100 dark:border-gray-800">
           <h2 className="font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-2">
@@ -359,7 +401,9 @@ export default function LiffBookingCalendar() {
 
       <TimeSlotSheet 
         isOpen={showBottomSheet}
-        onClose={() => setShowBottomSheet(false)}
+        onClose={() => { ++slotRequest.current; setShowBottomSheet(false); }}
+        loading={slotsLoading}
+        error={submitError}
         selectedDate={selectedDate}
         timeSlots={timeSlots}
         selectedTime={selectedTime}

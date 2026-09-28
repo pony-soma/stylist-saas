@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => null);
     if (!body || !['load', 'slots', 'save'].includes(body.action) || typeof body.stylistId !== 'string' || !uuid.test(body.stylistId)) return json({ error: '予約URLをご確認ください。' }, 400);
     const allowed = body.action === 'save' ? ['action','stylistId','startTime','menuIds','menuNote','requestId']
-      : body.action === 'slots' ? ['action','stylistId','date'] : ['action','stylistId'];
+      : body.action === 'slots' ? ['action','stylistId','date','month'] : ['action','stylistId'];
     if (Object.keys(body).some(key => !allowed.includes(key))) return json({ error: '予約内容をご確認ください。' }, 400);
     const profile = await verifiedLineProfile(request);
     const billing = await getBillingStatus(body.stylistId);
@@ -29,9 +29,16 @@ export async function POST(request: Request) {
       return json({ displayName: profile.displayName, stylistName: stylist.data.name, menus: menus.data, settings: settings.data });
     }
     if (body.action === 'slots') {
-      if (typeof body.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.date) || !Number.isFinite(Date.parse(body.date))) return json({ error: '日付をご確認ください。' }, 400);
-      const start = new Date(`${body.date}T00:00:00+09:00`);
-      const end = new Date(start.getTime() + 86400000);
+      // A bounded month lets the calendar prefetch once instead of authenticating
+      // with LINE again on every date tap. Save still validates current availability.
+      const monthly = body.month !== undefined;
+      const date = monthly ? `${body.month}-01` : body.date;
+      if ((monthly && (body.date !== undefined || typeof body.month !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(body.month))) ||
+          typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0,10) !== date) return json({ error: '日付をご確認ください。' }, 400);
+      const start = new Date(`${date}T00:00:00+09:00`);
+      const end = monthly
+        ? new Date(Date.UTC(Number(date.slice(0,4)), Number(date.slice(5,7)), 1) - 9 * 3600000)
+        : new Date(start.getTime() + 86400000);
       // Only unavailable intervals are returned. No customer, booking, or block titles.
       const blocks = await db.from('blocked_time_slots').select('start_time,end_time').eq('stylist_id', body.stylistId)
         .lt('start_time', end.toISOString()).gt('end_time', start.toISOString());

@@ -2,7 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-rgb));
+@layer base {
+  body { @apply bg-gray-50 text-gray-900 dark:bg-slate-950 dark:text-slate-100; font-family: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif; -webkit-font-smoothing: antialiased; }
+  button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+  button, input, textarea, select { touch-action: manipulation; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid #46785f; outline-offset: 4px; }
+  input[type=checkbox] { accent-color: #315e49; }
+  button:disabled { cursor: not-allowed; }
+  h1, h2, h3 { text-wrap: balance; }
+  @media (max-width: 640px) { input:not([type=checkbox]):not([type=radio]), textarea, select { font-size: 16px !important; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+}
+@layer components {
+  .brand-wordmark { font-family: Georgia, "Times New Roman", serif; font-size: 2rem; line-height: 1; letter-spacing: -.055em; font-weight: 500; }
+  .eyebrow { @apply text-xs font-semibold tracking-widest uppercase text-indigo-600 dark:text-indigo-300; }
+  .surface { @apply rounded-2xl border border-gray-200 bg-white shadow-sm dark:bg-slate-900 dark:border-slate-800; }
+  .setting-row { @apply flex items-center gap-4 px-5 py-6 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800; }
+  .setting-icon { @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-200; }
+  .primary-action { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-700; }
 }

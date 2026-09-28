@@ -1,105 +1,47 @@
 import LegalLinks from '@/components/LegalLinks';
 import Link from 'next/link';
-import { ArrowRight, Scissors, CalendarCheck, Users, Star } from 'lucide-react';
+import { ArrowRight, Scissors, MessageCircle, Users, Check, CalendarCheck } from 'lucide-react';
 
 export default function Home() {
-  return (
-    <div className="min-h-screen bg-white">
-      {/* Navigation */}
-      <nav className="fixed w-full bg-white/80 backdrop-blur-md z-50 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center">
-                <Scissors className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-bold text-xl tracking-tight text-gray-900">LiNo</span>
-            </div>
-            <div>
-              <Link href="/login?next=/billing" className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition mr-6">
-                ログイン
-              </Link>
-              <Link href="/login?next=/billing" className="text-sm font-bold bg-indigo-600 text-white px-5 py-2.5 rounded-full hover:bg-indigo-700 transition shadow-md hover:shadow-lg">
-                14日間無料で試す
-              </Link>
-            </div>
-          </div>
+  return <div className="min-h-screen bg-gray-50 text-gray-900">
+    <nav aria-label="メインナビゲーション" className="border-b border-gray-200 bg-gray-50/95">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
+        <Link href="/" className="brand-wordmark text-indigo-800">LiNo</Link>
+        <div className="flex items-center gap-4 sm:gap-7"><Link href="/login?next=/billing" className="text-sm font-semibold">ログイン</Link><Link href="/login?next=/billing" className="rounded-full bg-indigo-700 px-4 py-3 text-xs sm:text-sm font-semibold text-white">14日間無料で試す</Link></div>
+      </div>
+    </nav>
+    <main>
+      <section className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-2 lg:gap-16">
+        <div>
+          <p className="eyebrow">For independent stylists</p>
+          <p className="mt-4 text-sm text-gray-600">フリーランス美容師のための予約・顧客管理</p>
+          <h1 className="mt-7 text-4xl font-semibold leading-[1.5] tracking-tight sm:text-5xl sm:leading-[1.5]">また会いたい、を<br />つなぐ場所。</h1>
+          <p className="mt-7 max-w-md text-base leading-8 text-gray-600">予約も、お客様の好みも、前回の仕上がりも。<br />LiNoでひとつにまとめて、<br />目の前のお客様に向き合う時間を。</p>
+          <Link href="/login?next=/billing" className="primary-action mt-9">14日間無料で試す<ArrowRight className="h-4 w-4" /></Link>
+          <p className="mt-5 text-sm font-medium">月額1,980円（税込）</p>
+          <p className="mt-2 max-w-md text-xs leading-6 text-gray-500">初回14日間無料・カード登録必須。体験終了前に解約しない場合、月額1,980円（税込）で自動更新します。</p>
         </div>
-      </nav>
-
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 sm:pt-40 sm:pb-28 px-4 sm:px-6 lg:px-8 overflow-hidden relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-100 via-white to-white -z-10"></div>
-        <div className="max-w-7xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-sm font-medium mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <Star className="w-4 h-4 text-orange-400" />
-            <span>美容師専用の予約・顧客管理システム</span>
+        <div className="relative rounded-[2rem] bg-[#e4eadd] p-6 sm:p-10">
+          <p className="mb-5 text-xs tracking-widest text-indigo-700">ひとりひとりを、大切に。</p>
+          <div className="rounded-2xl border border-white bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-5"><span className="brand-wordmark text-indigo-800">LiNo</span><span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-500">画面イメージ</span></div>
+            <div className="mt-6 flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-50 text-indigo-700"><CalendarCheck className="h-5 w-5" /></span><div><p className="font-semibold">次のご来店が、楽しみになる。</p><p className="mt-1 text-xs text-gray-500">予約・顧客情報・施術記録をひとつに</p></div></div>
+            <div className="mt-6 space-y-3">{['LINEから届いた予約を確認','前回のカラーと仕上がりを振り返る','今日の施術を写真と一緒に記録'].map((text,i) => <div key={text} className="flex items-center gap-3 rounded-xl bg-gray-50 p-4 text-sm"><span className="text-xs text-indigo-600">0{i+1}</span>{text}<Check className="ml-auto h-4 w-4 shrink-0 text-indigo-500" /></div>)}</div>
           </div>
-          <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight text-gray-900 mb-8 leading-tight animate-in fade-in slide-in-from-bottom-6 duration-700 delay-100">
-            あなたの美容室に、<br className="hidden sm:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">最高の顧客体験</span>を。
-          </h1>
-          <p className="max-w-2xl mx-auto text-lg sm:text-xl text-gray-500 mb-10 leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
-            予約・顧客情報・施術記録を、ひとつの画面で管理。<br className="hidden sm:block" />
-            LiNoは、フリーランス美容師の日々の記録と予約管理を支えます。
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300">
-            <Link href="/login?next=/billing" className="w-full sm:w-auto px-8 py-4 bg-white text-gray-900 border-2 border-gray-900 rounded-full font-bold text-lg hover:bg-gray-50 transition shadow-md flex items-center justify-center gap-2">
-              14日間無料で試す
-            </Link>
-            <Link href="/login?next=/billing" className="w-full sm:w-auto px-8 py-4 bg-gray-900 text-white rounded-full font-bold text-lg hover:bg-gray-800 transition shadow-xl hover:shadow-2xl flex items-center justify-center gap-2 group">
-              月額1,980円（税込）のプランを確認
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-          <p className="mt-6 text-sm text-gray-400 animate-in fade-in duration-700 delay-500">初回14日間無料・カード登録必須。体験終了前に解約しない場合、月額1,980円（税込）で自動更新します。</p>
+          <p className="mt-6 text-center font-serif text-lg italic text-indigo-700">Less admin. More connection.</p>
         </div>
       </section>
-
-      {/* Features Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900">LiNoでできること</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition">
-              <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center mb-6">
-                <Users className="w-7 h-7 text-green-600" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">顧客情報をまとめて管理</h3>
-              <p className="text-gray-500">顧客情報と来店履歴をまとめて確認。お客様ごとの施術記録を、次回の接客に役立てられます。</p>
-            </div>
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition">
-              <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6">
-                <CalendarCheck className="w-7 h-7 text-indigo-600" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">直感的なスケジュール</h3>
-              <p className="text-gray-500">電話やメッセージで受け付けた予約を登録。カレンダーで日時と担当するお客様を確認できます。</p>
-            </div>
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition">
-              <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mb-6">
-                <Scissors className="w-7 h-7 text-purple-600" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">写真つき電子カルテ</h3>
-              <p className="text-gray-500">来店ごとの施術内容や使用薬剤、仕上がりの写真をスマホからサクサク保存できます。</p>
-            </div>
-          </div>
-          <p className="mt-8 text-center text-sm text-gray-600">現在の提供範囲は、美容師による予約登録・顧客管理・施術記録と写真の管理です。LINEからの予約受付・自動通知は準備中のため、ご利用いただけません。</p>
+      <section className="border-y border-gray-200 bg-white py-16 sm:py-24">
+        <div className="mx-auto max-w-6xl px-5 sm:px-8"><p className="eyebrow">Made for your everyday</p><h2 className="mt-4 text-2xl font-semibold sm:text-3xl">接客の前も、後も。頼れる相棒に。</h2>
+          <div className="mt-10 grid gap-8 md:grid-cols-3">{[
+            {icon:MessageCircle,title:'予約の入口を、LINEに。',body:'お客様はLINEの予約URLからメニューと日時を選択。届いた予約リクエストを、担当美容師のLINE通知と管理画面で確認できます。'},
+            {icon:Users,title:'「いつもの」を、忘れない。',body:'来店履歴とお客様の情報をまとめて管理。好みや前回の施術を振り返り、一人ひとりに合う接客へつなげます。'},
+            {icon:Scissors,title:'仕上がりも、記憶に残す。',body:'施術内容、使用薬剤、仕上がりの写真をカルテに保存。次のご来店に役立つ記録を、スマホから残せます。'},
+          ].map(({icon:Icon,title,body}) => <article key={title} className="rounded-2xl bg-gray-50 p-7"><Icon className="h-7 w-7 text-indigo-600" strokeWidth={1.4} /><h3 className="mt-6 text-lg font-semibold">{title}</h3><p className="mt-4 text-sm leading-7 text-gray-600">{body}</p></article>)}</div>
         </div>
       </section>
-      
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-100 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-400 text-sm">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Scissors className="w-4 h-4" />
-            <span className="font-bold">LiNo</span>
-          </div>
-          <LegalLinks />
-          <p className="mt-6">&copy; {new Date().getFullYear()} LiNo. All rights reserved.</p>
-        </div>
-      </footer>
-    </div>
-  );
+      <section className="mx-auto max-w-3xl px-5 py-16 text-center sm:py-24"><p className="eyebrow">Your next chapter</p><h2 className="mt-5 text-2xl font-semibold leading-relaxed sm:text-3xl">あなたらしい働き方を、<br />LiNoと始めませんか。</h2><Link href="/login?next=/billing" className="primary-action mt-8">14日間無料で試す<ArrowRight className="h-4 w-4" /></Link><p className="mt-4 text-xs leading-6 text-gray-500">カード登録が必要です。無料体験終了後は月額1,980円（税込）で自動更新。<br />課金開始前に解約すれば料金は発生しません。</p></section>
+    </main>
+    <footer className="border-t border-gray-200 bg-white px-5 py-10 text-center"><p className="brand-wordmark text-indigo-800">LiNo</p><LegalLinks /><p className="mt-6 text-xs text-gray-500">© {new Date().getFullYear()} LiNo</p></footer>
+  </div>;
 }

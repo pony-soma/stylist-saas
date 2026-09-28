@@ -75,18 +75,18 @@ export default function AdminDashboard() {
   if (loading && !userId) return <div className="p-6 text-center text-gray-500">読み込み中...</div>;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="px-4 py-8 sm:px-6 max-w-6xl mx-auto space-y-7 animate-in fade-in duration-500">
       <header className="flex flex-col gap-4 sm:gap-5 pb-5 border-b border-gray-200 dark:border-gray-800">
         
         {/* 上段：タイトルとアイコン類 */}
         <div className="flex justify-between items-start sm:items-center">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">LiNo Dashboard</h1>
-            <p className="text-sm sm:text-base text-gray-500 mt-1">予約状況の管理</p>
+            <h1 className="brand-wordmark text-gray-900 dark:text-white">LiNo</h1>
+            <p className="text-sm sm:text-base text-gray-500 mt-1">お客様と向き合う、一日のはじまり。</p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md text-sm sm:text-base">S</div>
+
           </div>
         </div>
 
@@ -95,14 +95,6 @@ export default function AdminDashboard() {
           
           {/* ナビゲーション */}
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3">
-            <Link 
-              href="/admin/schedule" 
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl transition-all shadow-sm"
-            >
-              <CalendarIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-              <span>カレンダー</span>
-            </Link>
-
             <Link 
               href="/admin/customers" 
               className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 sm:py-2 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl transition-all shadow-sm"
@@ -153,9 +145,9 @@ export default function AdminDashboard() {
         {/* 左側: カレンダー */}
         <section className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5 h-fit lg:sticky lg:top-6">
           <div className="flex justify-between items-center mb-6">
-            <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600"><ChevronLeft className="w-5 h-5"/></button>
+            <button aria-label="前の月" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600"><ChevronLeft className="w-5 h-5"/></button>
             <h2 className="font-bold text-lg text-gray-800 dark:text-white">{currentMonth.getFullYear()}年 {currentMonth.getMonth() + 1}月</h2>
-            <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600"><ChevronRight className="w-5 h-5"/></button>
+            <button aria-label="次の月" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600"><ChevronRight className="w-5 h-5"/></button>
           </div>
           
           <div className="grid grid-cols-7 gap-1 mb-2">
