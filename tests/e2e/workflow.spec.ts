@@ -51,6 +51,12 @@ test('customer → medical record/photo → reload → edit → permanent photo 
     await page.getByRole('button', { name: '新しいカルテを記録する', exact: true }).click();
     const form = page.getByRole('heading', { name: 'カルテを追加', exact: true }).locator('..').locator('..');
     await form.locator('input[type="date"]').fill('2026-09-16');
+    const dateBounds = await form.locator('input[type="date"]').evaluate(input => {
+      const rect = input.getBoundingClientRect();
+      const parent = input.parentElement!.getBoundingClientRect();
+      return { contained: rect.left >= parent.left && rect.right <= parent.right + 1, viewport: rect.right <= window.innerWidth };
+    });
+    expect(dateBounds).toEqual({ contained: true, viewport: true });
     await form.getByPlaceholder('例: カット＋カラー').fill(menu);
     await form.locator('label').filter({ hasText: /^使用薬剤・カラーレシピ$/ }).locator('..').locator('textarea').fill('架空の薬剤レシピ');
     await form.locator('label').filter({ hasText: /^メモ・会話内容$/ }).locator('..').locator('textarea').fill(originalNotes);
