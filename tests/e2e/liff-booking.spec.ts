@@ -88,3 +88,53 @@ test('notification unavailable still completes the booking and explains saved st
   const saved=await admin.from('bookings').select('status').eq('stylist_id',account.id);
   expect(saved.error).toBeNull();expect(saved.data).toEqual([{status:'pending'}]);
 });
+
+test('prefetched times need no date-tap request; blocks remain disabled and stale saves are rejected', async ({page, context, account, admin}, testInfo) => {
+  await context.clearCookies();
+  const token='e2e-line-'+randomUUID().replaceAll('-','');
+  await context.addInitScript(value=>sessionStorage.setItem('lino-e2e-line-token',value),token);
+  expect((await admin.from('menus').insert({stylist_id:account.id,name:'先読みテスト',duration:60,price:3000})).error).toBeNull();
+  const next=new Date();next.setDate(1);next.setMonth(next.getMonth()+1);
+  const month=`${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}`;
+  expect((await admin.from('blocked_time_slots').insert({stylist_id:account.id,title:'非公開の休憩',start_time:month+'-01T10:00:00+09:00',end_time:month+'-01T11:00:00+09:00'})).error).toBeNull();
+  let requests=0;
+  page.on('request',r=>{if(r.url().endsWith('/api/liff/booking') && r.postDataJSON()?.action==='slots') requests++;});
+  await page.goto('/liff?stylist='+account.id);
+  await page.getByRole('checkbox',{name:/先読みテスト/}).check();
+  const prefetched=page.waitForResponse(r=>r.url().endsWith('/api/liff/booking') && r.request().postDataJSON()?.month===month);
+  await page.getByRole('button',{name:'翌月',exact:true}).click();
+  const result=await prefetched;expect(result.status()).toBe(200);expect(await result.text()).not.toContain('非公開の休憩');
+  const before=requests;
+  await page.getByRole('button',{name:'1',exact:true}).click();
+  await expect(page.getByRole('button',{name:/10:00/})).toBeDisabled();
+  await expect(page.getByRole('button',{name:/11:00/})).toBeEnabled();
+  expect(requests).toBe(before);
+  await page.screenshot({path:testInfo.outputPath('booking-times.png'),fullPage:true});
+  await page.getByRole('button',{name:/11:00/}).click();
+  expect((await admin.from('blocked_time_slots').insert({stylist_id:account.id,title:'後から追加',start_time:month+'-01T11:00:00+09:00',end_time:month+'-01T12:00:00+09:00'})).error).toBeNull();
+  await page.getByRole('button',{name:/予約.*リクエスト/}).click();
+  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('選択した枠または予約内容が変更されています');
+  expect((await admin.from('bookings').select('id').eq('stylist_id',account.id)).data).toEqual([]);
+});
+
+test('slow month load shows progress and closing/reopening never paints the previous day', async ({page, context, account, admin}) => {
+  await context.clearCookies();
+  await context.addInitScript(value=>sessionStorage.setItem('lino-e2e-line-token',value),'e2e-line-'+randomUUID().replaceAll('-',''));
+  expect((await admin.from('menus').insert({stylist_id:account.id,name:'待ち時間テスト',duration:60,price:3000})).error).toBeNull();
+  let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve;});
+  await page.route('**/api/liff/booking',async route=>{
+    if(route.request().postDataJSON()?.action==='slots') await held;
+    await route.continue();
+  });
+  await page.goto('/liff?stylist='+account.id);
+  await page.getByRole('checkbox',{name:/待ち時間テスト/}).check();
+  await page.getByRole('button',{name:'翌月',exact:true}).click();
+  await page.getByRole('button',{name:'1',exact:true}).click();
+  await expect(page.getByRole('status')).toContainText('空き時間を確認');
+  await expect(page.getByRole('button',{name:/予約.*リクエスト/})).toBeDisabled();
+  await page.getByRole('button',{name:'時間選択を閉じる'}).click();
+  await page.getByRole('button',{name:'2',exact:true}).click();
+  release();
+  await expect(page.getByRole('dialog')).toContainText('月2日');
+  await expect(page.getByRole('button',{name:/10:00/})).toBeEnabled();
+});

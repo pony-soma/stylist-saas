@@ -29,8 +29,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900 p-4 font-sans">
-      <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-500">
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-10 text-center relative overflow-hidden">
+      <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in-95 duration-500">
+        <div className="bg-indigo-800 p-10 text-center relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
           
@@ -38,8 +38,8 @@ export default function LoginPage() {
             <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/30 shadow-lg">
               <Scissors className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">LiNo</h1>
-            <p className="text-indigo-100 mt-2 text-sm font-medium">美容師向け予約・カルテ管理システム</p>
+            <h1 className="brand-wordmark text-white">LiNo</h1>
+            <p className="text-indigo-100 mt-2 text-sm font-medium">お客様とのつながりを、大切に。</p>
           </div>
         </div>
 

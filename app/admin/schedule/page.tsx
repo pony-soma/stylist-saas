@@ -1,5 +1,5 @@
-import ScheduleCalendar from '@/components/admin/ScheduleCalendar';
+import { redirect } from 'next/navigation';
 
 export default function SchedulePage() {
-  return <ScheduleCalendar />;
+  redirect('/admin');
 }

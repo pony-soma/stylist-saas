@@ -32,7 +32,7 @@ export default function AccountSwitcher() {
   };
 
   return (
-    <section aria-label="ログイン中のアカウント" className="my-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+    <section aria-label="ログイン中のアカウント" className="my-4 surface p-5 text-sm text-gray-700 dark:text-slate-200">
       {email && <p className="break-all">ログイン中：{email}</p>}
       <div className="flex flex-wrap gap-2">
       <button type="button" onClick={() => void signOut('/login')} disabled={busy}

@@ -1,74 +1,27 @@
 import Link from 'next/link';
 import AccountSwitcher from '@/components/AccountSwitcher';
 import { SubscriptionBanner } from '@/components/admin/SubscriptionBanner';
-import { ArrowLeft, Menu as MenuIcon, MessageCircle, ChevronRight, CreditCard } from 'lucide-react';
+import { ArrowLeft, Scissors, MessageCircle, ChevronRight, CreditCard, Clock } from 'lucide-react';
 
+const settings = [
+  { href: '/billing', title: '契約・お支払い', description: '無料体験の期限、お支払い情報、解約を確認・管理します', icon: CreditCard },
+  { href: '/admin/menus', title: 'メニュー設定', description: 'メニューの料金と所要時間を管理します', icon: Scissors },
+  { href: '/admin/schedule/settings', title: '営業時間・定休日設定', description: '営業時間、定休日、特定日の営業予定を設定します', icon: Clock },
+  { href: '/admin/settings/line', title: 'LINE通知設定', description: '新しい予約リクエストを、ご自身のLINEで受け取ります', icon: MessageCircle },
+];
 export default function SettingsHubPage() {
-  return (
-    <div className="p-6 max-w-4xl mx-auto animate-in fade-in duration-500">
-      <div className="mb-6">
-        <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 transition font-medium">
-          <ArrowLeft className="w-4 h-4" />
-          ダッシュボードに戻る
-        </Link>
-      </div>
-
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">設定</h1>
-        <p className="text-gray-500 mt-1">店舗のメニューや各種連携を設定します</p>
-      </div>
-
-      <AccountSwitcher />
-      <SubscriptionBanner />
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-        <div className="divide-y divide-gray-100 dark:divide-gray-800">
-          
-          <Link href="/billing" className="flex items-center p-6 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition group">
-            <CreditCard className="w-6 h-6 mr-7 text-indigo-600" />
-            <div className="flex-1">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">契約・お支払い</h2>
-              <p className="text-sm text-gray-500 mt-0.5">無料体験の期限、お支払い情報、解約を確認・管理します</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-400" />
-          </Link>
-
-          <Link href="/admin/menus" className="flex items-center p-6 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition group">
-            <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center mr-4">
-              <MenuIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 transition">メニュー設定</h2>
-              <p className="text-sm text-gray-500 mt-0.5">提供するメニューの料金や所要時間を管理します</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-500 transition translate-x-0 group-hover:translate-x-1" />
-          </Link>
-
-          <Link href="/admin/schedule/settings" className="flex items-center p-6 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition group">
-            <div className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center mr-4">
-              <svg className="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-orange-600 transition">営業時間・定休日設定</h2>
-              <p className="text-sm text-gray-500 mt-0.5">基本のスケジュールと臨時休業・営業日を設定します</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-orange-500 transition translate-x-0 group-hover:translate-x-1" />
-          </Link>
-
-          <Link href="/admin/settings/line" className="flex items-center p-6 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition group">
-            <div className="w-12 h-12 rounded-xl bg-[#06C755]/10 flex items-center justify-center mr-4">
-              <MessageCircle className="w-6 h-6 text-[#06C755]" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-[#06C755] transition">LINE通知設定</h2>
-              <p className="text-sm text-gray-500 mt-0.5">予約が入った際のLINEへの通知連携を設定します</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#06C755] transition translate-x-0 group-hover:translate-x-1" />
-          </Link>
-
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+    <Link href="/admin" className="inline-flex min-h-11 items-center gap-2 text-sm text-gray-500 hover:text-indigo-600"><ArrowLeft className="h-4 w-4" />ダッシュボードに戻る</Link>
+    <header className="my-8"><p className="eyebrow">Your workspace</p><h1 className="mt-3 text-3xl font-bold tracking-tight">設定</h1><p className="mt-3 text-sm text-gray-500">あなたの働き方に合わせて、LiNoを整える。</p></header>
+    <SubscriptionBanner />
+    <section aria-label="サービスの設定" className="surface overflow-hidden divide-y divide-gray-100 dark:divide-slate-800">
+      {settings.map(({href,title,description,icon:Icon}) => <Link key={href} href={href} className="setting-row group">
+        <span className="setting-icon"><Icon className="h-5 w-5" strokeWidth={1.6} /></span>
+        <div className="min-w-0 flex-1"><h2 className="text-base font-semibold group-hover:text-indigo-600">{title}</h2><p className="mt-1.5 text-xs sm:text-sm leading-relaxed text-gray-500">{description}</p></div>
+        <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
+      </Link>)}
+    </section>
+    <h2 className="mt-10 mb-3 text-sm font-semibold text-gray-600">アカウント</h2>
+    <AccountSwitcher />
+  </div>;
 }
