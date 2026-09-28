@@ -28,6 +28,9 @@ export function useCustomers(userId: string | null) {
 
   return {
     proxyCustomers,
-    fetchProxyCustomers
+    fetchProxyCustomers,
+    addProxyCustomer: (customer: { id: string; display_name: string }) => {
+      setProxyCustomers(current => [customer, ...current.filter(item => item.id !== customer.id)]);
+    }
   };
 }
