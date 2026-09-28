@@ -57,12 +57,12 @@ export default function TimeSlotSheet({
         <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
         
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-gray-900">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
             {selectedDate ? `${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日 (${['日', '月', '火', '水', '木', '金', '土'][selectedDate.getDay()]})` : ''}
           </h3>
           <button 
             aria-label="時間選択を閉じる" onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:scale-95"
+            className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-gray-500 dark:text-slate-300 active:scale-95"
           >
             <X className="w-5 h-5" />
           </button>
@@ -78,10 +78,10 @@ export default function TimeSlotSheet({
                 disabled={!slot.available}
                 onClick={() => onSelectTime(slot.time)}
                 className={`py-3 px-2 rounded-xl flex flex-col items-center justify-center transition-all active:scale-[0.95]
-                  ${!slot.available ? 'bg-gray-50 opacity-50 cursor-not-allowed' : 
+                  ${!slot.available ? 'bg-gray-50 dark:bg-slate-800 opacity-50 cursor-not-allowed' : 
                     selectedTime === slot.time 
                       ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 border border-indigo-600' 
-                      : 'bg-white dark:bg-slate-800 border border-gray-200 text-gray-700 hover:border-indigo-300'
+                      : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:border-indigo-300'
                   }
                 `}
               >

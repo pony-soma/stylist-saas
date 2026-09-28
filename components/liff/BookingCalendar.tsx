@@ -422,7 +422,7 @@ export default function LiffBookingCalendar() {
             <div className="mb-2 space-y-1">
               {selectedMenusList.map(menu => (
                 <div key={menu.id} className="flex justify-between items-center text-sm">
-                  <span className="text-gray-700">{menu.name}</span>
+                  <span className="text-gray-700 dark:text-slate-200">{menu.name}</span>
                   <span className="text-gray-500">¥{menu.price.toLocaleString()}</span>
                 </div>
               ))}
@@ -434,9 +434,9 @@ export default function LiffBookingCalendar() {
           </div>
           
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1 text-gray-700">ご要望・備考欄 (任意)</label>
-            <textarea 
-              className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition" 
+            <label htmlFor="booking-note" className="block text-sm font-medium mb-1 text-gray-700 dark:text-slate-200">ご要望・備考欄 (任意)</label>
+            <textarea id="booking-note"
+              className="w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition" 
               rows={2} 
               placeholder="事前に伝えておきたいことがあればご記入ください"
               value={menuNote}
