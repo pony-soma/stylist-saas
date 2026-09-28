@@ -36,9 +36,12 @@ export async function POST(request: Request) {
       if ((monthly && (body.date !== undefined || typeof body.month !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(body.month))) ||
           typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0,10) !== date) return json({ error: '日付をご確認ください。' }, 400);
       const start = new Date(`${date}T00:00:00+09:00`);
-      const end = monthly
-        ? new Date(Date.UTC(Number(date.slice(0,4)), Number(date.slice(5,7)), 1) - 9 * 3600000)
-        : new Date(start.getTime() + 86400000);
+      const end = new Date(start.getTime() + 86400000);
+      if (monthly) {
+        // setUTCFullYear avoids Date.UTC's special handling of years 00–99.
+        end.setUTCFullYear(Number(date.slice(0,4)), Number(date.slice(5,7)), 1);
+        end.setUTCHours(-9, 0, 0, 0);
+      }
       // Only unavailable intervals are returned. No customer, booking, or block titles.
       const blocks = await db.from('blocked_time_slots').select('start_time,end_time').eq('stylist_id', body.stylistId)
         .lt('start_time', end.toISOString()).gt('end_time', start.toISOString());
