@@ -11,11 +11,11 @@ import { useBookings } from '@/hooks/useBookings';
 import { formatTime, getDurationMinutes, formatLocalDateInput } from '@/lib/utils';
 import { Booking } from '@/types';
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ initialDate }: { initialDate?: string }) {
   const [userId, setUserId] = useState<string | null>(null);
   
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(() => initialDate ? new Date(`${initialDate}T12:00:00`) : new Date());
+  const [selectedDate, setSelectedDate] = useState(() => initialDate ? new Date(`${initialDate}T12:00:00`) : new Date());
   const router = useRouter();
 
   const { pending, monthBookings, loading, fetchBookings, updateBookingStatus } = useBookings(userId);

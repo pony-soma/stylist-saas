@@ -152,7 +152,7 @@ export default function EditBookingPage({ params }: { params: { id: string } }) 
     try {
       if (!await updateBookingDetails(booking.id, startDateTime.toISOString(), endDateTime.toISOString(), form.menuNote, selectedMenusList, totalPrice, booking.updated_at)) throw new Error('Booking update failed');
       alert('予約内容を更新しました！');
-      router.back();
+      router.replace(`/admin?date=${encodeURIComponent(form.date)}`);
     } catch (err) {
       console.error(err);
       alert('予約の更新に失敗しました。');
