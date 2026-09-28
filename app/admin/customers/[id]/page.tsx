@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import imageCompression from 'browser-image-compression';
-import { User, Phone, MessageCircle, UploadCloud, Plus, Loader2, Edit2, Trash2, XCircle, ArrowLeft } from 'lucide-react';
+import { User, Phone, UploadCloud, Plus, Loader2, Edit2, Trash2, XCircle, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { MedicalRecord, CustomerInfo } from '@/types';
@@ -455,19 +455,16 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
           </div>
           
           <div className="flex gap-4">
-            {customer.phone_number && (
+            {customer.phone_number?.trim() ? (
               <a href={`tel:${customer.phone_number}`} className="whitespace-nowrap flex-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition shadow-sm">
                 <Phone className="w-4 h-4 text-green-500" /> 電話する
               </a>
+            ) : (
+              <button type="button" disabled title="電話番号が未登録です"
+                className="whitespace-nowrap flex-1 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-gray-400 dark:text-gray-500 cursor-not-allowed">
+                <Phone className="w-4 h-4" /> 電話する
+              </button>
             )}
-            <button 
-              onClick={() => {
-                alert('LINE送信機能は現在準備中です。');
-              }}
-              className="whitespace-nowrap flex-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 transition shadow-sm"
-            >
-              <MessageCircle className="w-4 h-4 text-blue-500" /> LINE送信
-            </button>
           </div>
 
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
