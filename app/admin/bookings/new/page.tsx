@@ -101,7 +101,7 @@ function ProxyBookingForm() {
     try {
       await createProxyBooking(finalCustomerId, form.date, startTimeStr, endTimeStr, form.menuNote, selectedMenusList, totalPrice);
       alert('代理予約を作成しました！');
-      router.back();
+      router.replace(`/admin?date=${encodeURIComponent(form.date)}`);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : '予約を保存できませんでした。通信状況を確認して、もう一度お試しください。');
     } finally {
