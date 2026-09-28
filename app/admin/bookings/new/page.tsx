@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
@@ -19,7 +19,7 @@ function ProxyBookingForm() {
 
   const [userId, setUserId] = useState<string | null>(null);
   
-  const { proxyCustomers, fetchProxyCustomers } = useCustomers(userId);
+  const { proxyCustomers, fetchProxyCustomers, addProxyCustomer } = useCustomers(userId);
   const { createProxyBooking } = useBookings(userId);
   const { menus, fetchMenus } = useMenus(userId);
   
@@ -37,6 +37,42 @@ function ProxyBookingForm() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [initialized, setInitialized] = useState(false);
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [creatingCustomer, setCreatingCustomer] = useState(false);
+  const [customerError, setCustomerError] = useState('');
+  const customerCreateBusy = useRef(false);
+
+  const handleCreateCustomer = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const name = newCustomerName.trim();
+    if (!name || customerCreateBusy.current || saving) return;
+    customerCreateBusy.current = true;
+    setCreatingCustomer(true);
+    setCustomerError('');
+    try {
+      const response = await fetch('/api/customers', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_name: name }),
+      });
+      if (!response.ok) throw new Error(response.status === 403
+        ? '顧客の登録には有効なプランが必要です。'
+        : '顧客を登録できませんでした。名前を確認して、もう一度お試しください。');
+      const customer = await response.json();
+      if (typeof customer.id !== 'string') throw new Error('登録結果を確認できません。顧客一覧をご確認ください。');
+      addProxyCustomer({ id: customer.id, display_name: name });
+      setForm(current => ({ ...current, customerId: customer.id }));
+      setNewCustomerName('');
+      setShowNewCustomer(false);
+    } catch (error) {
+      setCustomerError(error instanceof TypeError
+        ? '通信状況により登録結果を確認できません。再登録の前に顧客一覧をご確認ください。'
+        : error instanceof Error ? error.message : '顧客を登録できませんでした。');
+    } finally {
+      customerCreateBusy.current = false;
+      setCreatingCustomer(false);
+    }
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -80,6 +116,7 @@ function ProxyBookingForm() {
   };
 
   const handleSave = async () => {
+    if (saving || showNewCustomer || customerCreateBusy.current) return;
     setSaveError('');
     const startTimeStr = `${form.startHour}:${form.startMinute}`;
     const endTimeStr = `${form.endHour}:${form.endMinute}`;
@@ -133,7 +170,7 @@ function ProxyBookingForm() {
         <div>
           <label htmlFor="booking-customer" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">お客様</label>
           {proxyCustomers.length === 0 ? (
-            <p className="text-sm text-red-500">顧客一覧からお客様を登録してください。</p>
+            <p className="text-sm text-gray-500">下の「名前だけで顧客を登録」からお客様を追加できます。</p>
           ) : (
             <select 
               id="booking-customer"
@@ -145,6 +182,29 @@ function ProxyBookingForm() {
                 <option key={c.id} value={c.id}>{c.display_name}</option>
               ))}
             </select>
+          )}
+          {!showNewCustomer ? (
+            <button type="button" disabled={saving} onClick={() => { setShowNewCustomer(true); setCustomerError(''); }}
+              className="mt-3 min-h-11 text-sm font-medium text-indigo-700 dark:text-indigo-300 disabled:opacity-50">
+              ＋ 名前だけで顧客を登録
+            </button>
+          ) : (
+            <form onSubmit={handleCreateCustomer} className="mt-4 rounded-xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50/50 dark:bg-slate-800 p-4 space-y-3">
+              <label htmlFor="new-customer-name" className="block text-sm font-medium">お名前</label>
+              <input id="new-customer-name" autoFocus required maxLength={50} autoComplete="off"
+                value={newCustomerName} onChange={event => setNewCustomerName(event.target.value)} disabled={creatingCustomer}
+                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-900 px-4 py-3" />
+              <p className="text-xs text-gray-500">電話番号などの詳細は、予約後に顧客一覧から追加できます。</p>
+              {customerError && <p role="alert" className="text-sm text-red-600">{customerError}</p>}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button type="submit" disabled={creatingCustomer || !newCustomerName.trim()}
+                  className="min-h-11 px-4 py-3 rounded-xl bg-indigo-600 text-white font-medium whitespace-nowrap disabled:opacity-50">
+                  {creatingCustomer ? '登録中…' : '登録して選択'}
+                </button>
+                <button type="button" disabled={creatingCustomer} onClick={() => setShowNewCustomer(false)}
+                  className="min-h-11 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 whitespace-nowrap disabled:opacity-50">閉じる</button>
+              </div>
+            </form>
           )}
         </div>
         
@@ -224,7 +284,7 @@ function ProxyBookingForm() {
           <button onClick={() => router.back()} className="w-full sm:w-auto whitespace-nowrap px-6 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-50 transition">
             キャンセル
           </button>
-          <button onClick={handleSave} disabled={saving || proxyCustomers.length === 0} className="w-full sm:w-auto whitespace-nowrap px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+          <button onClick={handleSave} disabled={saving || showNewCustomer || creatingCustomer || proxyCustomers.length === 0} className="w-full sm:w-auto whitespace-nowrap px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-xl shadow-sm transition flex items-center justify-center gap-2">
             {saving ? <><Loader2 className="w-5 h-5 shrink-0 animate-spin" /> 保存中...</> : <><Save className="w-5 h-5 shrink-0" /> 予約を確定</>}
           </button>
         </div>

@@ -1,20 +1,33 @@
 import { test, expect, appURL } from './fixtures';
 
 test('proxy reservation explains closed days, then saves on an open day', async ({ page, account, admin }, testInfo) => {
-  const customerResponse = await page.request.post('/api/customers', {
-    headers: { Origin: appURL }, data: { display_name: '代理予約確認用', phone_number: '', memo: '' },
-  });
-  expect(customerResponse.status()).toBe(201);
-  const customer = await admin.from('stylist_customers').select('customer_id').eq('stylist_id', account.id).single();
-  expect(customer.error).toBeNull();
   const menu = await admin.from('menus').insert({ stylist_id: account.id, name: '確認カット', duration: 60, price: 5000 }).select('id').single();
   expect(menu.error).toBeNull();
   const closed = await admin.from('availability_settings').insert({ stylist_id: account.id, specific_date: '2030-01-07', is_day_off: true });
   expect(closed.error).toBeNull();
   await page.goto('/admin');
   await page.goto('/admin/bookings/new?date=2030-01-07');
-  await page.getByLabel('お客様', { exact: true }).selectOption(customer.data!.customer_id);
   await page.getByRole('checkbox', { name: /確認カット/ }).check();
+  await page.getByRole('button', { name: '＋ 名前だけで顧客を登録', exact: true }).click();
+  await expect(page.getByRole('button', { name: '登録して選択', exact: true })).toBeDisabled();
+  await page.getByLabel('お名前', { exact: true }).fill('代理予約確認用');
+  await page.route('**/api/customers', route => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
+  await page.getByRole('button', { name: '登録して選択', exact: true }).click();
+  await expect(page.getByRole('alert').filter({ hasText: '顧客を登録できませんでした' })).toBeVisible();
+  await expect(page.getByLabel('お名前', { exact: true })).toHaveValue('代理予約確認用');
+  await expect(page.getByRole('button', { name: '予約を確定', exact: true })).toBeDisabled();
+  await page.unroute('**/api/customers');
+  const registration = page.waitForResponse(r => r.url().endsWith('/api/customers') && r.request().method() === 'POST');
+  await page.getByRole('button', { name: '登録して選択', exact: true }).click();
+  const customerResponse = await registration;
+  expect(customerResponse.status()).toBe(201);
+  expect(customerResponse.request().postDataJSON()).toEqual({ display_name: '代理予約確認用' });
+  const customer = await admin.from('stylist_customers').select('customer_id').eq('stylist_id', account.id).single();
+  expect(customer.error).toBeNull();
+  await expect(page.getByLabel('お客様', { exact: true })).toHaveValue(customer.data!.customer_id);
+  await expect(page.getByLabel('日付', { exact: true })).toHaveValue('2030-01-07');
+  await expect(page.getByRole('checkbox', { name: /確認カット/ })).toBeChecked();
+
   await page.getByRole('button', { name: '予約を確定', exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('proxy-booking-actions.png') });
   const rejected = page.waitForResponse(r => r.url().endsWith('/api/bookings/save') && r.request().method() === 'POST');
@@ -47,6 +60,17 @@ test('proxy reservation explains closed days, then saves on an open day', async 
   await expect(page).toHaveURL(`${appURL}/admin?date=2030-02-06`);
   await expect(page.getByText('2月6日のスケジュール', { exact: true })).toBeVisible();
   await expect(page.getByText('代理予約確認用', { exact: true })).toBeVisible();
+
+  // Name-only customers remain editable from the customer list after booking.
+  await page.goto('/admin/customers');
+  await page.getByRole('heading', { name: '代理予約確認用', exact: true }).click();
+  await expect(page).toHaveURL(`${appURL}/admin/customers/${customer.data!.customer_id}`);
+  const phone = page.getByPlaceholder('090-1234-5678');
+  await phone.fill('09000000000');
+  await phone.blur();
+  await expect.poll(async () => (await admin.from('customers').select('phone_number').eq('id', customer.data!.customer_id).single()).data?.phone_number).toBe('09000000000');
+  await page.reload();
+  await expect(phone).toHaveValue('09000000000');
 
   // Ordinary dashboard visits still start on today; malformed dates must not break it.
   const today = await page.evaluate(() => `${new Date().getMonth() + 1}月${new Date().getDate()}日のスケジュール`);
