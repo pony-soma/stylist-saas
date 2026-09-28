@@ -71,6 +71,18 @@ test('proxy reservation explains closed days, then saves on an open day', async 
   await expect.poll(async () => (await admin.from('customers').select('phone_number').eq('id', customer.data!.customer_id).single()).data?.phone_number).toBe('09000000000');
   await page.reload();
   await expect(phone).toHaveValue('09000000000');
+  const address = page.getByPlaceholder('都道府県・市区町村・番地など');
+  await address.fill('検証用住所');
+  await address.blur();
+  await expect.poll(async () => (await admin.from('customer_memos').select('address').eq('stylist_id', account.id).eq('customer_id', customer.data!.customer_id).single()).data?.address).toBe('検証用住所');
+  const memo = page.getByPlaceholder('自由に記録できます（フォーカスを外すと自動保存）');
+  await memo.fill('予約後の詳細登録');
+  await memo.blur();
+  await expect.poll(async () => (await admin.from('customer_memos').select('memo,address').eq('stylist_id', account.id).eq('customer_id', customer.data!.customer_id).single()).data).toMatchObject({ memo: '予約後の詳細登録', address: '検証用住所' });
+  await page.reload();
+  await expect(address).toHaveValue('検証用住所');
+  await expect(memo).toHaveValue('予約後の詳細登録');
+  await expect(phone).toHaveValue('09000000000');
 
   // Ordinary dashboard visits still start on today; malformed dates must not break it.
   const today = await page.evaluate(() => `${new Date().getMonth() + 1}月${new Date().getDate()}日のスケジュール`);

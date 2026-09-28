@@ -159,35 +159,18 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSaveProfile = async () => {
+  const handleSaveProfile = async (field: keyof typeof customerProfile) => {
     if (!stylistId || !customer) return;
     setIsSavingProfile(true);
     try {
-      const { error } = await supabase
-        .from('customer_memos')
-        .upsert({
-          stylist_id: stylistId,
-          customer_id: customer.id,
-          memo: customerProfile.memo,
-          birth_date: customerProfile.birth_date || null,
-          address: customerProfile.address,
-          gender: customerProfile.gender,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'stylist_id,customer_id' });
-      if (error) throw error;
-
-      // 電話番号の保存 (customersテーブル)
-      if (customerProfile.phone_number !== customer.phone_number) {
-        const { error: custError } = await supabase
-          .from('customers')
-          .update({ phone_number: customerProfile.phone_number })
-          .eq('id', customer.id);
-        if (custError) throw custError;
-        setCustomer(prev => prev ? { ...prev, phone_number: customerProfile.phone_number } : prev);
-      }
-    } catch (err) {
-      console.error(err);
-      alert('プロフィールの保存に失敗しました。');
+      const response = await fetch('/api/customers/profile', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId: customer.id, field, value: customerProfile[field] }),
+      });
+      if (!response.ok) throw new Error('Save failed');
+      if (field === 'phone_number') setCustomer(previous => previous ? { ...previous, phone_number: customerProfile.phone_number } : previous);
+    } catch {
+      alert('プロフィールの保存に失敗しました。入力内容と契約状態を確認して、再度お試しください。');
     } finally {
       setIsSavingProfile(false);
     }
@@ -498,7 +481,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                   type="date"
                   value={customerProfile.birth_date}
                   onChange={(e) => setCustomerProfile(prev => ({...prev, birth_date: e.target.value}))}
-                  onBlur={handleSaveProfile}
+                  onBlur={() => void handleSaveProfile('birth_date')}
                   className="w-full min-h-[36px] min-w-0 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-0 sm:px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-center sm:text-left appearance-none sm:appearance-auto"
                 />
               </div>
@@ -527,7 +510,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                   onChange={(e) => {
                     setCustomerProfile(prev => ({...prev, gender: e.target.value}));
                   }}
-                  onBlur={handleSaveProfile}
+                  onBlur={() => void handleSaveProfile('gender')}
                   className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-1 sm:px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition appearance-none sm:appearance-auto text-center sm:text-left"
                 >
                   <option value="unspecified">未回答</option>
@@ -545,7 +528,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                   maxLength={15}
                   value={customerProfile.phone_number}
                   onChange={(e) => setCustomerProfile(prev => ({...prev, phone_number: e.target.value}))}
-                  onBlur={handleSaveProfile}
+                  onBlur={() => void handleSaveProfile('phone_number')}
                   placeholder="090-1234-5678"
                   className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                 />
@@ -558,7 +541,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                   type="text"
                   value={customerProfile.address}
                   onChange={(e) => setCustomerProfile(prev => ({...prev, address: e.target.value}))}
-                  onBlur={handleSaveProfile}
+                  onBlur={() => void handleSaveProfile('address')}
                   placeholder="都道府県・市区町村・番地など"
                   className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                 />
@@ -570,7 +553,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
               <textarea
                 value={customerProfile.memo}
                 onChange={(e) => setCustomerProfile(prev => ({...prev, memo: e.target.value}))}
-                onBlur={handleSaveProfile}
+                onBlur={() => void handleSaveProfile('memo')}
                 placeholder="自由に記録できます（フォーカスを外すと自動保存）"
                 className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition min-h-[80px] resize-y"
               />

@@ -9,6 +9,7 @@ test('anonymous and expired accounts cannot register customers', async ({ page, 
   try {
     const response = await anonymous.post('/api/customers', { headers: { Origin: appURL }, data: payload });
     expect(response.status()).toBe(401);
+    expect((await anonymous.patch('/api/customers/profile', { headers: { Origin: appURL }, data: { customerId: randomUUID(), field: 'phone_number', value: '09000000000' } })).status()).toBe(401);
   } finally {
     await anonymous.dispose();
   }
@@ -22,6 +23,7 @@ test('anonymous and expired accounts cannot register customers', async ({ page, 
   expect(expired.data).toEqual([{ stylist_id: account.id }]);
   const denied = await page.request.post('/api/customers', { headers: { Origin: appURL }, data: payload });
   expect(denied.status()).toBe(403);
+  expect((await page.request.patch('/api/customers/profile', { headers: { Origin: appURL }, data: { customerId: randomUUID(), field: 'memo', value: 'denied' } })).status()).toBe(403);
   const rows = await admin.from('customers').select('id').eq('display_name', name);
   expect(rows.error).toBeNull();
   expect(rows.data).toEqual([]);
@@ -41,6 +43,8 @@ test('master access does not grant another stylist’s medical record permission
   });
   expect(created.error).toBeNull();
   const customerId = created.data as string;
+  expect((await page.request.patch('/api/customers/profile', { headers: { Origin: appURL }, data: { customerId, field: 'phone_number', value: '09000000000' } })).status()).toBe(404);
+  expect((await admin.from('customers').select('phone_number').eq('id', customerId).single()).data?.phone_number).toBeNull();
   const recordId = randomUUID();
   const recordFields = { visit_date: '2026-09-16', treatment_menu: '別担当の架空カット', chemicals_used: '', notes: '変更されてはいけない記録' };
   const saved = await admin.rpc('save_medical_record', {
