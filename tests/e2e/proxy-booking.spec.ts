@@ -1,6 +1,6 @@
 import { test, expect, appURL } from './fixtures';
 
-test('proxy reservation explains closed days, then saves on an open day', async ({ page, account, admin }) => {
+test('proxy reservation explains closed days, then saves on an open day', async ({ page, account, admin }, testInfo) => {
   const customerResponse = await page.request.post('/api/customers', {
     headers: { Origin: appURL }, data: { display_name: '代理予約確認用', phone_number: '', memo: '' },
   });
@@ -15,6 +15,8 @@ test('proxy reservation explains closed days, then saves on an open day', async 
   await page.goto('/admin/bookings/new?date=2030-01-07');
   await page.getByLabel('お客様', { exact: true }).selectOption(customer.data!.customer_id);
   await page.getByRole('checkbox', { name: /確認カット/ }).check();
+  await page.getByRole('button', { name: '予約を確定', exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('proxy-booking-actions.png') });
   const rejected = page.waitForResponse(r => r.url().endsWith('/api/bookings/save') && r.request().method() === 'POST');
   await page.getByRole('button', { name: '予約を確定', exact: true }).click();
   expect((await rejected).status()).toBe(400);

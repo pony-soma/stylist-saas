@@ -220,12 +220,12 @@ function ProxyBookingForm() {
           <p>{saveError}</p>
           <Link href="/admin/schedule/settings" className="mt-2 inline-block underline">営業時間・定休日設定を開く</Link>
         </div>}
-        <div className="pt-6 mt-6 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
-          <button onClick={() => router.back()} className="w-full sm:w-auto px-6 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-50 transition">
+        <div className="pt-6 mt-6 border-t border-gray-100 dark:border-gray-800 flex flex-col-reverse sm:flex-row justify-end gap-3">
+          <button onClick={() => router.back()} className="w-full sm:w-auto whitespace-nowrap px-6 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-50 transition">
             キャンセル
           </button>
-          <button onClick={handleSave} disabled={saving || proxyCustomers.length === 0} className="w-full sm:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-xl shadow-sm transition flex items-center justify-center gap-2">
-            {saving ? <><Loader2 className="w-5 h-5 animate-spin" /> 保存中...</> : <><Save className="w-5 h-5" /> 予約を確定</>}
+          <button onClick={handleSave} disabled={saving || proxyCustomers.length === 0} className="w-full sm:w-auto whitespace-nowrap px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+            {saving ? <><Loader2 className="w-5 h-5 shrink-0 animate-spin" /> 保存中...</> : <><Save className="w-5 h-5 shrink-0" /> 予約を確定</>}
           </button>
         </div>
       </div>
