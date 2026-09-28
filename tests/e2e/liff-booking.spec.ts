@@ -113,7 +113,7 @@ test('prefetched times need no date-tap request; blocks remain disabled and stal
   await page.getByRole('button',{name:/11:00/}).click();
   expect((await admin.from('blocked_time_slots').insert({stylist_id:account.id,title:'後から追加',start_time:month+'-01T11:00:00+09:00',end_time:month+'-01T12:00:00+09:00'})).error).toBeNull();
   await page.getByRole('button',{name:/予約.*リクエスト/}).click();
-  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('選択した枠または予約内容が変更されています');
   expect((await admin.from('bookings').select('id').eq('stylist_id',account.id)).data).toEqual([]);
 });
 

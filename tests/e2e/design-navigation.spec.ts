@@ -20,7 +20,8 @@ test('settings share one design; calendar is retired and account controls stay i
   await expect(page.getByLabel('月曜日の開始時刻',{exact:true})).toBeVisible();
 });
 
-test('public landing and login remain readable on mobile',async({page},testInfo)=>{
+test('public landing and login remain readable on mobile',async({page,context},testInfo)=>{
+ await context.clearCookies();
  await page.goto('/');
  await expect(page.getByRole('heading',{level:1})).toContainText('つなぐ場所');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
