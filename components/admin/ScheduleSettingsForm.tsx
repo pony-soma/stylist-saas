@@ -184,7 +184,7 @@ export default function ScheduleSettingsForm() {
                     </span>
                   </div>
                   
-                  <div className="flex items-center gap-3 flex-1 justify-between sm:justify-end">
+                  <div className="flex min-w-0 flex-col items-stretch gap-3 flex-1 sm:flex-row sm:items-center sm:justify-end">
                     <label className="flex items-center gap-2 cursor-pointer shrink-0">
                       <input 
                         type="checkbox"
@@ -197,7 +197,7 @@ export default function ScheduleSettingsForm() {
                     </label>
 
                     {!isOff && (
-                      <div className="flex items-center gap-2">
+                      <div className="grid min-w-0 w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
                         <input 
                           type="time" 
                           className="block box-border min-w-0 max-w-full appearance-none px-2 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-slate-800"
@@ -265,7 +265,7 @@ export default function ScheduleSettingsForm() {
               </div>
               
               {!newDateIsDayOff && (
-                <div className="flex items-center gap-2">
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
                   <input 
                     type="time" 
                     className="block box-border min-w-0 max-w-full appearance-none flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-slate-800"
