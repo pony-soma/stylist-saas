@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { expectDateInputsContained } from './date-bounds';
 
 test('settings share one design; calendar is retired and account controls stay in settings', async ({page},testInfo)=>{
   await page.goto('/admin');
@@ -18,6 +19,10 @@ test('settings share one design; calendar is retired and account controls stay i
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto('/admin/schedule/settings');
   await expect(page.getByLabel('月曜日の開始時刻',{exact:true})).toBeVisible();
+  await expectDateInputsContained(page);
+  await page.getByRole('radio', { name: '臨時営業', exact: true }).check();
+  await expect(page.getByLabel('特定日の開始時刻', { exact: true })).toBeVisible();
+  await expectDateInputsContained(page);
 });
 
 test('public landing and login remain readable on mobile',async({page,context},testInfo)=>{

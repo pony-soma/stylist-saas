@@ -470,21 +470,21 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
             <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">お客様プロフィール</h3>
             
-            <div className="grid grid-cols-[minmax(0,1fr)_56px_85px] sm:grid-cols-4 gap-2 sm:gap-4 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-4">
               {/* 生年月日 */}
-              <div className="min-w-0 sm:col-span-2">
+              <div className="min-w-0 col-span-2">
                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 whitespace-nowrap">生年月日</label>
                 <input
                   type="date"
                   value={customerProfile.birth_date}
                   onChange={(e) => setCustomerProfile(prev => ({...prev, birth_date: e.target.value}))}
                   onBlur={() => void handleSaveProfile('birth_date')}
-                  className="w-full min-h-[36px] min-w-0 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-0 sm:px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-center sm:text-left appearance-none sm:appearance-auto"
+                  className="block box-border min-w-0 max-w-full appearance-none w-full min-h-[36px] bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-0 sm:px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-center sm:text-left sm:appearance-auto"
                 />
               </div>
 
               {/* 年齢 */}
-              <div className="w-[56px] sm:w-full shrink-0 sm:col-span-1">
+              <div className="min-w-0 sm:col-span-1">
                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 text-center sm:text-left">年齢</label>
                 <div className="w-full bg-gray-100 dark:bg-slate-800 border border-transparent rounded-xl px-0 sm:px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left font-medium whitespace-nowrap overflow-hidden tracking-tighter sm:tracking-normal">
                   {(() => {
@@ -500,7 +500,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
               </div>
 
               {/* 性別 */}
-              <div className="w-[85px] sm:w-full shrink-0 sm:col-span-1">
+              <div className="min-w-0 sm:col-span-1">
                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 sm:text-left">性別</label>
                 <select
                   value={customerProfile.gender}
@@ -518,7 +518,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
               </div>
 
               {/* 電話番号 */}
-              <div className="col-span-3 sm:col-span-2">
+              <div className="min-w-0 col-span-2">
                 <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">電話番号</label>
                 <input
                   type="tel"
@@ -532,7 +532,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
               </div>
 
               {/* 住所 */}
-              <div className="col-span-3 sm:col-span-2">
+              <div className="min-w-0 col-span-2">
                 <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">住所</label>
                 <input
                   type="text"
@@ -590,7 +590,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="min-w-0">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">来店日 <span className="text-red-500">*</span></label>
-                    <input type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)} className="block box-border w-full min-w-0 max-w-full min-h-11 appearance-none rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+                    <input type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)} className="block box-border min-w-0 max-w-full appearance-none w-full min-h-11 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">メニュー <span className="text-red-500">*</span></label>
@@ -649,7 +649,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">来店日</label>
-                      <input type="date" value={editForm.visit_date} onChange={e => setEditForm({...editForm, visit_date: e.target.value})} className="block box-border w-full min-w-0 max-w-full min-h-11 appearance-none rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+                      <input type="date" value={editForm.visit_date} onChange={e => setEditForm({...editForm, visit_date: e.target.value})} className="block box-border min-w-0 max-w-full appearance-none w-full min-h-11 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">メニュー</label>

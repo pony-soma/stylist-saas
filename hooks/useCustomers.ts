@@ -7,7 +7,7 @@ export function useCustomers(userId: string | null) {
   const fetchProxyCustomers = useCallback(async () => {
     if (!userId) return;
     // 担当関係を基準に、予約前の新規顧客も選択できるようにする。
-    const { data: relationships } = await supabase.from('stylist_customers').select('customer_id').eq('stylist_id', userId);
+    const { data: relationships } = await supabase.from('stylist_customers').select('customer_id').eq('stylist_id', userId).is('archived_at', null);
     const customerIds = new Set<string>(relationships?.map(r => r.customer_id) ?? []);
 
     if (customerIds.size > 0) {

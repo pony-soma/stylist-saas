@@ -8,9 +8,14 @@ import { useRouter } from 'next/navigation';
 import { CustomerInfo } from '@/types';
 
 export default function CustomerList() {
+  const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [customers, setCustomers] = useState<CustomerInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [archivedIds, setArchivedIds] = useState<Set<string>>(new Set());
+  const [showArchived, setShowArchived] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [listError, setListError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -21,7 +26,6 @@ export default function CustomerList() {
     gender: 'unspecified',
     memo: ''
   });
-  const router = useRouter();
 
   useEffect(() => {
     const fetchUserAndCustomers = async () => {
@@ -33,7 +37,13 @@ export default function CustomerList() {
       setUserId(session.user.id);
       
       // 担当関係を基準に、予約前の新規顧客も取得する。
-      const { data: relationships } = await supabase.from('stylist_customers').select('customer_id').eq('stylist_id', session.user.id);
+      const { data: relationships, error: relationshipError } = await supabase.from('stylist_customers').select('customer_id, archived_at').eq('stylist_id', session.user.id);
+      if (relationshipError) {
+        setListError('顧客一覧を取得できませんでした。時間をおいて再読み込みしてください。');
+        setLoading(false);
+        return;
+      }
+      setArchivedIds(new Set(relationships?.filter(r => r.archived_at).map(r => r.customer_id)));
       const { data: memos } = await supabase.from('customer_memos').select('customer_id, birth_date, gender').eq('stylist_id', session.user.id);
       
       const customerIds = new Set<string>();
@@ -66,10 +76,34 @@ export default function CustomerList() {
     fetchUserAndCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(c => 
-    c.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone_number?.includes(searchTerm)
+  const visibleCustomers = customers.filter(c => archivedIds.has(c.id) === showArchived);
+  const filteredCustomers = visibleCustomers.filter(c =>
+    c.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) || c.phone_number?.includes(searchTerm)
   );
+
+  const changeArchive = async (customer: CustomerInfo) => {
+    if (updatingId) return;
+    const archived = !archivedIds.has(customer.id);
+    if (!window.confirm(archived
+      ? `${customer.display_name}さんを顧客一覧から削除しますか？予約・カルテ・写真は残り、予約もキャンセルされません。「削除済み」から復元できます。`
+      : `${customer.display_name}さんを顧客一覧に復元しますか？`)) return;
+    setUpdatingId(customer.id);
+    setListError('');
+    try {
+      const response = await fetch('/api/customers/archive', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId: customer.id, archived }),
+      });
+      if (!response.ok) throw new Error('Update failed');
+      setArchivedIds(current => {
+        const next = new Set(current);
+        if (archived) next.add(customer.id); else next.delete(customer.id);
+        return next;
+      });
+    } catch {
+      setListError('変更結果を確認できませんでした。再読み込みして状態をご確認ください。');
+    } finally { setUpdatingId(null); }
+  };
 
   const calculateAge = (birthDate: string | null | undefined) => {
     if (!birthDate) return null;
@@ -127,7 +161,7 @@ export default function CustomerList() {
         </Link>
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">顧客一覧</h1>
-          <p className="text-sm text-gray-500 mt-1">全 {customers.length} 名</p>
+          <p className="text-sm text-gray-500 mt-1">{showArchived ? '削除済み' : '登録中'} {visibleCustomers.length} 名</p>
         </div>
         <button 
           onClick={() => setShowNewCustomerModal(true)}
@@ -137,6 +171,17 @@ export default function CustomerList() {
         </button>
       </header>
 
+      <div className="flex flex-wrap gap-2" aria-label="顧客の表示切り替え">
+        {[false, true].map(archived => (
+          <button key={String(archived)} type="button" aria-pressed={showArchived === archived}
+            onClick={() => setShowArchived(archived)}
+            className={`rounded-full px-4 py-2 text-sm font-medium ${showArchived === archived ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-gray-200'}`}>
+            {archived ? '削除済み' : '登録中'}
+          </button>
+        ))}
+      </div>
+      {showArchived && <p className="text-sm text-gray-500">記録は保存されています。「復元」で通常の一覧に戻せます。</p>}
+      {listError && <p role="alert" className="text-sm text-red-600">{listError}</p>}
       {/* 検索バー */}
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -174,9 +219,9 @@ export default function CustomerList() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-gray-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
+                <h3><Link href={`/admin/customers/${customer.id}`} className="block font-bold text-gray-900 dark:text-white truncate hover:text-indigo-600 dark:hover:text-indigo-400 transition">
                   {customer.display_name}
-                </h3>
+                </Link></h3>
                 <div className="flex items-center flex-wrap gap-2 mt-1.5 text-xs text-gray-500">
                   {customer.phone_number ? (
                     <span className="flex items-center gap-1"><Phone className="w-3 h-3"/> {customer.phone_number}</span>
@@ -194,6 +239,11 @@ export default function CustomerList() {
                     </span>
                   )}
                 </div>
+                <button type="button" disabled={updatingId !== null}
+                  onClick={event => { event.stopPropagation(); void changeArchive(customer); }}
+                  className="mt-3 min-h-11 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 dark:border-gray-700 disabled:opacity-50">
+                  {updatingId === customer.id ? '処理中…' : showArchived ? '復元' : '一覧から削除'}
+                </button>
               </div>
             </div>
           ))}
@@ -239,14 +289,14 @@ export default function CustomerList() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="min-w-0">
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">生年月日</label>
                   <input
                     type="date"
                     value={newCustomer.birth_date}
                     onChange={(e) => setNewCustomer({...newCustomer, birth_date: e.target.value})}
-                    className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none min-h-[46px]"
+                    className="block box-border min-w-0 max-w-full appearance-none w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[46px]"
                   />
                 </div>
                 <div>

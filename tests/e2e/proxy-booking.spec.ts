@@ -1,4 +1,5 @@
 import { test, expect, appURL } from './fixtures';
+import { expectDateInputsContained } from './date-bounds';
 
 test('proxy reservation explains closed days, then saves on an open day', async ({ page, account, admin }, testInfo) => {
   const menu = await admin.from('menus').insert({ stylist_id: account.id, name: '確認カット', duration: 60, price: 5000 }).select('id').single();
@@ -8,6 +9,7 @@ test('proxy reservation explains closed days, then saves on an open day', async 
   await page.goto('/admin');
   await page.goto('/admin/bookings/new?date=2030-01-07');
   await page.getByRole('checkbox', { name: /確認カット/ }).check();
+  await expectDateInputsContained(page);
   await page.getByRole('button', { name: '＋ 名前だけで顧客を登録', exact: true }).click();
   await expect(page.getByRole('button', { name: '登録して選択', exact: true })).toBeDisabled();
   await page.getByLabel('お名前', { exact: true }).fill('代理予約確認用');
@@ -53,6 +55,7 @@ test('proxy reservation explains closed days, then saves on an open day', async 
   // Editing across a month boundary must fetch and show the new month's reservation.
   await page.goto(`/admin/bookings/${booking.data!.id}/edit`);
   await expect(page.locator('input[type="date"]')).toHaveValue('2030-01-09');
+  await expectDateInputsContained(page);
   await page.locator('input[type="date"]').fill('2030-02-06');
   const updated = page.waitForResponse(r => r.url().endsWith('/api/bookings/save') && r.request().method() === 'POST');
   await page.getByRole('button', { name: '変更を保存', exact: true }).click();

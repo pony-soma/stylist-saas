@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { test, expect } from './fixtures';
+import { expectDateInputsContained } from './date-bounds';
 
 test('customer → medical record/photo → reload → edit → permanent photo deletion', async ({ page, account, admin, playwright, baseURL }) => {
   const suffix = randomUUID().slice(0, 8);
@@ -27,6 +28,7 @@ test('customer → medical record/photo → reload → edit → permanent photo 
     await expect(page.getByRole('heading', { name: '顧客一覧', exact: true })).toBeVisible();
     await page.getByRole('button', { name: '＋ 新規追加', exact: true }).click();
     await page.getByPlaceholder('例：山田 花子').fill(name);
+    await expectDateInputsContained(page);
     await page.getByPlaceholder('090-1234-5678').fill('09000000000');
     await page.getByPlaceholder('注意事項や好みなど...').fill('CI専用の架空データ');
     const responsePromise = page.waitForResponse(response => response.url().endsWith('/api/customers') && response.request().method() === 'POST');
@@ -51,6 +53,7 @@ test('customer → medical record/photo → reload → edit → permanent photo 
     await page.getByRole('button', { name: '新しいカルテを記録する', exact: true }).click();
     const form = page.getByRole('heading', { name: 'カルテを追加', exact: true }).locator('..').locator('..');
     await form.locator('input[type="date"]').fill('2026-09-16');
+    await expectDateInputsContained(page);
     const dateBounds = await form.locator('input[type="date"]').evaluate(input => {
       const rect = input.getBoundingClientRect();
       const parent = input.parentElement!.getBoundingClientRect();
@@ -92,6 +95,15 @@ test('customer → medical record/photo → reload → edit → permanent photo 
   });
 
   await test.step('reload proves persistence; only authenticated owner can read the photo', async () => {
+    for (const archived of [true, false]) {
+      const changed = await page.request.patch('/api/customers/archive', {
+        headers: { Origin: 'http://localhost:3000' }, data: { customerId, archived },
+      });
+      expect(changed.status()).toBe(200);
+      expect((await admin.from('medical_records').select('id').eq('id', recordId).single()).data?.id).toBe(recordId);
+      expect((await admin.from('record_photos').select('id').eq('id', photoId).single()).data?.id).toBe(photoId);
+      expect((await page.request.get(`/api/record-photos/${photoId}`)).status()).toBe(200);
+    }
     await page.reload();
     await expect(page.getByText(originalNotes, { exact: true })).toBeVisible();
     const image = page.getByRole('img', { name: '施術写真 1', exact: true });
@@ -113,6 +125,7 @@ test('customer → medical record/photo → reload → edit → permanent photo 
   await test.step('edit notes through UI and verify persisted update after reload', async () => {
     await page.getByRole('button', { name: '編集', exact: true }).click();
     const editor = page.getByRole('heading', { name: 'カルテを編集', exact: true }).locator('..').locator('..');
+    await expectDateInputsContained(page);
     await editor.locator('label').filter({ hasText: /^メモ$/ }).locator('..').locator('textarea').fill(editedNotes);
     const responsePromise = page.waitForResponse(response => response.url().endsWith('/api/medical-records/save') && response.request().method() === 'POST');
     await editor.getByRole('button', { name: '更新する', exact: true }).click();

@@ -8,6 +8,26 @@
   button, input, textarea, select { touch-action: manipulation; }
   button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid #46785f; outline-offset: 4px; }
   input[type=checkbox] { accent-color: #315e49; }
+  /* iOS date controls have intrinsic widths that can escape narrow form columns. */
+  input[type="date"], input[type="datetime-local"], input[type="month"], input[type="time"] {
+    display: block;
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input[type="date"]::-webkit-date-and-time-value,
+  input[type="datetime-local"]::-webkit-date-and-time-value,
+  input[type="month"]::-webkit-date-and-time-value,
+  input[type="time"]::-webkit-date-and-time-value {
+    min-width: 0;
+    text-align: left;
+  }
+  input::-webkit-datetime-edit { min-width: 0; padding: 0; }
   button:disabled { cursor: not-allowed; }
   h1, h2, h3 { text-wrap: balance; }
   @media (max-width: 640px) { input:not([type=checkbox]):not([type=radio]), textarea, select { font-size: 16px !important; } }
