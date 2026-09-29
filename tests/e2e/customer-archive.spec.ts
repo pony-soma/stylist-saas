@@ -8,6 +8,9 @@ test('archive is reversible, private to the stylist and preserves customer recor
   const other = await createTestAccount(admin);
   expect((await admin.from('stylist_customers').insert({ stylist_id: other.id, customer_id: id })).error).toBeNull();
   const before = await admin.from('customers').select('*').eq('id', id).single();
+  const booking = await admin.from('bookings').insert({ stylist_id: account.id, customer_id: id,
+    start_time: '2030-01-09T01:00:00Z', end_time: '2030-01-09T02:00:00Z', status: 'confirmed' }).select('*').single();
+  expect(booking.error).toBeNull();
   const memoBefore = await admin.from('customer_memos').select('*').eq('customer_id', id);
   page.on('dialog', dialog => dialog.accept());
   await page.goto('/admin/customers');
@@ -17,6 +20,7 @@ test('archive is reversible, private to the stylist and preserves customer recor
   await page.reload();
   await expect(page.getByRole('heading', { name: '復元確認用', exact: true })).toHaveCount(0);
   expect((await admin.from('customers').select('*').eq('id', id).single()).data).toEqual(before.data);
+  expect((await admin.from('bookings').select('*').eq('id', booking.data!.id).single()).data).toEqual(booking.data);
   expect((await admin.from('customer_memos').select('*').eq('customer_id', id)).data).toEqual(memoBefore.data);
   expect((await admin.from('stylist_customers').select('archived_at').eq('stylist_id', other.id).eq('customer_id', id).single()).data?.archived_at).toBeNull();
   await page.getByRole('button', { name: '削除済み', exact: true }).click();

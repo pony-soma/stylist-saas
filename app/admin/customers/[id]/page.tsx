@@ -470,9 +470,9 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
             <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">お客様プロフィール</h3>
             
-            <div className="grid grid-cols-[minmax(0,1fr)_56px_85px] sm:grid-cols-4 gap-2 sm:gap-4 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-4">
               {/* 生年月日 */}
-              <div className="min-w-0 sm:col-span-2">
+              <div className="min-w-0 col-span-2">
                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 whitespace-nowrap">生年月日</label>
                 <input
                   type="date"
@@ -484,7 +484,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
               </div>
 
               {/* 年齢 */}
-              <div className="w-[56px] sm:w-full shrink-0 sm:col-span-1">
+              <div className="min-w-0 sm:col-span-1">
                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 text-center sm:text-left">年齢</label>
                 <div className="w-full bg-gray-100 dark:bg-slate-800 border border-transparent rounded-xl px-0 sm:px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left font-medium whitespace-nowrap overflow-hidden tracking-tighter sm:tracking-normal">
                   {(() => {
@@ -500,7 +500,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
               </div>
 
               {/* 性別 */}
-              <div className="w-[85px] sm:w-full shrink-0 sm:col-span-1">
+              <div className="min-w-0 sm:col-span-1">
                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 sm:text-left">性別</label>
                 <select
                   value={customerProfile.gender}
@@ -518,7 +518,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
               </div>
 
               {/* 電話番号 */}
-              <div className="col-span-3 sm:col-span-2">
+              <div className="min-w-0 col-span-2">
                 <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">電話番号</label>
                 <input
                   type="tel"
@@ -532,7 +532,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
               </div>
 
               {/* 住所 */}
-              <div className="col-span-3 sm:col-span-2">
+              <div className="min-w-0 col-span-2">
                 <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">住所</label>
                 <input
                   type="text"

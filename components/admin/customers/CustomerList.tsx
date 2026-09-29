@@ -75,7 +75,7 @@ export default function CustomerList() {
   }, []);
 
   const visibleCustomers = customers.filter(c => archivedIds.has(c.id) === showArchived);
-  const filteredCustomers = visibleCustomers.filter(c => 
+  const filteredCustomers = visibleCustomers.filter(c =>
     c.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) || c.phone_number?.includes(searchTerm)
   );
 
@@ -286,8 +286,8 @@ export default function CustomerList() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="min-w-0">
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">生年月日</label>
                   <input
                     type="date"
