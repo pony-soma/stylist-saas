@@ -22,6 +22,7 @@ export default defineConfig({
   projects: [
     { name: 'chromium-desktop', use: { ...devices['Desktop Chrome'] } },
     { name: 'chromium-mobile', use: { ...devices['Pixel 7'] } },
+    { name: 'webkit-mobile', use: { ...devices['iPhone 13'] }, testMatch: /(?:proxy-booking|workflow|design-navigation|customer-archive)\.spec\.ts/ },
   ],
   webServer: {
     command: 'node --require ./tests/e2e/line-provider.cjs ./node_modules/next/dist/bin/next start --hostname localhost --port 3000',

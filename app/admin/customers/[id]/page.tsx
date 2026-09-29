@@ -479,7 +479,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                   value={customerProfile.birth_date}
                   onChange={(e) => setCustomerProfile(prev => ({...prev, birth_date: e.target.value}))}
                   onBlur={() => void handleSaveProfile('birth_date')}
-                  className="w-full min-h-[36px] min-w-0 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-0 sm:px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-center sm:text-left appearance-none sm:appearance-auto"
+                  className="block box-border min-w-0 max-w-full appearance-none w-full min-h-[36px] bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-0 sm:px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-center sm:text-left sm:appearance-auto"
                 />
               </div>
 
@@ -590,7 +590,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="min-w-0">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">来店日 <span className="text-red-500">*</span></label>
-                    <input type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)} className="block box-border w-full min-w-0 max-w-full min-h-11 appearance-none rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+                    <input type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)} className="block box-border min-w-0 max-w-full appearance-none w-full min-h-11 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">メニュー <span className="text-red-500">*</span></label>
@@ -649,7 +649,7 @@ export default function CustomerMedicalRecordPage({ params }: { params: { id: st
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">来店日</label>
-                      <input type="date" value={editForm.visit_date} onChange={e => setEditForm({...editForm, visit_date: e.target.value})} className="block box-border w-full min-w-0 max-w-full min-h-11 appearance-none rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+                      <input type="date" value={editForm.visit_date} onChange={e => setEditForm({...editForm, visit_date: e.target.value})} className="block box-border min-w-0 max-w-full appearance-none w-full min-h-11 rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">メニュー</label>

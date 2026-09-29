@@ -200,7 +200,7 @@ export default function ScheduleSettingsForm() {
                       <div className="flex items-center gap-2">
                         <input 
                           type="time" 
-                          className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-slate-800"
+                          className="block box-border min-w-0 max-w-full appearance-none px-2 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-slate-800"
                           aria-label={`${day.name}の開始時刻`}
                           value={current.start_time?.substring(0, 5) || '09:00'}
                           onChange={(e) => handleWeekChange(day.id, 'start_time', `${e.target.value}:00`)}
@@ -208,7 +208,7 @@ export default function ScheduleSettingsForm() {
                         <span className="text-gray-400">~</span>
                         <input 
                           type="time" 
-                          className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-slate-800"
+                          className="block box-border min-w-0 max-w-full appearance-none px-2 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-slate-800"
                           aria-label={`${day.name}の終了時刻`}
                           value={current.end_time?.substring(0, 5) || '21:00'}
                           onChange={(e) => handleWeekChange(day.id, 'end_time', `${e.target.value}:00`)}
@@ -237,7 +237,7 @@ export default function ScheduleSettingsForm() {
               <input 
                 type="date"
                 aria-label="特定日"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-slate-800"
+                className="block box-border min-w-0 max-w-full appearance-none w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-slate-800"
                 value={newDate}
                 onChange={(e) => setNewDate(e.target.value)}
               />
@@ -268,7 +268,7 @@ export default function ScheduleSettingsForm() {
                 <div className="flex items-center gap-2">
                   <input 
                     type="time" 
-                    className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-slate-800"
+                    className="block box-border min-w-0 max-w-full appearance-none flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-slate-800"
                     aria-label="特定日の開始時刻"
                     value={newDateStart}
                     onChange={(e) => setNewDateStart(e.target.value)}
@@ -276,7 +276,7 @@ export default function ScheduleSettingsForm() {
                   <span className="text-gray-400">~</span>
                   <input 
                     type="time" 
-                    className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-slate-800"
+                    className="block box-border min-w-0 max-w-full appearance-none flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-slate-800"
                     aria-label="特定日の終了時刻"
                     value={newDateEnd}
                     onChange={(e) => setNewDateEnd(e.target.value)}

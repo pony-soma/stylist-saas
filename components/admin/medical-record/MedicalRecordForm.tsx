@@ -41,7 +41,7 @@ export default function MedicalRecordForm({ initialData, onSubmit, onCancel }: P
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">来店日</label>
-            <input type="date" value={form.visit_date} onChange={e => setForm({...form, visit_date: e.target.value})} className="w-full bg-gray-50 dark:bg-slate-900 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500" />
+            <input type="date" value={form.visit_date} onChange={e => setForm({...form, visit_date: e.target.value})} className="block box-border min-w-0 max-w-full appearance-none w-full bg-gray-50 dark:bg-slate-900 border-0 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500" />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">メニュー <span className="text-red-400">*</span></label>

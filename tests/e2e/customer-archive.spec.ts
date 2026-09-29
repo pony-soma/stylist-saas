@@ -1,0 +1,32 @@
+import { test, expect, createTestAccount } from './fixtures';
+
+test('archive is reversible, private to the stylist and preserves customer records', async ({ page, account, admin }) => {
+  await page.goto('/admin');
+  const response = await page.request.post('/api/customers', { data: { display_name: '復元確認用' }, headers: { Origin: 'http://localhost:3000' } });
+  expect(response.status()).toBe(201);
+  const { id } = await response.json();
+  const other = await createTestAccount(admin);
+  expect((await admin.from('stylist_customers').insert({ stylist_id: other.id, customer_id: id })).error).toBeNull();
+  const before = await admin.from('customers').select('*').eq('id', id).single();
+  const memoBefore = await admin.from('customer_memos').select('*').eq('customer_id', id);
+  page.on('dialog', dialog => dialog.accept());
+  await page.goto('/admin/customers');
+  await expect(page.getByRole('heading', { name: '復元確認用', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '一覧から削除', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '復元確認用', exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '復元確認用', exact: true })).toHaveCount(0);
+  expect((await admin.from('customers').select('*').eq('id', id).single()).data).toEqual(before.data);
+  expect((await admin.from('customer_memos').select('*').eq('customer_id', id)).data).toEqual(memoBefore.data);
+  expect((await admin.from('stylist_customers').select('archived_at').eq('stylist_id', other.id).eq('customer_id', id).single()).data?.archived_at).toBeNull();
+  await page.getByRole('button', { name: '削除済み', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '復元確認用', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '復元', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '復元確認用', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: '登録中', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '復元確認用', exact: true })).toBeVisible();
+  const foreign = await admin.rpc('create_manual_customer', { p_stylist_id: other.id, p_display_name: '他担当者のみ' });
+  expect(foreign.error).toBeNull();
+  const denied = await page.request.patch('/api/customers/archive', { data: { customerId: foreign.data, archived: true }, headers: { Origin: 'http://localhost:3000' } });
+  expect(denied.status()).toBe(404);
+});

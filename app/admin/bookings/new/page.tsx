@@ -215,7 +215,7 @@ function ProxyBookingForm() {
             type="date" 
             value={form.date} 
             onChange={e => setForm({...form, date: e.target.value})} 
-            className="w-full rounded-xl border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition" 
+            className="block box-border min-w-0 max-w-full appearance-none w-full rounded-xl border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-slate-800 px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition" 
           />
         </div>
         
