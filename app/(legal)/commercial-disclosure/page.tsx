@@ -4,10 +4,9 @@ export const metadata: Metadata = { title: '特定商取引法に基づく表記
 export default function Page() {
   return <>
     <h1>特定商取引法に基づく表記</h1>
-    <section><h2>販売事業者・運営責任者</h2><p>相馬翔太</p></section>
     <section><h2>サービス名・内容</h2><p>LiNo：美容師向けの予約・顧客・施術記録管理を支援するWebサービスです。</p></section>
-    <section><h2>所在地・電話番号</h2><p>所在地および電話番号は、下記メールアドレスへのご請求に応じ、申込みの意思決定に先立って確認できるよう、遅滞なく電子メールで開示します。</p></section>
-    <section><h2>お問い合わせ</h2><p>pony.soma@gmail.com</p></section>
+    <section><h2>販売事業者の氏名・所在地・電話番号</h2><p>販売事業者の氏名・所在地・電話番号は、下記メールアドレスへのご請求に応じ、申込みの意思決定に先立って確認できるよう、遅滞なく電子メールで開示します。</p></section>
+    <section><h2>お問い合わせ</h2><p>LiNoサポート／メール：<a className="underline break-all" href="mailto:lino.salon.support@gmail.com">lino.salon.support@gmail.com</a></p></section>
     <section><h2>販売価格・その他の費用</h2><p>月額1,980円（税込）。サービス利用に必要な端末およびインターネット接続にかかる通信料金等は、お客様のご負担となります。</p></section>
     <section><h2>支払方法・支払時期</h2><p>Stripeを通じたクレジットカード決済です。初回はカード登録を含む申込み完了後、14日間無料で利用できます。無料体験終了前に解約しない場合、終了時に初回の月額料金が請求され、以後毎月自動更新・請求されます。再契約には無料体験は適用されず、申込み時に月額料金が発生します。具体的な請求日・金額は決済画面でご確認ください。</p></section>
     <section><h2>提供時期・契約期間</h2><p>申込みが完了し、契約状態の反映後に利用を開始できます。無料体験後は1か月ごとの自動更新となり、最低継続期間はありません。</p></section>

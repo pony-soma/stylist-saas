@@ -3,12 +3,7 @@ name: LiNo schema Auth and photo recovery
 on:
   pull_request:
     branches: [main]
-    paths:
-      - .github/workflows/lino-recovery.yml
-      - tests/e2e/**
-      - supabase/**
-      - package-lock.json
-      - scripts/backup/platform_export.py
+    # Required branch checks must run for every PR, including copy-only changes.
 
 permissions:
   contents: read
