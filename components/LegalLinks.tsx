@@ -5,6 +5,6 @@ export default function LegalLinks() {
     <Link className="underline" href="/terms">利用規約</Link>
     <Link className="underline" href="/privacy">プライバシーポリシー</Link>
     <Link className="underline" href="/commercial-disclosure">特定商取引法に基づく表記</Link>
-    <a className="underline" href="mailto:pony.soma@gmail.com">お問い合わせ</a>
+    <a className="underline" href="mailto:lino.salon.support@gmail.com">お問い合わせ</a>
   </nav>;
 }
