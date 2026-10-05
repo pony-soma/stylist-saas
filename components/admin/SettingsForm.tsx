@@ -164,7 +164,7 @@ function SettingsContent() {
             >
               <MessageCircle className="w-4 h-4" />
               通知用LINEを友だち追加する
-            </a> : <p className="text-sm text-gray-600">LINE通知は現在準備中です。</p>}
+            </a> : null}
           </div>
         </div>
       </div>
