@@ -22,8 +22,14 @@ export async function GET(req: Request) {
     return result('error', 'invalid_state');
   }
 
-  const channelId = process.env.LINE_LOGIN_CHANNEL_ID;
-  const channelSecret = process.env.LINE_LOGIN_CHANNEL_SECRET;
+  // Select the pair together; never mix credentials from different providers.
+  const notificationLoginConfigured = Boolean(process.env.LINE_NOTIFICATION_LOGIN_CHANNEL_ID || process.env.LINE_NOTIFICATION_LOGIN_CHANNEL_SECRET);
+  const channelId = notificationLoginConfigured
+    ? process.env.LINE_NOTIFICATION_LOGIN_CHANNEL_ID
+    : process.env.LINE_LOGIN_CHANNEL_ID;
+  const channelSecret = notificationLoginConfigured
+    ? process.env.LINE_NOTIFICATION_LOGIN_CHANNEL_SECRET
+    : process.env.LINE_LOGIN_CHANNEL_SECRET;
   const callbackUrl = `${appUrl}/api/auth/line/callback`;
 
   if (!channelId || !channelSecret) {

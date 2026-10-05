@@ -2,12 +2,20 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 export async function GET() {
-  const channelId = process.env.LINE_LOGIN_CHANNEL_ID;
+  // Stylist notifications must use the Messaging API's provider. Customer
+  // LIFF authentication keeps its existing LINE_LOGIN_CHANNEL_ID separately.
+  const notificationLoginConfigured = Boolean(process.env.LINE_NOTIFICATION_LOGIN_CHANNEL_ID || process.env.LINE_NOTIFICATION_LOGIN_CHANNEL_SECRET);
+  const channelId = notificationLoginConfigured
+    ? process.env.LINE_NOTIFICATION_LOGIN_CHANNEL_ID
+    : process.env.LINE_LOGIN_CHANNEL_ID;
+  const channelSecret = notificationLoginConfigured
+    ? process.env.LINE_NOTIFICATION_LOGIN_CHANNEL_SECRET
+    : process.env.LINE_LOGIN_CHANNEL_SECRET;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const callbackUrl = `${appUrl}/api/auth/line/callback`;
   
-  if (!channelId) {
-    return NextResponse.json({ error: 'LINE_LOGIN_CHANNEL_ID is not set' }, { status: 500 });
+  if (!channelId || !channelSecret) {
+    return NextResponse.json({ error: 'LINE login credentials are not configured' }, { status: 500 });
   }
 
   // CSRF対策のためのstateパラメータを生成
