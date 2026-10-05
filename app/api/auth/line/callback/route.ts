@@ -9,15 +9,17 @@ export async function GET(req: Request) {
   const errorParam = url.searchParams.get('error');
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const result = (key: 'success' | 'error', value: string) =>
+    NextResponse.redirect(`${appUrl}/admin/settings/line?${key}=${value}`);
   
   if (errorParam || !code || !state) {
-    return NextResponse.redirect(`${appUrl}/admin/settings?error=line_auth_failed`);
+    return result('error', 'line_auth_failed');
   }
 
   // Verify state
   const cookieState = cookies().get('line_oauth_state')?.value;
   if (state !== cookieState) {
-    return NextResponse.redirect(`${appUrl}/admin/settings?error=invalid_state`);
+    return result('error', 'invalid_state');
   }
 
   const channelId = process.env.LINE_LOGIN_CHANNEL_ID;
@@ -25,7 +27,7 @@ export async function GET(req: Request) {
   const callbackUrl = `${appUrl}/api/auth/line/callback`;
 
   if (!channelId || !channelSecret) {
-    return NextResponse.redirect(`${appUrl}/admin/settings?error=missing_credentials`);
+    return result('error', 'missing_credentials');
   }
 
   try {
@@ -43,8 +45,14 @@ export async function GET(req: Request) {
     });
 
     const tokenData = await tokenResponse.json();
+    if (!tokenResponse.ok) {
+      // Never log the response body: it may contain credentials or tokens.
+      const reason = tokenData.error === 'invalid_client' ? 'line_client_invalid' : 'line_token_failed';
+      console.error('LINE Auth Error:', reason, tokenResponse.status);
+      return result('error', reason);
+    }
     if (!tokenData.id_token) {
-      throw new Error('No id_token in response');
+      return result('error', 'line_id_token_missing');
     }
 
     // 2. Verify ID Token
@@ -58,8 +66,8 @@ export async function GET(req: Request) {
     });
 
     const verifyData = await verifyResponse.json();
-    if (verifyData.error || !verifyData.sub) {
-      throw new Error(verifyData.error_description || 'Invalid id_token');
+    if (!verifyResponse.ok || verifyData.error || typeof verifyData.sub !== 'string' || !verifyData.sub) {
+      return result('error', 'line_verification_failed');
     }
 
     const lineUserId = verifyData.sub;
@@ -69,23 +77,26 @@ export async function GET(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.redirect(`${appUrl}/admin/settings?error=not_authenticated`);
+      return result('error', 'not_authenticated');
     }
 
-    const { error: updateError } = await supabase
+    const { data: updated, error: updateError } = await supabase
       .from('stylists')
       .update({ line_user_id: lineUserId })
-      .eq('id', user.id);
+      .eq('id', user.id)
+      .select('id')
+      .single();
 
-    if (updateError) {
-      throw updateError;
+    if (updateError || !updated) {
+      return result('error', 'line_save_failed');
     }
 
     // Success redirect
-    return NextResponse.redirect(`${appUrl}/admin/settings?success=line_linked`);
+    cookies().delete('line_oauth_state');
+    return result('success', 'line_linked');
 
   } catch (err: any) {
-    console.error('LINE Auth Error:', err);
-    return NextResponse.redirect(`${appUrl}/admin/settings?error=link_failed`);
+    console.error('LINE Auth Error: link_failed');
+    return result('error', 'link_failed');
   }
 }
