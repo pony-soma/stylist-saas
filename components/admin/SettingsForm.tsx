@@ -14,6 +14,16 @@ function SettingsContent() {
 
   const successParam = searchParams.get('success');
   const errorParam = searchParams.get('error');
+  const errorMessages: Record<string, string> = {
+    line_client_invalid: 'LINE連携の認証設定に問題があります。運営へお問い合わせください。',
+    missing_credentials: 'LINE連携の認証設定に問題があります。運営へお問い合わせください。',
+    line_token_failed: 'LINEの認証情報を取得できませんでした。連携ボタンからやり直してください。',
+    line_id_token_missing: 'LINEの本人確認情報を取得できませんでした。運営へお問い合わせください。',
+    line_verification_failed: 'LINEの本人確認に失敗しました。連携ボタンからやり直してください。',
+    invalid_state: '連携操作の有効期限が切れたか、別のブラウザーで開かれました。連携ボタンからやり直してください。',
+    not_authenticated: 'LiNoにログインし直してから、LINE連携をやり直してください。',
+    line_save_failed: 'LINE連携を保存できませんでした。運営へお問い合わせください。',
+  };
 
   useEffect(() => {
     fetchSettings();
@@ -107,7 +117,7 @@ function SettingsContent() {
             <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
             <div>
               <h3 className="font-bold text-red-800">連携エラー</h3>
-              <p className="text-sm text-red-700 mt-1">LINEの連携に失敗しました。もう一度お試しください。({errorParam})</p>
+              <p className="text-sm text-red-700 mt-1">{errorMessages[errorParam] || 'LINEの連携に失敗しました。連携ボタンからやり直してください。'}</p>
             </div>
           </div>
         )}
