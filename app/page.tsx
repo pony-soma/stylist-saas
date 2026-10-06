@@ -5,9 +5,9 @@ import { ArrowRight, Scissors, MessageCircle, Users, Check, CalendarCheck } from
 export default function Home() {
   return <div className="min-h-screen bg-gray-50 text-gray-900">
     <nav aria-label="メインナビゲーション" className="border-b border-gray-200 bg-gray-50/95">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
-        <Link href="/" className="brand-wordmark text-indigo-800">LiNo</Link>
-        <div className="flex items-center gap-4 sm:gap-7"><Link href="/login?next=/billing" className="text-sm font-semibold">ログイン</Link><Link href="/login?next=/billing" className="rounded-full bg-indigo-700 px-4 py-3 text-xs sm:text-sm font-semibold text-white">14日間無料で試す</Link></div>
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-5 sm:px-8">
+        <Link href="/" className="brand-wordmark shrink-0 text-indigo-800">LiNo</Link>
+        <div className="flex shrink-0 items-center gap-2 sm:gap-7"><Link href="/login?next=/billing" className="whitespace-nowrap text-xs font-semibold sm:text-sm">ログイン</Link><Link href="/login?next=/billing" className="whitespace-nowrap rounded-full bg-indigo-700 px-3 py-3 text-xs sm:text-sm font-semibold text-white">14日間無料で試す</Link></div>
       </div>
     </nav>
     <main>
@@ -15,8 +15,8 @@ export default function Home() {
         <div>
           <p className="eyebrow">For independent stylists</p>
           <p className="mt-4 text-sm text-gray-600">フリーランス美容師のための予約・顧客管理</p>
-          <h1 className="mt-7 text-4xl font-semibold leading-[1.5] tracking-tight sm:text-5xl sm:leading-[1.5]">また会いたい、を<br />つなぐ場所。</h1>
-          <p className="mt-7 max-w-md text-base leading-8 text-gray-600">予約も、お客様の好みも、前回の仕上がりも。<br />LiNoでひとつにまとめて、<br />目の前のお客様に向き合う時間を。</p>
+          <h1 className="mt-7 text-3xl font-semibold leading-[1.5] tracking-tight sm:text-5xl sm:leading-[1.5]">予約リクエストを、<br />あなたのLINEへ。</h1>
+          <p className="mt-7 max-w-md text-base leading-8 text-gray-600">お客様はLINEの予約URLからメニューと日時を選択。新しい予約リクエストを、連携した美容師のLINEへお知らせします。予約の確認・管理と、お客様ごとの施術記録はLiNoで。</p>
           <Link href="/login?next=/billing" className="primary-action mt-9">14日間無料で試す<ArrowRight className="h-4 w-4" /></Link>
           <p className="mt-5 text-sm font-medium">月額1,980円（税込）</p>
           <p className="mt-2 max-w-md text-xs leading-6 text-gray-500">初回14日間無料・カード登録必須。体験終了前に解約しない場合、月額1,980円（税込）で自動更新します。</p>
