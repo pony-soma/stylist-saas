@@ -28,10 +28,10 @@ test('settings share one design; calendar is retired and account controls stay i
 test('public landing and login remain readable on mobile',async({page,context},testInfo)=>{
  await context.clearCookies();
  await page.goto('/');
- await expect(page.getByRole('heading',{level:1})).toContainText('つなぐ場所');
+ await expect(page.getByRole('heading',{level:1})).toContainText('あなたのLINEへ。');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  await page.screenshot({path:testInfo.outputPath('home.png'),fullPage:true});
  await page.getByRole('link',{name:'ログイン',exact:true}).click();
- await expect(page.getByRole('button',{name:'Google アカウントでログイン',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Googleでログイン・新規登録',exact:true})).toBeVisible();
  await page.screenshot({path:testInfo.outputPath('login.png'),fullPage:true});
 });
