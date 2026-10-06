@@ -29,7 +29,7 @@ for (const pending of [false, true]) {
       oauthURL = route.request().url();
       await route.fulfill({ status: 200, contentType: 'text/plain', body: 'OAuth request intercepted' });
     });
-    await page.getByRole('button', { name: 'Google アカウントでログイン', exact: true }).click();
+    await page.getByRole('button', { name: 'Googleでログイン・新規登録', exact: true }).click();
     await expect.poll(() => oauthURL).not.toBe('');
     expect(new URL(oauthURL).searchParams.get('prompt')).toBe('select_account');
     expect(new URL(oauthURL).searchParams.get('provider')).toBe('google');
