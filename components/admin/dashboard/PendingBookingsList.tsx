@@ -22,14 +22,14 @@ export default function PendingBookingsList({ pending, onApprove, onReject }: Pr
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {pending.map((booking) => (
-          <div key={booking.id} onClick={() => router.push(`/admin/customers/${booking.customer_id}`)} className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:shadow-md transition">
-            <div>
+          <div key={booking.id} onClick={() => router.push(`/admin/customers/${booking.customer_id}`)} className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 min-w-0 flex flex-col justify-between gap-4 cursor-pointer hover:shadow-md transition">
+            <div className="min-w-0 [overflow-wrap:anywhere]">
               <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <User className="w-4 h-4 text-gray-400" />
+                <User className="w-4 h-4 shrink-0 text-gray-400" />
                 {booking.customers?.display_name || '名称未設定'}
               </p>
               <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4" />
+                <CalendarIcon className="w-4 h-4 shrink-0" />
                 {formatDate(booking.start_time)} {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
               </p>
               <div className="flex gap-2 text-xs text-gray-500 mt-2 flex-wrap">
@@ -41,16 +41,16 @@ export default function PendingBookingsList({ pending, onApprove, onReject }: Pr
                   ))
                 ) : null}
                 {booking.menu_note && (
-                  <span className="flex items-center gap-1">
-                    <span className="w-1 h-1 bg-gray-400 rounded-full mx-1"></span>
+                  <span className="flex min-w-0 items-start gap-1">
+                    <span className="w-1 h-1 shrink-0 bg-gray-400 rounded-full mx-1 mt-1.5"></span>
                     {booking.menu_note}
                   </span>
                 )}
               </div>
             </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <button onClick={(e) => { e.stopPropagation(); onReject(booking.id); }} className="flex-1 sm:flex-none px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium flex items-center justify-center gap-1"><XCircle className="w-4 h-4" /> 拒否</button>
-              <button onClick={(e) => { e.stopPropagation(); onApprove(booking.id); }} className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1 shadow-sm"><CheckCircle2 className="w-4 h-4" /> 承認</button>
+            <div className="flex gap-2 w-full shrink-0 sm:justify-end">
+              <button onClick={(e) => { e.stopPropagation(); onReject(booking.id); }} className="flex-1 sm:flex-none whitespace-nowrap px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium flex items-center justify-center gap-1"><XCircle className="w-4 h-4 shrink-0" /> 拒否</button>
+              <button onClick={(e) => { e.stopPropagation(); onApprove(booking.id); }} className="flex-1 sm:flex-none whitespace-nowrap px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1 shadow-sm"><CheckCircle2 className="w-4 h-4 shrink-0" /> 承認</button>
             </div>
           </div>
         ))}
