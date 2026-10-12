@@ -20,6 +20,19 @@ export default function Home() {
           <Link href="/login?next=/billing" className="primary-action mt-9">14日間無料で試す<ArrowRight className="h-4 w-4" /></Link>
           <p className="mt-5 text-sm font-medium">月額1,980円（税込）</p>
           <p className="mt-2 max-w-md text-xs leading-6 text-gray-500">初回14日間無料・カード登録必須。体験終了前に解約しない場合、月額1,980円（税込）で自動更新します。</p>
+          <div className="mt-6 max-w-md rounded-2xl border border-indigo-100 bg-white p-5">
+            <p className="text-sm font-semibold text-indigo-900">予約が確定するまで</p>
+            <ol className="mt-3 space-y-2 text-sm leading-6 text-gray-700">
+              <li>1. お客様が予約リクエストを送信</li>
+              <li>2. 連携した美容師のLINEへ通知</li>
+              <li>3. LiNoで内容を確認・承認して予約確定</li>
+            </ol>
+            <a href="https://www.instagram.com/lino_salon_app/reel/DeWZULoDdRB/" target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-indigo-700 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-700">
+              30秒の実演を見る<ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" />
+              <span className="sr-only">（Instagram・新しいタブで開きます）</span>
+            </a>
+            <p className="text-xs leading-5 text-gray-500">Instagramを新しいタブで開きます。</p>
+          </div>
         </div>
         <div className="relative rounded-[2rem] bg-[#e4eadd] p-6 sm:p-10">
           <p className="mb-5 text-xs tracking-widest text-indigo-700">ひとりひとりを、大切に。</p>
