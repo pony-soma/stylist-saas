@@ -1,13 +1,29 @@
 'use client';
 
 import LegalLinks from '@/components/LegalLinks';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Scissors, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    const error = new URLSearchParams(window.location.search).get('error');
+    if (error === null) return;
+
+    switch (error) {
+      case 'profile-unavailable':
+        setErrorMsg('アカウント情報を読み込めませんでした。少し時間をおいて、下のボタンからもう一度ログインしてください。');
+        break;
+      case 'no-code-provided':
+        setErrorMsg('ログインに必要な認証情報を確認できませんでした。下のボタンからもう一度ログインしてください。');
+        break;
+      default:
+        setErrorMsg('ログインを完了できませんでした。下のボタンからもう一度Googleアカウントを選択してください。');
+    }
+  }, []);
 
   const handleGoogleLogin = async () => {
     try {
@@ -21,8 +37,8 @@ export default function LoginPage() {
         },
       });
       if (error) throw error;
-    } catch (error: any) {
-      setErrorMsg(error.message);
+    } catch {
+      setErrorMsg('ログインを開始できませんでした。通信状況を確認して、下のボタンからもう一度お試しください。');
       setLoading(false);
     }
   };
@@ -47,8 +63,9 @@ export default function LoginPage() {
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 text-center">ログイン・新規登録</h2>
           
           {errorMsg && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm font-medium text-center">
-              {errorMsg}
+            <div role="alert" className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm font-medium text-center">
+              <p>{errorMsg}</p>
+              <p className="mt-2">繰り返し表示される場合は、<a className="underline" href="mailto:lino.salon.support@gmail.com">お問い合わせ</a>ください。</p>
             </div>
           )}
 
