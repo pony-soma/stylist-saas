@@ -60,7 +60,7 @@ export default function LoginPage() {
         </div>
 
         <div className="p-5 sm:p-8">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 text-center">ログイン・新規登録</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 text-center">LiNoにログイン・新規登録</h2>
           
           {errorMsg && (
             <div role="alert" className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm font-medium text-center">
@@ -87,6 +87,13 @@ export default function LoginPage() {
             {loading ? 'リダイレクト中...' : 'Googleでログイン・新規登録'}
           </button>
           <p className="mt-3 text-center text-sm text-gray-500 dark:text-gray-400">初めての方も、同じボタンから登録できます。</p>
+
+          <aside aria-label="アプリ内ブラウザーでログインできない場合" className="mt-5 rounded-xl bg-gray-50 dark:bg-slate-900 p-4 text-sm text-gray-600 dark:text-gray-300">
+            <p className="font-bold">Instagramなどのアプリ内でログインできない場合</p>
+            <p className="mt-2">SafariやChromeを開き、下のURLをコピーしてアドレス欄に貼り付けてください。</p>
+            <p className="mt-2 select-all break-all font-medium">https://lino-salon.app/</p>
+            <p className="mt-2">開いたLiNoの「ログイン」から、もう一度お試しください。同じ画面でリンクを押すだけでは、外部ブラウザーに切り替わらないことがあります。</p>
+          </aside>
 
           <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">初回はログイン後にカードをご登録いただくと、14日間の無料体験が始まります。体験終了前に解約しない場合、月額1,980円（税込）で自動更新します。</p>
           <p className="mt-8 text-center text-xs text-gray-500 dark:text-gray-400">
