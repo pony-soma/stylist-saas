@@ -55,6 +55,20 @@ export default function Home() {
           ].map(({icon:Icon,title,body}) => <article key={title} className="rounded-2xl bg-gray-50 p-7"><Icon className="h-7 w-7 text-indigo-600" strokeWidth={1.4} /><h3 className="mt-6 text-lg font-semibold">{title}</h3><p className="mt-4 text-sm leading-7 text-gray-600">{body}</p></article>)}</div>
         </div>
       </section>
+      <section aria-labelledby="getting-started" className="mx-auto max-w-4xl px-5 pt-16 sm:px-8 sm:pt-24">
+        <div className="rounded-2xl border border-indigo-100 bg-white p-6 sm:p-10">
+          <h2 id="getting-started" className="text-2xl font-semibold leading-relaxed text-indigo-900 sm:text-3xl">今の受付を続けながら、まずは1件の流れを確認。</h2>
+          <p className="mt-5 text-sm leading-7 text-gray-700">今のLINEでの相談を続けながら、LiNoの予約URLを使う流れを試せます。すべてのお客様を一度に移す必要はありません。まずはテスト用の内容で、予約リクエストから通知・承認までを確かめてください。</p>
+          <ol className="mt-6 list-decimal space-y-3 pl-6 text-sm leading-7 text-gray-700">
+            <li>メニューと受付設定を確認する</li>
+            <li>美容師側のLINEを連携する</li>
+            <li>お客様向け予約URLからテストリクエストを送る</li>
+            <li>LINE通知を確認し、LiNoで予約内容を確認・承認する</li>
+          </ol>
+          <p className="mt-6 text-sm leading-7 text-gray-600">LINEトークや既存の予約が自動で移るわけではありません。ほかの方法で受けた予約と重ならないように予定を確認し、実際の受付を始める前にお客様へ予約方法を案内してください。</p>
+          <p className="mt-5 border-t border-gray-100 pt-5 text-sm leading-7 text-gray-600">無料体験はカード登録を含む申込み完了後に始まります。初回14日間無料、その後は月額1,980円（税込）。無料期間終了前に解約しない場合は自動更新します。</p>
+        </div>
+      </section>
       <section className="mx-auto max-w-3xl px-5 py-16 text-center sm:py-24"><p className="eyebrow">Your next chapter</p><h2 className="mt-5 text-2xl font-semibold leading-relaxed sm:text-3xl">あなたらしい働き方を、<br />LiNoと始めませんか。</h2><Link href="/login?next=/billing" className="primary-action mt-8">14日間無料で試す<ArrowRight className="h-4 w-4" /></Link><p className="mt-4 text-xs leading-6 text-gray-500">カード登録が必要です。無料体験終了後は月額1,980円（税込）で自動更新。<br />課金開始前に解約すれば料金は発生しません。</p></section>
     </main>
     <footer className="border-t border-gray-200 bg-white px-5 py-10 text-center"><p className="brand-wordmark text-indigo-800">LiNo</p><LegalLinks /><p className="mt-6 text-xs text-gray-500">© {new Date().getFullYear()} LiNo</p></footer>
